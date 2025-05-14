@@ -12,7 +12,8 @@ def main() -> None:
     accelerator: Accelerator = Accelerator(mixed_precision="fp16")
 
     # 2. Model identifier (will be downloaded if not present)
-    model_name: str = "mistralai/Mistral-7B-Instruct"
+    model_name: str = "mistralai/Mistral-7B-Instruct-v0.1"
+
 
     # 3. Load tokenizer and model (half-precision for memory savings)
     tokenizer = AutoTokenizer.from_pretrained(model_name)
