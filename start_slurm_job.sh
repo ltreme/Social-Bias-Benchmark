@@ -13,17 +13,17 @@
 # module load cuda/11.7
 # module load python/3.10
 
-# 2. Activate Python Virtual Environment
-source ~/venv/bin/activate
-
-# 3. Change to script directory (if necessary)
+# 2. Change to script directory (if necessary)
 cd "$SLURM_SUBMIT_DIR"
+
+# 3. Activate Python Virtual Environment
+source venv/bin/activate
 
 # 4. Execute job: Accelerate automatically distributes the model to GPU(s)
 accelerate launch app/main.py
 exit_code=$?
 
-# 3. Notify via our Python module
+# 5. Notify via our Python module
 python app/notification/telegram_notifier.py \
     "${SLURM_JOB_NAME}" \
     "${SLURM_JOB_ID}" \
