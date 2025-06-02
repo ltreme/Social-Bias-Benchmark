@@ -6,7 +6,7 @@
 #SBATCH --nodes=1                          # Number of nodes
 #SBATCH --gres=gpu:a6000:1                 # Number of GPUs (here 1)
 #SBATCH --cpus-per-task=4                  # CPU cores per task
-#SBATCH --mem=32G                          # RAM per node
+#SBATCH --mem=64G                          # RAM per node (erhöht von 32G auf 64G)
 #SBATCH --time=01:00:00                    # Runtime (HH:MM:SS)
 
 # 1. (Optional) Load modules if necessary
