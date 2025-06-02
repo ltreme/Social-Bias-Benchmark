@@ -1,7 +1,7 @@
 from typing import Dict, Optional
 import torch
 from accelerate import Accelerator
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, AutoConfig # Added AutoConfig
 
 class LLMModel:
     def __init__(self, model_identifier: str, mixed_precision: str = "fp16"):
@@ -22,13 +22,22 @@ class LLMModel:
         """
         Loads the tokenizer and the model.
         """
+        config = AutoConfig.from_pretrained(self.model_name)
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-        # Set default padding token if not present
+        
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
+        # Set model_max_length for tokenizer from model config
+        # Fallback to a default like 4096 if not available, though it should be for most models.
+        self.tokenizer.model_max_length = getattr(config, 'max_position_embeddings', 4096)
+        
+        # For generation tasks, padding on the left is common.
+        self.tokenizer.padding_side = "left"
+
         self.model = AutoModelForCausalLM.from_pretrained(
             self.model_name,
+            config=config, # Pass the loaded config
             torch_dtype=torch.float16 if self.accelerator.mixed_precision == "fp16" else torch.bfloat16
             # Additional configuration for loading the model can be added here
         )
@@ -46,35 +55,45 @@ class LLMModel:
         Returns:
             The model's response as a string.
         """
-        full_prompt = prompt
+        messages = []
         if system_prompt:
-            # Simple concatenation for the system prompt.
-            # Some models may require a specific formatting template.
-            full_prompt = f"{system_prompt}\n\n{prompt}"
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
 
-        # Tokenize on CPU
-        encoding = self.tokenizer(
-            full_prompt, return_tensors="pt", padding=True, truncation=True
-        )
-        input_ids = encoding["input_ids"]
-        attention_mask = encoding["attention_mask"]
+        try:
+            # Use apply_chat_template to format the input according to the model's training
+            input_ids = self.tokenizer.apply_chat_template(
+                messages,
+                add_generation_prompt=True,  # Ensures the prompt ends correctly for generation
+                return_tensors="pt"
+            )
+        except Exception as e:
+            # Fallback to simple concatenation if template fails
+            # print(f"Could not apply chat template: {e}. Using simple concatenation.")
+            full_prompt_str = ""
+            if system_prompt:
+                full_prompt_str += system_prompt + "\n\n"
+            full_prompt_str += prompt
+            # Tokenize the combined string manually
+            encoding = self.tokenizer(
+                full_prompt_str, return_tensors="pt", padding=True, truncation=True,
+                max_length=self.tokenizer.model_max_length
+            )
+            input_ids = encoding["input_ids"]
 
-        # Manually move input tensors to the accelerator device
-        device = self.accelerator.device
-        input_ids = input_ids.to(device)
-        attention_mask = attention_mask.to(device)
 
-        # Generating
-        with torch.no_grad(): # Important for inference to disable gradient calculations
+        input_ids = input_ids.to(self.accelerator.device)
+        
+        attention_mask = torch.ones_like(input_ids).to(self.accelerator.device)
+
+        with torch.no_grad():
             outputs = self.model.generate(
                 input_ids=input_ids,
                 attention_mask=attention_mask,
                 max_new_tokens=max_new_tokens,
-                pad_token_id=self.tokenizer.pad_token_id # explicitly set pad_token_id
+                pad_token_id=self.tokenizer.pad_token_id
             )
 
-        # Decode and return result (Decoding on CPU)
-        # Only decode the generated part, not the prompt
         generated_ids = outputs[0, input_ids.shape[1]:]
         response = self.tokenizer.decode(generated_ids, skip_special_tokens=True)
 
