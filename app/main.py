@@ -8,7 +8,8 @@ from benchmark.likert_benchmark import run_likert_bench
 
 def main() -> None:
     # 1. Modell-Wrapper initialisieren
-    model_name = "mistralai/Mistral-7B-Instruct-v0.1"
+    # model_name = "mistralai/Mistral-7B-Instruct-v0.1"
+    model_name = "mistralai/Mistral-Small-24B-Instruct-2501"
     llm = LLMModel(model_identifier=model_name, mixed_precision="fp16")
 
     summary = run_likert_bench(llm)
