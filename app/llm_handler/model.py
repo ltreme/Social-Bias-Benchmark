@@ -2,6 +2,11 @@ from typing import Dict, Optional
 import torch
 from accelerate import Accelerator
 from transformers import AutoTokenizer, AutoModelForCausalLM, AutoConfig
+import time # Added for timing
+import logging # Added for logging
+
+# Configure basic logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class LLMModel:
     def __init__(self, model_identifier: str, mixed_precision: str = "fp16"):
@@ -22,6 +27,8 @@ class LLMModel:
         """
         Loads the tokenizer and the model.
         """
+        logging.info(f"Starting to load model: {self.model_name}")
+        start_time = time.time()
         config = AutoConfig.from_pretrained(self.model_name)
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
         
@@ -46,6 +53,8 @@ class LLMModel:
         # self.model.resize_token_embeddings(len(self.tokenizer))
 
         self.model = self.accelerator.prepare(self.model)
+        end_time = time.time()
+        logging.info(f"Model {self.model_name} loaded in {end_time - start_time:.2f} seconds.")
 
     def call(self, prompt: str, system_prompt: Optional[str] = None, max_new_tokens: int = 150) -> str:
         """
@@ -59,6 +68,8 @@ class LLMModel:
         Returns:
             The model's response as a string.
         """
+        logging.info("Starting model call.")
+        start_time = time.time()
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
@@ -104,6 +115,8 @@ class LLMModel:
         if attention_mask is not None: # Ensure attention_mask is not None before moving
             attention_mask = attention_mask.to(self.accelerator.device)
 
+        logging.info("Generating response...")
+        generation_start_time = time.time()
         with torch.no_grad():
             outputs = self.model.generate(
                 input_ids=input_ids,
@@ -111,8 +124,15 @@ class LLMModel:
                 max_new_tokens=max_new_tokens,
                 pad_token_id=self.tokenizer.pad_token_id
             )
+        generation_end_time = time.time()
+        logging.info(f"Response generated in {generation_end_time - generation_start_time:.2f} seconds.")
 
+        decoding_start_time = time.time()
         generated_ids = outputs[0, input_ids.shape[1]:]
         response = self.tokenizer.decode(generated_ids, skip_special_tokens=True)
+        decoding_end_time = time.time()
+        logging.info(f"Response decoded in {decoding_end_time - decoding_start_time:.2f} seconds.")
 
+        end_time = time.time()
+        logging.info(f"Model call finished in {end_time - start_time:.2f} seconds.")
         return response.strip()
