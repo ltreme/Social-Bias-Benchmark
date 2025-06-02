@@ -1,8 +1,8 @@
 #!/bin/bash
-# run_slurm.sh — Slurm job script for Hello-World with Mistral-7B
+# run_slurm.sh — Slurm job script for Bias Benchmarks
 
-#SBATCH --job-name=hello-mistral           # Job name
-#SBATCH --output=hello-mistral-%j.out      # Standard output (%j = Job ID)
+#SBATCH --job-name=bias-benchmarks           # Job name
+#SBATCH --output=bias-benchmarks-%j.out      # Standard output (%j = Job ID)
 #SBATCH --nodes=1                          # Number of nodes
 #SBATCH --gres=gpu:a6000:1                 # Number of GPUs (here 1)
 #SBATCH --cpus-per-task=4                  # CPU cores per task
