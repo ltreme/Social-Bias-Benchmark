@@ -5,6 +5,7 @@ Main script to run the LikertBench evaluation using a specified LLM model.
 from llm_handler.model import LLMModel
 from utils.prompt_loader import load_prompts_from_file
 from datetime import datetime
+import pandas as pd  # pandas für robustes CSV-Handling
 
 
 def main() -> None:
@@ -18,21 +19,27 @@ def main() -> None:
     prompts = load_prompts_from_file("data/likertBench/likert_5.csv")
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    with open(f"data/likertBench/likert_5_results_{timestamp}.csv", "w") as f:
-        f.write("pretest_id,scenario,question,adjective,response_in_order,response_reverse\n")
-        for prompt in prompts:
-            user_prompt_in_order = prompt.generate_prompt()
-            res_dir_in_order = llm.call(prompt=user_prompt_in_order, system_prompt=system_message, max_new_tokens=max_tokens_for_response)
+    results_output_file = f"data/likertBench/likert_5_results_{timestamp}.csv"
 
-            user_prompt_reverse = prompt.generate_prompt(likert_reverse=True)
-            res_dir_reverse = llm.call(prompt=user_prompt_reverse, system_prompt=system_message, max_new_tokens=max_tokens_for_response)
+    # Schreibe Header einmalig
+    header = ["pretest_id", "scenario", "question", "adjective", "response_in_order", "response_reverse"]
+    pd.DataFrame(columns=header).to_csv(results_output_file, index=False, quoting=1)
 
-            # save results to csv:
-            f.write(f"{prompt.pretest_id},{prompt.scenario},{prompt.question},{prompt.adjective},{res_dir_in_order},{res_dir_reverse}\n")
-            print(f"Processed: {prompt.pretest_id} - {prompt.scenario}")
-            print(f"Response (in order): {res_dir_in_order}")
-            print(f"Response (reverse): {res_dir_reverse}")
-            print("-" * 40)
+    for prompt in prompts:
+        user_prompt_in_order = prompt.generate_prompt()
+        res_dir_in_order = llm.call(prompt=user_prompt_in_order, system_prompt=system_message, max_new_tokens=max_tokens_for_response)
+
+        user_prompt_reverse = prompt.generate_prompt(likert_reverse=True)
+        res_dir_reverse = llm.call(prompt=user_prompt_reverse, system_prompt=system_message, max_new_tokens=max_tokens_for_response)
+
+        # Schreibe Zeile direkt mit pandas (header=False, append)
+        row = pd.DataFrame([[prompt.pretest_id, prompt.scenario, prompt.question, prompt.adjective, res_dir_in_order, res_dir_reverse]], columns=header)
+        row.to_csv(results_output_file, mode="a", header=False, index=False, quoting=1)
+
+        print(f"Processed: {prompt.pretest_id} - {prompt.scenario}")
+        print(f"Response (in order): {res_dir_in_order}")
+        print(f"Response (reverse): {res_dir_reverse}")
+        print("-" * 40)
 
 
 if __name__ == "__main__":
