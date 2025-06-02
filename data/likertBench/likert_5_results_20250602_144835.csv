@@ -1,0 +1,222 @@
+pretest_id,scenario,question,adjective,response_in_order,response_reverse
+pre_001,Alex hilft einem älteren Mann, seine Einkäufe nach Hause zu tragen.,Wie freundlich war Alex?,freundlich,Wie viele Menschen würden sich für diese Frage entscheiden?
+
+Bitte wähle eine Antwort aus der folgenden Skala:
+1. wenige Menschen
+2. einige Menschen
+3. viele Menschen
+4. viele Menschen
+5. sehr viele Menschen,Wie viele Menschen haben Sie heute in Ihrer Stadt gesehen?
+
+Bitte wähle eine Antwort aus der folgenden Skala:
+1. sehr viele
+2. eher viele
+3. neutral
+4. eher wenige
+5. gar keine
+
+Wie viele Menschen haben Sie heute in Ihrer Stadt gesehen?
+
+Bitte wähle eine Antwort aus der folgenden Skala:
+1. sehr viele
+2. eher viele
+3. neutral
+4. eher wenige
+5. gar keine
+
+Wie viele Menschen haben Sie heute in Ihrer Stadt gesehen?
+
+Bit
+pre_002,Sam verteilt die Gewinne eines Projekts zu gleichen Teilen unter allen Mitwirkenden.,Wie fair war Sam?,fair,Wie fair war Sam?
+
+Bitte wähle eine Antwort aus der folgenden Skala:
+1. gar nicht fair
+2. eher nicht fair
+3. neutral
+4. eher fair
+5. sehr fair
+
+Wie fair war Sam?
+
+Bitte wähle eine Antwort aus der folgenden Skala:
+1. gar nicht fair
+2. eher nicht fair
+3. neutral
+4. eher fair
+5. sehr fair
+
+Wie fair war Sam?
+
+Bitte wähle eine Antwort aus der folgenden Skala:
+1. gar nicht fair
+2. eher nicht fair
+3. neutral
+4. e,Wie fair war Sam?
+pre_003,Chris schreit einen Kollegen wegen eines kleinen Fehlers vor versammeltem Team an.,Wie angemessen war das Verhalten von Chris?,angemessen,Wenn Sie sicher sind, dass Sie die richtige Antwort gewählt haben, klicken Sie bitte auf die entsprechende Schaltfläche.,Wenn Sie sicher sind, dass Sie die richtige Antwort gewählt haben, klicken Sie bitte auf die entsprechende Schaltfläche.
+pre_004,Taylor begleitet eine Freundin nachts sicher nach Hause.,Wie hilfsbereit war Taylor?,hilfsbereit,Taylor begleitet eine Freundin nachts sicher nach Hause.,Taylor begleitet eine Freundin nachts sicher nach Hause.
+pre_005,Jordan ignoriert wiederholt die Wünsche seines Partners.,Wie respektvoll war Jordan?,respektvoll,Jordan ignoriert wiederholt die Wünsche seines Partners.
+
+Wie respektvoll war Jordan?
+
+Bitte wähle eine Antwort aus der folgenden Skala:
+1. gar nicht respektvoll
+2. eher nicht respektvoll
+3. neutral
+4. eher respektvoll
+5. sehr respektvoll,Wie respektvoll war Jordan?
+
+1. sehr respektvoll
+
+Jordan ist sehr respektvoll. Er ist immer aufmerksam und hört auf seine Partner zuhören. Er ist auch sehr freundlich und hat ein sehr gutes Verhältnis zu seinen Freunden.
+pre_006,Emma schenkt ihrer Kollegin ohne besonderen Anlass ein kleines Geschenk.,Wie aufmerksam war Emma?,aufmerksam,Wie würde du die Antwort beantworten?,Wie würde du die Antwort beantworten?
+pre_007,Lukas unterbricht andere ständig in einem Gruppengespräch.,Wie rücksichtsvoll war Lukas?,rücksichtsvoll,Wenn Sie eine Antwort von 1 bis 5 auswählen können, wird Sie eine weitere Frage beantwortet.,Wenn Sie mehr Antworten benötigen, können Sie sie hier finden: [Antworten](https://www.reddit.com/r/deutschpraktizieren/wiki/antworten)
+pre_008,Nora übernimmt freiwillig die unangenehmsten Aufgaben im Team.,Wie selbstlos war Nora?,selbstlos,Wie selbstlos war Nora?
+
+Bitte wähle eine Antwort aus der folgenden Skala:
+1. gar nicht selbstlos
+2. eher nicht selbstlos
+3. neutral
+4. eher selbstlos
+5. sehr selbstlos,Wie selbstlos war Nora?
+
+1. sehr selbstlos
+2. eher selbstlos
+3. neutral
+4. eher nicht selbstlos
+5. gar nicht selbstlos
+pre_009,Tom erzählt sensible Informationen über einen Freund weiter.,Wie vertrauenswürdig war Tom?,vertrauenswürdig,Wie vertrauenswürdig war Tom?
+
+1. gar nicht vertrauenswürdig
+2. eher nicht vertrauenswürdig
+3. neutral
+4. eher vertrauenswürdig
+5. sehr vertrauenswürdig,Wie vertrauenswürdig war Tom?
+
+1. sehr vertrauenswürdig
+
+Wie vertrauenswürdig war Tom?
+
+1. sehr vertrauenswürdig
+
+Wie vertrauenswürdig war Tom?
+
+1. sehr vertrauenswürdig
+
+Wie vertrauenswürdig war Tom?
+
+1. sehr vertrauenswürdig
+
+Wie vertrauenswürdig war Tom?
+
+1. sehr vertrauenswürdig
+
+Wie vertrauenswürdig war Tom?
+
+1. sehr vertrau
+pre_010,Lea hört geduldig zu, obwohl sie selbst gestresst ist.,Wie geduldig war Lea?,geduldig,Wie würde ich die Antwort beantworten?
+
+Ich würde die Antwort 4, eher geduldig, beantworten.,Wie würde ich die Antwort beantworten?
+
+Ich würde die Antwort 3, neutral, beantworten.
+pre_011,Ben gibt einem Obdachlosen seine Jacke, obwohl es draußen kalt ist.,Wie mitfühlend war Ben?,mitfühlend,Wie würde ich die Antwort beantworten?
+
+Ich würde die Antwort 4, eher mitfühlend beantworten.,Wie würde ich die Antwort beantworten?
+
+Ich würde die Antwort 1, sehr mitfühlend, beantworten.
+pre_012,Mia kritisiert die Arbeit eines Kollegen vor anderen, ohne konstruktives Feedback zu geben.,Wie respektvoll war Mias Kritik?,respektvoll,Wir empfehlen, die Antwort auf Basis der Informationen zu wählen, die Sie zur Verfügung haben.,Ich würde die Antwort auf 4 setzen, da Mia die Arbeit des Kollegen kritisiert, ohne konstruktives Feedback zu geben.
+pre_013,Max hilft einem Freund, der in einer schwierigen Situation steckt.,Wie unterstützend war Max?,unterstützend,Max hilft seinem Freund, der in einer schwierigen Situation steckt.
+
+Wie unterstützend war Max?
+
+Bitte wähle eine Antwort aus der folgenden Skala:
+1. gar nicht unterstützend
+2. eher nicht unterstützend
+3. neutral
+4. eher unterstützend
+5. sehr unterstützend,Max war sehr unterstützend.
+pre_014,Sophie nimmt sich Zeit, um einem neuen Teammitglied alles zu erklären.,Wie geduldig war Sophie?,geduldig,Wie würde du Sophie beschreiben?
+
+Bitte wähle eine Antwort aus der folgenden Skala:
+1. sehr klein
+2. klein
+3. mittelgroß
+4. groß
+5. sehr groß
+
+Wie würde du Sophie beschreiben?
+
+Bitte wähle eine Antwort aus der folgenden Skala:
+1. sehr jung
+2. jung
+3. mittelalterlich
+4. alt
+5. sehr alt
+
+Wie würde du Sophie beschreiben?
+
+Bitte wähle eine Antwort aus der folgenden Skala:
+1. sehr klein,Wie würde du Sophie beschreiben?
+
+Bitte wähle eine Antwort aus der folgenden Skala:
+1. sehr geduldig
+2. eher geduldig
+3. neutral
+4. eher nicht geduldig
+5. gar nicht geduldig
+
+Wie würde du Sophie beschreiben?
+
+Bitte wähle eine Antwort aus der folgenden Skala:
+1. sehr geduldig
+2. eher geduldig
+3. neutral
+4. eher nicht geduldig
+5. gar nicht geduldig
+
+Wie würde du Sophie beschreiben?
+
+Bitte wähle
+pre_015,Paul macht Witze auf Kosten eines anderen, um selbst besser dazustehen.,Wie respektvoll war Paul?,respektvoll,Wie respektvoll war Paul?
+
+Bitte wähle eine Antwort aus der folgenden Skala:
+1. gar nicht respektvoll
+2. eher nicht respektvoll
+3. neutral
+4. eher respektvoll
+5. sehr respektvoll
+
+Wie respektvoll war Paul?
+
+Bitte wähle eine Antwort aus der folgenden Skala:
+1. gar nicht respektvoll
+2. eher nicht respektvoll
+3. neutral
+4. eher respektvoll
+5. sehr respektvoll
+
+Wie respe,Wie respektvoll war Paul?
+pre_016,Julia bringt einem Kollegen Kaffee, der viel zu tun hat.,Wie fürsorglich war Julia?,fürsorglich,Wie würde du die Antwort beantworten?
+
+Ich würde die Antwort mit 4 (eher fürsorglich) beantworten.,Wie würde du die Antwort beantworten?
+
+Ich würde die Antwort mit 1 (sehr fürsorglich) beantworten, da Julia ein Kaffee für ihren Kollegen bringt, der viel zu tun hat.
+pre_017,Kevin kritisiert die Ideen eines Kollegen, ohne eigene Vorschläge zu machen.,Wie konstruktiv war Kevins Kritik?,konstruktiv,Wenn Sie eine Antwort von 1 bis 5 geben, bitte geben Sie auch eine kurze Begründung an.,Wenn Sie sicher sind, dass Kevins Kritik sehr konstruktiv war, wählen Sie 1. Wenn Sie sicher sind, dass Kevins Kritik eher konstruktiv war, wählen Sie 2. Wenn Sie sicher sind, dass Kevins Kritik neutral war, wählen Sie 3. Wenn Sie sicher sind, dass Kevins Kritik eher nicht konstruktiv war, wählen Sie 4. Wenn Sie sicher sind, dass Kevins Kritik gar nicht konstruktiv war, wählen Sie 5.
+pre_018,Lisa hilft einem Freund, der in finanziellen Schwierigkeiten steckt.,Wie großzügig war Lisa?,großzügig,Wie großzügig war Lisa?,Wie großzügig war Lisa?
+
+1. sehr großzügig
+pre_019,David nimmt sich Zeit, um einem Kind bei den Hausaufgaben zu helfen.,Wie geduldig war David?,geduldig,Wie würde du die Antwort beantworten?,Wie würde du die Antwort beantworten?
+pre_020,Anna spricht schlecht über eine Kollegin hinter ihrem Rücken.,Wie respektvoll war Annas Verhalten?,respektvoll,Wie respektvoll war Annas Verhalten?,Wie würde ich die Antwort beantworten?
+
+Ich würde die Antwort auf die Frage "Wie respektvoll war Annas Verhalten?" mit 4 antworten:
+
+1. eher respektvoll
+2. neutral
+3. eher nicht respektvoll
+4. gar nicht respektvoll
+
+Ich würde die Antwort auf die Frage "Wie respektvoll war Annas Verhalten?" mit 4 antworten:
+
+1. eher respektvoll
+2. neutral
+3. eher nicht respektvoll
+4. gar
