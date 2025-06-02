@@ -4,9 +4,10 @@ Main script to run the LikertBench evaluation using a specified LLM model.
 
 from llm_handler.model import LLMModel
 from utils.prompt_loader import load_prompts_from_file
+from eval.likert_eval import benchmark_summary_from_file
+from notification.telegram_notifier import send_telegram_message, send_telegram_document
 from datetime import datetime
 import pandas as pd  # pandas für robustes CSV-Handling
-
 
 def main() -> None:
     # 1. Modell-Wrapper initialisieren
@@ -41,6 +42,14 @@ def main() -> None:
         print(f"Response (reverse): {res_dir_reverse}")
         print("-" * 40)
 
+    # 2. Ergebnisse zusammenfassen
+    summary = benchmark_summary_from_file(results_output_file)
+    print("Benchmark Summary:")
+    for metric, value in summary.items():
+        print(f"{metric}: {value}")
+    send_telegram_message(
+        f"Benchmark Summary:\n" + "\n".join(f"{metric}: {value}" for metric, value in summary.items())
+    )
 
 if __name__ == "__main__":
     main()

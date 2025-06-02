@@ -61,9 +61,9 @@ def notify_job_completion(
     base_msg = f"{status_emoji} Slurm job *{job_name}* (ID: {job_id}) finished with exit code {exit_code}."
     send_telegram_message(text=base_msg)
 
-    if output_file:
-        caption = f"Output of job *{job_name}* (ID: {job_id}):"
-        send_telegram_document(file_path=output_file, caption=caption)
+    # if output_file:
+    #     caption = f"Output of job *{job_name}* (ID: {job_id}):"
+    #     send_telegram_document(file_path=output_file, caption=caption)
 
 if __name__ == "__main__":
     # Usage: python telegram_notifier.py <job_name> <job_id> <exit_code> [output_file]
