@@ -44,7 +44,8 @@ class LLMModel:
         self.model = AutoModelForCausalLM.from_pretrained(
             self.model_name,
             config=config, 
-            torch_dtype=torch.float16 if self.accelerator.mixed_precision == "fp16" else torch.bfloat16
+            torch_dtype=torch.float16 if self.accelerator.mixed_precision == "fp16" else torch.bfloat16,
+            load_in_4bit=True  # 4-bit Quantisierung für große Modelle
         )
         
         # If pad_token was added or changed, and it resulted in a new token ID being effectively used
