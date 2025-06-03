@@ -4,9 +4,9 @@
 #SBATCH --job-name=bias-benchmarks           # Job name
 #SBATCH --output=bias-benchmarks-%j.out      # Standard output (%j = Job ID)
 #SBATCH --nodes=1                          # Number of nodes
-#SBATCH --gres=gpu:a6000:1                 # Number of GPUs (here 1)
-#SBATCH --cpus-per-task=4                  # CPU cores per task
-#SBATCH --mem=64G                          # RAM per node (erhöht von 32G auf 64G)
+#SBATCH --gres=gpu:a6000:6                 # Number of GPUs (jetzt 6)
+#SBATCH --cpus-per-task=12                  # CPU cores per task (angepasst)
+#SBATCH --mem=128G                          # RAM per node (erhöht für großes Modell)
 #SBATCH --time=01:00:00                    # Runtime (HH:MM:SS)
 
 # 1. (Optional) Load modules if necessary
