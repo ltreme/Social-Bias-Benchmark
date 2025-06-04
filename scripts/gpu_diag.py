@@ -1,6 +1,8 @@
 import torch
 import os
-print(f"TORCH_USE_CUDA_DSA from Python env: {os.environ.get('TORCH_USE_CUDA_DSA')}")
+
+torch_use_cuda_dsa = os.environ.get('TORCH_USE_CUDA_DSA')
+print(f'TORCH_USE_CUDA_DSA from Python env: {torch_use_cuda_dsa}')
 print(f'PyTorch version: {torch.__version__}')
 print(f'CUDA available: {torch.cuda.is_available()}')
 print(f'CUDA version: {torch.version.cuda if torch.cuda.is_available() else 'N/A'}')
