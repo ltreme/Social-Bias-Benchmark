@@ -1,8 +1,7 @@
 from typing import Dict, Optional
 import torch
 import os
-from accelerate import Accelerator
-from transformers import AutoTokenizer, AutoModelForCausalLM, AutoConfig
+from transformers import AutoTokenizer, AutoModelForCausalLM, AutoConfig, BitsAndBytesConfig
 import time # Added for timing
 import logging # Added for logging
 from huggingface_hub import login
@@ -30,7 +29,7 @@ class LLMModel:
         else:
             logging.warning("⚠️ No HuggingFace token found. Gated models may not be accessible.")
         
-        self.accelerator = Accelerator(mixed_precision=mixed_precision)
+        self.mixed_precision = mixed_precision
         self.model_name = model_identifier
         self.tokenizer = None
         self.model = None
@@ -58,18 +57,25 @@ class LLMModel:
         # Configure device map for multi-GPU setup
         device_map = "auto" if torch.cuda.device_count() > 1 else None
         
+        # Configure proper 4-bit quantization
+        quantization_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_compute_dtype=torch.float16 if self.mixed_precision == "fp16" else torch.bfloat16,
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_quant_type="nf4"
+        )
+        
         self.model = AutoModelForCausalLM.from_pretrained(
             self.model_name,
             config=config, 
-            torch_dtype=torch.float16 if self.accelerator.mixed_precision == "fp16" else torch.bfloat16,
+            torch_dtype=torch.float16 if self.mixed_precision == "fp16" else torch.bfloat16,
             device_map=device_map,
-            load_in_4bit=True,  # 4-bit Quantisierung für große Modelle
+            quantization_config=quantization_config,
             trust_remote_code=True  # Für einige Modelle erforderlich
         )
         
-        # Only call accelerator.prepare if not using device_map="auto"
-        if device_map != "auto":
-            self.model = self.accelerator.prepare(self.model)
+        # Model is automatically distributed with device_map="auto"
+        # No need for accelerator.prepare when using device_map
         
         end_time = time.time()
         logging.info(f"Model {self.model_name} loaded in {end_time - start_time:.2f} seconds.")
@@ -131,7 +137,7 @@ class LLMModel:
             attention_mask = encoding["attention_mask"] # Use attention_mask from tokenizer
 
         # Move tensors to appropriate device
-        device = next(self.model.parameters()).device if hasattr(self.model, 'parameters') else self.accelerator.device
+        device = next(self.model.parameters()).device if hasattr(self.model, 'parameters') else torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         input_ids = input_ids.to(device)
         if attention_mask is not None:
             attention_mask = attention_mask.to(device)

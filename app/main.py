@@ -60,7 +60,5 @@ def main() -> None:
     send_telegram_message(final_msg)
 
 if __name__ == "__main__":
-
-    print(f"RANK={os.environ.get('RANK')}, LOCAL_RANK={os.environ.get('LOCAL_RANK')}, CUDA_VISIBLE_DEVICES={os.environ.get('CUDA_VISIBLE_DEVICES')}, torch.cuda.device_count()={torch.cuda.device_count()}")
-
+    print(f"🔍 Process Info: PID={os.getpid()}, CUDA_VISIBLE_DEVICES={os.environ.get('CUDA_VISIBLE_DEVICES')}, GPU_Count={torch.cuda.device_count()}")
     main()
