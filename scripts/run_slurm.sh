@@ -85,12 +85,14 @@ echo "SLURM_GPU_BIND: $SLURM_GPU_BIND"
 
 # Enable detailed CUDA device-side assertions
 export TORCH_USE_CUDA_DSA=1
+echo "TORCH_USE_CUDA_DSA in bash is set to: $TORCH_USE_CUDA_DSA"
 
 # Final Python GPU diagnostics
 echo "🐍 Final Python GPU Detection:"
 python -c "
 import torch
 import os
+print(f'TORCH_USE_CUDA_DSA from Python env: {os.environ.get(\\'TORCH_USE_CUDA_DSA\\')}')
 print(f'PyTorch version: {torch.__version__}')
 print(f'CUDA available: {torch.cuda.is_available()}')
 print(f'CUDA version: {torch.version.cuda if torch.cuda.is_available() else \"N/A\"}')
