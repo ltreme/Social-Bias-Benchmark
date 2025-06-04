@@ -46,15 +46,17 @@ exit_code=${PIPESTATUS[0]}
 # Upload log to Dropbox (if token exists)
 if [ -n "$DROPBOX_SECRET" ]; then
     DROPBOX_PATH="/slurm_logs/$(basename "$LOGFILE")"
-    curl -s -X POST https://content.dropboxapi.com/2/files/upload \
+    if curl -s -X POST https://content.dropboxapi.com/2/files/upload \
         --header "Authorization: Bearer $DROPBOX_SECRET" \
         --header "Dropbox-API-Arg: {\"path\": \"$DROPBOX_PATH\",\"mode\": \"add\",\"autorename\": true,\"mute\": false}" \
         --header "Content-Type: application/octet-stream" \
-        --data-binary @"$LOGFILE" \
-        && echo "✅ Log uploaded to Dropbox: $DROPBOX_PATH" \
-        || echo "❌ Dropbox upload failed"
+        --data-binary @"$LOGFILE" > /dev/null; then
+        echo "✅ Log uploaded to Dropbox: $DROPBOX_PATH" | send_to_telemetry
+    else
+        echo "❌ Dropbox upload failed" | send_to_telemetry
+    fi
 else
-    echo "⚠️  No Dropbox token found. Skipping upload."
+    echo "⚠️  No Dropbox token found. Skipping upload." | send_to_telemetry
 fi
 
 # Telegram notification
