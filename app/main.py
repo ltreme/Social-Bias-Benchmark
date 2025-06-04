@@ -19,10 +19,10 @@ def main() -> None:
     model_names = [
         # Primary: Large model for multi-GPU setup
         #"meta-llama/Meta-Llama-3-70B-Instruct",
-        "meta-llama/Meta-Llama-3-8B-Instruct",
+        #"meta-llama/Meta-Llama-3-8B-Instruct",
         #"meta-llama/Llama-3.3-70B-Instruct",
         # Fallback: Smaller models if large model fails
-        # "mistralai/Mistral-Small-24B-Instruct-2501",
+         "mistralai/Mistral-Small-24B-Instruct-2501",
         # "mistralai/Mistral-7B-Instruct-v0.1", 
     ]
     
