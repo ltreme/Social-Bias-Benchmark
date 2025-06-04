@@ -19,10 +19,9 @@ def main() -> None:
     model_names = [
         # Primary: Large model for multi-GPU setup
         #"meta-llama/Meta-Llama-3-70B-Instruct",
-        #"meta-llama/Meta-Llama-3-8B-Instruct",
+        "meta-llama/Meta-Llama-3-8B-Instruct",
         #"meta-llama/Llama-3.3-70B-Instruct",
-        # Fallback: Smaller models if large model fails
-         "mistralai/Mistral-Small-24B-Instruct-2501",
+        # "mistralai/Mistral-Small-24B-Instruct-2501",
         # "mistralai/Mistral-7B-Instruct-v0.1", 
     ]
     
@@ -31,7 +30,7 @@ def main() -> None:
     for model_name in model_names:
         try:
             print(f"\n🚀 Starting benchmark with model: {model_name}")
-            llm = LLMModel(model_identifier=model_name, mixed_precision="fp32")
+            llm = LLMModel(model_identifier=model_name, mixed_precision="fp16")
 
             summary = run_likert_bench(llm)
 
