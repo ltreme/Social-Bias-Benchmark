@@ -60,36 +60,36 @@ if ! source venv/bin/activate; then
     exit 1
 fi
 
-# GPU Setup and Diagnostics
-echo "🔧 Initial GPU Status:"
-nvidia-smi --query-gpu=index,name,memory.total,temperature.gpu,pstate --format=csv,noheader,nounits
+# # GPU Setup and Diagnostics
+# echo "🔧 Initial GPU Status:"
+# nvidia-smi --query-gpu=index,name,memory.total,temperature.gpu,pstate --format=csv,noheader,nounits
 
-# Run CUDA environment fix
-echo "🛠️ Running CUDA environment fix..."
-bash scripts/fix_cuda_environment.sh
+# # Run CUDA environment fix
+# echo "🛠️ Running CUDA environment fix..."
+# bash scripts/fix_cuda_environment.sh
 
-# Source the generated CUDA environment
-if [ -f "cuda_env.sh" ]; then
-    source cuda_env.sh
-    echo "✅ Loaded CUDA environment from fix script"
-else
-    echo "⚠️ No cuda_env.sh found, using default configuration"
-fi
+# # Source the generated CUDA environment
+# if [ -f "cuda_env.sh" ]; then
+#     source cuda_env.sh
+#     echo "✅ Loaded CUDA environment from fix script"
+# else
+#     echo "⚠️ No cuda_env.sh found, using default configuration"
+# fi
 
-# The fix script will export the correct CUDA_VISIBLE_DEVICES
-echo "🔍 Post-fix GPU Configuration:"
-echo "CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES"
-echo "GPU_COUNT: ${GPU_COUNT:-'Not set'}"
-echo "SLURM_GPUS_ON_NODE: $SLURM_GPUS_ON_NODE" 
-echo "SLURM_GPU_BIND: $SLURM_GPU_BIND"
+# # The fix script will export the correct CUDA_VISIBLE_DEVICES
+# echo "🔍 Post-fix GPU Configuration:"
+# echo "CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES"
+# echo "GPU_COUNT: ${GPU_COUNT:-'Not set'}"
+# echo "SLURM_GPUS_ON_NODE: $SLURM_GPUS_ON_NODE" 
+# echo "SLURM_GPU_BIND: $SLURM_GPU_BIND"
 
-# Enable detailed CUDA device-side assertions
-export TORCH_USE_CUDA_DSA=1
-echo "TORCH_USE_CUDA_DSA in bash is set to: $TORCH_USE_CUDA_DSA"
+# # Enable detailed CUDA device-side assertions
+# export TORCH_USE_CUDA_DSA=1
+# echo "TORCH_USE_CUDA_DSA in bash is set to: $TORCH_USE_CUDA_DSA"
 
-# Final Python GPU diagnostics
-echo "🐍 Final Python GPU Detection:"
-python scripts/gpu_diag.py | tee -a "$LOGFILE" | send_to_telemetry
+# # Final Python GPU diagnostics
+# echo "🐍 Final Python GPU Detection:"
+# python scripts/gpu_diag.py | tee -a "$LOGFILE" | send_to_telemetry
 
 {
   echo "🚀 Launching benchmark command: $*"
