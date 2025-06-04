@@ -92,12 +92,12 @@ echo "🐍 Final Python GPU Detection:"
 python -c "
 import torch
 import os
-print(f\\"TORCH_USE_CUDA_DSA from Python env: {os.environ.get('TORCH_USE_CUDA_DSA')}\\")
+print(f\"TORCH_USE_CUDA_DSA from Python env: {os.environ.get('TORCH_USE_CUDA_DSA')}\")
 print(f'PyTorch version: {torch.__version__}')
 print(f'CUDA available: {torch.cuda.is_available()}')
-print(f'CUDA version: {torch.version.cuda if torch.cuda.is_available() else \"N/A\"}')
+print(f'CUDA version: {torch.version.cuda if torch.cuda.is_available() else \\"N/A\\"}')
 print(f'Device count: {torch.cuda.device_count()}')
-print(f'CUDA_VISIBLE_DEVICES: {os.environ.get(\"CUDA_VISIBLE_DEVICES\", \"Not set\")}')
+print(f'CUDA_VISIBLE_DEVICES: {os.environ.get(\\"CUDA_VISIBLE_DEVICES\\", \\"Not set\\")}')
 if torch.cuda.is_available():
     for i in range(torch.cuda.device_count()):
         try:
