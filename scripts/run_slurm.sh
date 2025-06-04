@@ -52,6 +52,7 @@ if ! source venv/bin/activate; then
 fi
 
 export CUDA_VISIBLE_DEVICES=0,1,2,3
+python -c 'import torch; print("Device Count:", torch.cuda.device_count())' | tee -a "$LOGFILE" | send_to_telemetry
 
 {
   echo "✅ CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES"
