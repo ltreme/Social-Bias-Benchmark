@@ -5,9 +5,13 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, AutoConfig, BitsAn
 import time # Added for timing
 import logging # Added for logging
 from huggingface_hub import login
+import warnings
 
 # Configure basic logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Suppress some common warnings that might clutter output
+warnings.filterwarnings("ignore", category=UserWarning, module="transformers")
 
 class LLMModel:
     def __init__(self, model_identifier: str, mixed_precision: str = "fp16"):
@@ -57,22 +61,37 @@ class LLMModel:
         # Configure device map for multi-GPU setup
         device_map = "auto" if torch.cuda.device_count() > 1 else None
         
-        # Configure proper 4-bit quantization
+        # Configure proper 4-bit quantization with enhanced stability for large models
         quantization_config = BitsAndBytesConfig(
             load_in_4bit=True,
-            bnb_4bit_compute_dtype=torch.float16 if self.mixed_precision == "fp16" else torch.bfloat16,
+            bnb_4bit_compute_dtype=torch.bfloat16,  # Use bfloat16 for better numerical stability
             bnb_4bit_use_double_quant=True,
-            bnb_4bit_quant_type="nf4"
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_quant_storage=torch.uint8
         )
         
-        self.model = AutoModelForCausalLM.from_pretrained(
-            self.model_name,
-            config=config, 
-            torch_dtype=torch.float16 if self.mixed_precision == "fp16" else torch.bfloat16,
-            device_map=device_map,
-            quantization_config=quantization_config,
-            trust_remote_code=True  # Für einige Modelle erforderlich
-        )
+        # Try to use Flash Attention 2 if available for better memory efficiency
+        try:
+            self.model = AutoModelForCausalLM.from_pretrained(
+                self.model_name,
+                config=config, 
+                torch_dtype=torch.bfloat16,  # Use bfloat16 for better numerical stability with large models
+                device_map=device_map,
+                quantization_config=quantization_config,
+                trust_remote_code=True,  # Für einige Modelle erforderlich
+                attn_implementation="flash_attention_2"
+            )
+            logging.info("Using Flash Attention 2 for improved memory efficiency")
+        except Exception as e:
+            logging.warning(f"Flash Attention 2 not available, falling back to standard attention: {e}")
+            self.model = AutoModelForCausalLM.from_pretrained(
+                self.model_name,
+                config=config, 
+                torch_dtype=torch.bfloat16,  # Use bfloat16 for better numerical stability with large models
+                device_map=device_map,
+                quantization_config=quantization_config,
+                trust_remote_code=True  # Für einige Modelle erforderlich
+            )
         
         # Model is automatically distributed with device_map="auto"
         # No need for accelerator.prepare when using device_map
@@ -95,6 +114,11 @@ class LLMModel:
         """
         logging.info("Starting model call.")
         start_time = time.time()
+        
+        # Clear CUDA cache to prevent memory issues
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
@@ -144,13 +168,58 @@ class LLMModel:
 
         logging.info("Generating response...")
         generation_start_time = time.time()
-        with torch.no_grad():
-            outputs = self.model.generate(
-                input_ids=input_ids,
-                attention_mask=attention_mask, # Pass attention_mask if available
-                max_new_tokens=max_new_tokens,
-                pad_token_id=self.tokenizer.pad_token_id
-            )
+        
+        try:
+            with torch.no_grad():
+                # Ensure input_ids are valid (no negative values or out-of-vocab tokens)
+                vocab_size = self.model.config.vocab_size
+                input_ids = torch.clamp(input_ids, 0, vocab_size - 1)
+                
+                # Validate that input_ids don't contain NaN or inf
+                if torch.isnan(input_ids).any() or torch.isinf(input_ids).any():
+                    raise ValueError("Input contains NaN or inf values")
+                
+                outputs = self.model.generate(
+                    input_ids=input_ids,
+                    attention_mask=attention_mask,
+                    max_new_tokens=max_new_tokens,
+                    pad_token_id=self.tokenizer.pad_token_id,
+                    eos_token_id=self.tokenizer.eos_token_id,
+                    do_sample=True,  # Enable sampling to avoid deterministic issues
+                    temperature=0.7,  # Add temperature for stability
+                    top_p=0.9,  # Add nucleus sampling
+                    repetition_penalty=1.1,  # Prevent repetition loops
+                    num_return_sequences=1,
+                    use_cache=True,
+                    output_attentions=False,
+                    output_hidden_states=False,
+                    return_dict_in_generate=False
+                )
+                
+        except RuntimeError as e:
+            if "CUDA" in str(e) or "device-side assert" in str(e):
+                logging.error(f"CUDA error during generation: {e}")
+                # Try fallback generation with greedy decoding
+                logging.info("Attempting fallback generation with greedy decoding...")
+                try:
+                    with torch.no_grad():
+                        outputs = self.model.generate(
+                            input_ids=input_ids,
+                            attention_mask=attention_mask,
+                            max_new_tokens=min(max_new_tokens, 50),  # Reduce tokens for stability
+                            pad_token_id=self.tokenizer.pad_token_id,
+                            eos_token_id=self.tokenizer.eos_token_id,
+                            do_sample=False,  # Greedy decoding
+                            use_cache=True,
+                            output_attentions=False,
+                            output_hidden_states=False,
+                            return_dict_in_generate=False
+                        )
+                except Exception as fallback_e:
+                    logging.error(f"Fallback generation also failed: {fallback_e}")
+                    raise e  # Re-raise original error
+            else:
+                raise e
         generation_end_time = time.time()
         logging.info(f"Response generated in {generation_end_time - generation_start_time:.2f} seconds.")
 

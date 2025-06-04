@@ -2,6 +2,14 @@
 
 echo "🎯 Starting Multi-GPU Model Inference Benchmark"
 
+# Set up enhanced CUDA environment for stability
+export CUDA_LAUNCH_BLOCKING=1
+export TORCH_USE_CUDA_DSA=1
+export PYTORCH_CUDA_ALLOC_CONF="max_split_size_mb:512,expandable_segments:True"
+export TOKENIZERS_PARALLELISM=false
+
+echo "✅ Enhanced CUDA environment configured"
+
 echo "📊 Runtime Configuration:"
 echo "  - CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES:-'Not set'}"
 echo "  - Available GPUs: $(python -c 'import torch; print(torch.cuda.device_count())')"
@@ -24,6 +32,7 @@ echo "  - Model will be automatically distributed across available GPUs"
 echo "  - Using HuggingFace device_map='auto' for optimal GPU distribution"
 
 # Start the benchmark directly with Python (no accelerate launch needed)
+# Using improved model.py with bfloat16 and enhanced error handling
 python app/main.py
 
 echo "✅ Benchmark completed"

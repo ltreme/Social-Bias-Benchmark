@@ -1,1 +1,0 @@
-pip install hf_xet
