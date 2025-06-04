@@ -39,8 +39,10 @@ send_to_telemetry() {
 # Activate virtualenv
 source venv/bin/activate
 
-echo "available GPUs: $CUDA_VISIBLE_DEVICES" | send_to_telemetry
-nvidia-smi | send_to_telemetry
+echo "available GPUs: $CUDA_VISIBLE_DEVICES" | tee -a "$LOGFILE" | send_to_telemetry
+nvidia-smi | tee -a "$LOGFILE" | send_to_telemetry
+echo "Launching via Accelerate with args: $*" | tee -a "$LOGFILE" | send_to_telemetry
+
 
 export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5
 
@@ -59,13 +61,13 @@ if [ -n "$DROPBOX_SECRET" ]; then
     --data-binary @"$LOGFILE")
 
     if [ "$status" -eq 200 ]; then
-        echo "✅ Log uploaded to Dropbox: $DROPBOX_PATH" | send_to_telemetry
+        echo "✅ Log uploaded to Dropbox: $DROPBOX_PATH" | tee -a "$LOGFILE" | send_to_telemetry
     else
-        echo "❌ Dropbox upload failed (HTTP $status)" | send_to_telemetry
+        echo "❌ Dropbox upload failed (HTTP $status)" | tee -a "$LOGFILE" | send_to_telemetry
     fi
 
 else
-    echo "⚠️  No Dropbox token found. Skipping upload." | send_to_telemetry
+    echo "⚠️  No Dropbox token found. Skipping upload." | tee -a "$LOGFILE" | send_to_telemetry
 fi
 
 # Telegram notification
