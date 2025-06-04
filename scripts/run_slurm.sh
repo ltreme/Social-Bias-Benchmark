@@ -45,7 +45,7 @@ exit_code=${PIPESTATUS[0]}
 
 # Upload log to Dropbox (if token exists)
 if [ -n "$DROPBOX_SECRET" ]; then
-    DROPBOX_PATH="/slurm_logs/$(basename "$LOGFILE")"
+    DROPBOX_PATH="/hm-cluster/$(basename "$LOGFILE")"
     if curl -s -X POST https://content.dropboxapi.com/2/files/upload \
         --header "Authorization: Bearer $DROPBOX_SECRET" \
         --header "Dropbox-API-Arg: {\"path\": \"$DROPBOX_PATH\",\"mode\": \"add\",\"autorename\": true,\"mute\": false}" \
