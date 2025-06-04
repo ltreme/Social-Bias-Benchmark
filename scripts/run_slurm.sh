@@ -61,19 +61,21 @@ if ! source venv/bin/activate; then
 fi
 
 # GPU Setup and Diagnostics
-export CUDA_VISIBLE_DEVICES=1,3
-echo "🔧 GPU Configuration Setup:"
+echo "🔧 Initial GPU Status:"
+nvidia-smi --query-gpu=index,name,memory.total,temperature.gpu,pstate --format=csv,noheader,nounits
+
+# Run CUDA environment fix
+echo "🛠️ Running CUDA environment fix..."
+bash scripts/fix_cuda_environment.sh
+
+# The fix script will export the correct CUDA_VISIBLE_DEVICES
+echo "🔍 Post-fix GPU Configuration:"
 echo "CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES"
 echo "SLURM_GPUS_ON_NODE: $SLURM_GPUS_ON_NODE" 
 echo "SLURM_GPU_BIND: $SLURM_GPU_BIND"
 
-# Extended GPU diagnostics
-echo "🔍 GPU Diagnostics:"
-nvidia-smi --list-gpus
-nvidia-smi --query-gpu=index,name,memory.total,temperature.gpu,pstate --format=csv,noheader,nounits
-
-# Python GPU diagnostics
-echo "🐍 Python GPU Detection:"
+# Final Python GPU diagnostics
+echo "🐍 Final Python GPU Detection:"
 python -c "
 import torch
 import os
@@ -83,7 +85,10 @@ print(f'CUDA version: {torch.version.cuda}')
 print(f'Device count: {torch.cuda.device_count()}')
 print(f'CUDA_VISIBLE_DEVICES: {os.environ.get(\"CUDA_VISIBLE_DEVICES\", \"Not set\")}')
 for i in range(torch.cuda.device_count()):
-    print(f'GPU {i}: {torch.cuda.get_device_name(i)} - {torch.cuda.get_device_properties(i).total_memory / 1024**3:.1f}GB')
+    try:
+        print(f'GPU {i}: {torch.cuda.get_device_name(i)} - {torch.cuda.get_device_properties(i).total_memory / 1024**3:.1f}GB')
+    except Exception as e:
+        print(f'GPU {i}: Error - {e}')
 " | tee -a "$LOGFILE" | send_to_telemetry
 
 {
