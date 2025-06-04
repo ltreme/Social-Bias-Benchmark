@@ -40,14 +40,11 @@ send_to_telemetry() {
 source venv/bin/activate
 
 echo "available GPUs: $CUDA_VISIBLE_DEVICES" | tee -a "$LOGFILE" | send_to_telemetry
-nvidia-smi | tee -a "$LOGFILE" | send_to_telemetry
+nvidia-smi | tee -a "$LOGFILE"
 echo "Launching via Accelerate with args: $*" | tee -a "$LOGFILE" | send_to_telemetry
 
-
-export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5
-
 # Run job command passed to script
-eval "$*" 2>&1 | tee "$LOGFILE" | send_to_telemetry
+eval "$*" 2>&1 | tee -a "$LOGFILE" | send_to_telemetry
 exit_code=${PIPESTATUS[0]}
 
 # Upload log to Dropbox (if token exists)
