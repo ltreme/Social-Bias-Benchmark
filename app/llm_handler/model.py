@@ -1,9 +1,11 @@
 from typing import Dict, Optional
 import torch
+import os
 from accelerate import Accelerator
 from transformers import AutoTokenizer, AutoModelForCausalLM, AutoConfig
 import time # Added for timing
 import logging # Added for logging
+from huggingface_hub import login
 
 # Configure basic logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -17,6 +19,17 @@ class LLMModel:
             model_identifier: The identifier of the model on Hugging Face.
             mixed_precision: The mixed precision to use (e.g., "fp16", "bf16").
         """
+        # Authenticate with HuggingFace if token is available
+        hf_token = os.getenv('HF_TOKEN') or os.getenv('HUGGINGFACE_HUB_TOKEN')
+        if hf_token:
+            try:
+                login(token=hf_token)
+                logging.info("✅ HuggingFace authentication successful")
+            except Exception as e:
+                logging.warning(f"⚠️ HuggingFace authentication failed: {e}")
+        else:
+            logging.warning("⚠️ No HuggingFace token found. Gated models may not be accessible.")
+        
         self.accelerator = Accelerator(mixed_precision=mixed_precision)
         self.model_name = model_identifier
         self.tokenizer = None
@@ -28,34 +41,39 @@ class LLMModel:
         Loads the tokenizer and the model.
         """
         logging.info(f"Starting to load model: {self.model_name}")
+        logging.info(f"Available GPUs: {torch.cuda.device_count()}")
+        for i in range(torch.cuda.device_count()):
+            logging.info(f"GPU {i}: {torch.cuda.get_device_name(i)}")
+        
         start_time = time.time()
         config = AutoConfig.from_pretrained(self.model_name)
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
         
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
-            # If pad_token was initially None and set to eos_token,
-            # make sure the model's config also reflects this for generation.
-            # config.pad_token_id = self.tokenizer.eos_token_id # This might be needed for some models
 
         self.tokenizer.model_max_length = getattr(config, 'max_position_embeddings', 4096)
         self.tokenizer.padding_side = "left" # Important for generation
 
+        # Configure device map for multi-GPU setup
+        device_map = "auto" if torch.cuda.device_count() > 1 else None
+        
         self.model = AutoModelForCausalLM.from_pretrained(
             self.model_name,
             config=config, 
             torch_dtype=torch.float16 if self.accelerator.mixed_precision == "fp16" else torch.bfloat16,
-            load_in_4bit=True  # 4-bit Quantisierung für große Modelle
+            device_map=device_map,
+            load_in_4bit=True,  # 4-bit Quantisierung für große Modelle
+            trust_remote_code=True  # Für einige Modelle erforderlich
         )
         
-        # If pad_token was added or changed, and it resulted in a new token ID being effectively used
-        # (e.g. if eos_token wasn't properly registered as pad before),
-        # resizing embeddings might be necessary. However, eos_token should always be known.
-        # self.model.resize_token_embeddings(len(self.tokenizer))
-
-        self.model = self.accelerator.prepare(self.model)
+        # Only call accelerator.prepare if not using device_map="auto"
+        if device_map != "auto":
+            self.model = self.accelerator.prepare(self.model)
+        
         end_time = time.time()
         logging.info(f"Model {self.model_name} loaded in {end_time - start_time:.2f} seconds.")
+        logging.info(f"Model device: {next(self.model.parameters()).device}")
 
     def call(self, prompt: str, system_prompt: Optional[str] = None, max_new_tokens: int = 150) -> str:
         """
@@ -112,9 +130,11 @@ class LLMModel:
             input_ids = encoding["input_ids"]
             attention_mask = encoding["attention_mask"] # Use attention_mask from tokenizer
 
-        input_ids = input_ids.to(self.accelerator.device)
-        if attention_mask is not None: # Ensure attention_mask is not None before moving
-            attention_mask = attention_mask.to(self.accelerator.device)
+        # Move tensors to appropriate device
+        device = next(self.model.parameters()).device if hasattr(self.model, 'parameters') else self.accelerator.device
+        input_ids = input_ids.to(device)
+        if attention_mask is not None:
+            attention_mask = attention_mask.to(device)
 
         logging.info("Generating response...")
         generation_start_time = time.time()

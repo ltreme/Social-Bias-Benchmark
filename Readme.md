@@ -1,4 +1,9 @@
 ### Start Slurm job with this command:
 ```sh
-sbatch start_slurm_job.sh
+sbatch scripts/run_slurm.sh <COMMAND OR SCRIPT>
+```
+
+### Start Benchmark:
+```sh
+sbatch scripts/run_slurm.sh ./scripts/benchmark.sh
 ```

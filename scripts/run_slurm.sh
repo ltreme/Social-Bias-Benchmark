@@ -15,6 +15,15 @@ if [ -f .env ]; then
     export $(grep -v '^#' .env | xargs)
 fi
 
+# Ensure HuggingFace token is available
+if [ -n "$HF_TOKEN" ]; then
+    export HUGGINGFACE_HUB_TOKEN="$HF_TOKEN"
+    echo "✅ HuggingFace token configured"
+else
+    echo "⚠️ No HuggingFace token found. Gated models may not be accessible."
+    echo "Please set HF_TOKEN in your .env file for access to gated models like Llama."
+fi
+
 # Define variables
 JOB_ID="${SLURM_JOB_ID}"
 LOGFILE="logs/slurm-${JOB_ID}.out"
@@ -51,13 +60,34 @@ if ! source venv/bin/activate; then
     exit 1
 fi
 
+# GPU Setup and Diagnostics
 export CUDA_VISIBLE_DEVICES=1,3
-python -c 'import torch; print("Device Count:", torch.cuda.device_count())' | tee -a "$LOGFILE" | send_to_telemetry
+echo "🔧 GPU Configuration Setup:"
+echo "CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES"
+echo "SLURM_GPUS_ON_NODE: $SLURM_GPUS_ON_NODE" 
+echo "SLURM_GPU_BIND: $SLURM_GPU_BIND"
+
+# Extended GPU diagnostics
+echo "🔍 GPU Diagnostics:"
+nvidia-smi --list-gpus
+nvidia-smi --query-gpu=index,name,memory.total,temperature.gpu,pstate --format=csv,noheader,nounits
+
+# Python GPU diagnostics
+echo "🐍 Python GPU Detection:"
+python -c "
+import torch
+import os
+print(f'PyTorch version: {torch.__version__}')
+print(f'CUDA available: {torch.cuda.is_available()}')
+print(f'CUDA version: {torch.version.cuda}')
+print(f'Device count: {torch.cuda.device_count()}')
+print(f'CUDA_VISIBLE_DEVICES: {os.environ.get(\"CUDA_VISIBLE_DEVICES\", \"Not set\")}')
+for i in range(torch.cuda.device_count()):
+    print(f'GPU {i}: {torch.cuda.get_device_name(i)} - {torch.cuda.get_device_properties(i).total_memory / 1024**3:.1f}GB')
+" | tee -a "$LOGFILE" | send_to_telemetry
 
 {
-  echo "✅ CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES"
-  nvidia-smi
-  echo "Launching benchmark command: $*"
+  echo "🚀 Launching benchmark command: $*"
   
   # Call benchmark script (e.g. accelerate launch ...) directly
   bash "$@"
