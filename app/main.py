@@ -5,6 +5,8 @@ Main script to run the LikertBench evaluation using a specified LLM model.
 from llm_handler.model import LLMModel
 from notification.telegram_notifier import send_telegram_message
 from benchmark.likert_benchmark import run_likert_bench
+import os
+import torch
 
 def main() -> None:
     # 1. Modell-Wrapper initialisieren
@@ -27,4 +29,7 @@ def main() -> None:
         )
 
 if __name__ == "__main__":
+
+    print(f"RANK={os.environ.get('RANK')}, LOCAL_RANK={os.environ.get('LOCAL_RANK')}, CUDA_VISIBLE_DEVICES={os.environ.get('CUDA_VISIBLE_DEVICES')}, torch.cuda.device_count()={torch.cuda.device_count()}")
+
     main()
