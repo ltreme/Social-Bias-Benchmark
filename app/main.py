@@ -31,7 +31,7 @@ def main() -> None:
     for model_name in model_names:
         try:
             print(f"\n🚀 Starting benchmark with model: {model_name}")
-            llm = LLMModel(model_identifier=model_name, mixed_precision="fp16")
+            llm = LLMModel(model_identifier=model_name, mixed_precision="fp32")
 
             summary = run_likert_bench(llm)
 
