@@ -1,3 +1,3 @@
 #!/bin/bash
 
-accelerate launch app/main.py --num_processes 4 --num_machines 1
+accelerate launch --num_processes 4 --mixed_precision=fp16 app/main.py
