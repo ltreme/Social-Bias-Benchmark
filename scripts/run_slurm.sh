@@ -51,7 +51,7 @@ if ! source venv/bin/activate; then
     exit 1
 fi
 
-export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5
+export CUDA_VISIBLE_DEVICES=0,1,2,3
 
 {
   echo "✅ CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES"
