@@ -2,7 +2,7 @@
 #SBATCH --job-name=bias-benchmarks
 #SBATCH --output=logs/slurm-%j.out
 #SBATCH --nodes=1
-#SBATCH --gres=gpu:a6000:6
+#SBATCH --gres=gpu:a6000:4
 #SBATCH --cpus-per-task=12
 #SBATCH --mem=128G
 #SBATCH --time=01:00:00
