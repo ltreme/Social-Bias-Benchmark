@@ -38,14 +38,32 @@ send_to_telemetry() {
 
 # Activate virtualenv
 source venv/bin/activate
+if [ ! -d "venv" ]; then
+    echo "❌ Virtual environment not found. Please run 'python -m venv venv' first." | tee -a "$LOGFILE" | send_to_telemetry
+    exit 1
+fi
+if [ ! -f "venv/bin/activate" ]; then
+    echo "❌ Virtual environment activation script not found. Please check your setup." | tee -a "$LOGFILE" | send_to_telemetry
+    exit 1
+fi
+if ! source venv/bin/activate; then
+    echo "❌ Failed to activate virtual environment." | tee -a "$LOGFILE" | send_to_telemetry
+    exit 1
+fi
 
-echo "available GPUs: $CUDA_VISIBLE_DEVICES" | tee -a "$LOGFILE" | send_to_telemetry
-nvidia-smi | tee -a "$LOGFILE"
-echo "Launching via Accelerate with args: $*" | tee -a "$LOGFILE" | send_to_telemetry
+export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5
 
-# Run job command passed to script
-eval "$*" 2>&1 | tee -a "$LOGFILE" | send_to_telemetry
+{
+  echo "✅ CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES"
+  nvidia-smi
+  echo "Launching benchmark command: $*"
+  
+  # Call benchmark script (e.g. accelerate launch ...) directly
+  bash "$@"
+} 2>&1 | tee -a "$LOGFILE" | send_to_telemetry
+
 exit_code=${PIPESTATUS[0]}
+
 
 # Upload log to Dropbox (if token exists)
 if [ -n "$DROPBOX_SECRET" ]; then
