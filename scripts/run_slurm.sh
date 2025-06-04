@@ -39,6 +39,11 @@ send_to_telemetry() {
 # Activate virtualenv
 source venv/bin/activate
 
+echo "available GPUs: $CUDA_VISIBLE_DEVICES"
+nvidia-smi
+
+export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5
+
 # Run job command passed to script
 eval "$*" 2>&1 | tee "$LOGFILE" | send_to_telemetry
 exit_code=${PIPESTATUS[0]}
