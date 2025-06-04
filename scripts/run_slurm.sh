@@ -83,6 +83,9 @@ echo "GPU_COUNT: ${GPU_COUNT:-'Not set'}"
 echo "SLURM_GPUS_ON_NODE: $SLURM_GPUS_ON_NODE" 
 echo "SLURM_GPU_BIND: $SLURM_GPU_BIND"
 
+# Enable detailed CUDA device-side assertions
+export TORCH_USE_CUDA_DSA=1
+
 # Final Python GPU diagnostics
 echo "🐍 Final Python GPU Detection:"
 python -c "
