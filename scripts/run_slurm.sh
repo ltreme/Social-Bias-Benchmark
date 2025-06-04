@@ -39,8 +39,8 @@ send_to_telemetry() {
 # Activate virtualenv
 source venv/bin/activate
 
-echo "available GPUs: $CUDA_VISIBLE_DEVICES"
-nvidia-smi
+echo "available GPUs: $CUDA_VISIBLE_DEVICES" | send_to_telemetry
+nvidia-smi | send_to_telemetry
 
 export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5
 
