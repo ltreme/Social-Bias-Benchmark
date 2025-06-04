@@ -2,7 +2,7 @@
 #SBATCH --job-name=bias-benchmarks
 #SBATCH --output=logs/slurm-%j.out
 #SBATCH --nodes=1
-#SBATCH --gres=gpu:a6000:4
+#SBATCH --gres=gpu:a6000:2
 #SBATCH --cpus-per-task=12
 #SBATCH --mem=128G
 #SBATCH --time=01:00:00
@@ -51,7 +51,7 @@ if ! source venv/bin/activate; then
     exit 1
 fi
 
-export CUDA_VISIBLE_DEVICES=0,1,2,3
+export CUDA_VISIBLE_DEVICES=1,3
 python -c 'import torch; print("Device Count:", torch.cuda.device_count())' | tee -a "$LOGFILE" | send_to_telemetry
 
 {
