@@ -18,7 +18,8 @@ def main() -> None:
     # Model selection with fallbacks for different GPU configurations
     model_names = [
         # Primary: Large model for multi-GPU setup
-        "meta-llama/Meta-Llama-3-70B-Instruct",
+        #"meta-llama/Meta-Llama-3-70B-Instruct",
+        "meta-llama/Meta-Llama-3-8B-Instruct",
         #"meta-llama/Llama-3.3-70B-Instruct",
         # Fallback: Smaller models if large model fails
         # "mistralai/Mistral-Small-24B-Instruct-2501",
