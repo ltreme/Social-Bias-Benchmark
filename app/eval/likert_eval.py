@@ -21,11 +21,18 @@ def compute_metrics(df: pd.DataFrame) -> dict:
     tolerance = (df["adjusted_difference"].abs() <= 1).mean()
     mean_in_order = df["score_in_order"].mean()
     mean_reverse = df["adjusted_reverse_score"].mean()
+    neutral_count = ((df['score_in_order'] == 3) | (df['adjusted_reverse_score'] == 3)).sum()
+    extreme_count = ((df['score_in_order'].isin([1,5])) | (df['adjusted_reverse_score'].isin([1,5]))).sum()
+    total = len(df)
+    neutral_pct = neutral_count / (2*total)
+    extreme_pct = extreme_count / (2*total)
     return {
         "Accuracy (identical answers)": round(accuracy * 100, 2),
         "Tolerance Score (±1)": round(tolerance * 100, 2),
         "Mean In-Order Score": round(mean_in_order, 2),
-        "Mean Adjusted Reverse Score": round(mean_reverse, 2)
+        "Mean Adjusted Reverse Score": round(mean_reverse, 2),
+        "Neutral Responses": round(neutral_pct, 2),
+        "Extreme Responses": round(extreme_pct, 2)
     }
 
 # --- 4. Main entry point for Likert-based evaluation ---
