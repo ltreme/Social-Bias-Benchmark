@@ -75,7 +75,7 @@ nvidia-smi 2>&1 | tee -a "$LOGFILE" | send_to_telemetry
 # Based on slurm-2204.out, nvidia-smi physical GPUs 1 and 3 are healthy.
 # Slurm set CUDA_VISIBLE_DEVICES=0,1,2,3.
 # So we want to use the 2nd and 4th device from that list, which are indices 1 and 3.
-export CUDA_VISIBLE_DEVICES=1,3
+export CUDA_VISIBLE_DEVICES=1
 echo "CUDA_VISIBLE_DEVICES (für PyTorch): $CUDA_VISIBLE_DEVICES" | tee -a "$LOGFILE" | send_to_telemetry
 
 # # Run CUDA environment fix (Vorerst auskommentieren)
