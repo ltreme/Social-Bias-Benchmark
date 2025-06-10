@@ -61,42 +61,42 @@ if ! source venv/bin/activate; then
 fi
 
 # GPU Setup and Diagnostics
-echo "🔧 Initial GPU Status (direkt nach Aktivierung venv):" | tee -a "$LOGFILE"
-echo "CUDA_VISIBLE_DEVICES (initial): $CUDA_VISIBLE_DEVICES" | tee -a "$LOGFILE"
-echo "SLURM_JOB_GPUS: $SLURM_JOB_GPUS" | tee -a "$LOGFILE"
-echo "SLURM_GPUS_ON_NODE: $SLURM_GPUS_ON_NODE" | tee -a "$LOGFILE"
-echo "SLURM_STEP_GPUS: $SLURM_STEP_GPUS" | tee -a "$LOGFILE"
-echo "SLURM_LOCALID: $SLURM_LOCALID" | tee -a "$LOGFILE"
-echo "SLURMD_NODENAME: $SLURMD_NODENAME" | tee -a "$LOGFILE"
-echo "nvidia-smi Output:" | tee -a "$LOGFILE"
-nvidia-smi | tee -a "$LOGFILE"
+echo "🔧 Initial GPU Status (direkt nach Aktivierung venv):" | tee -a "$LOGFILE" | send_to_telemetry
+echo "CUDA_VISIBLE_DEVICES (initial): $CUDA_VISIBLE_DEVICES" | tee -a "$LOGFILE" | send_to_telemetry
+echo "SLURM_JOB_GPUS: $SLURM_JOB_GPUS" | tee -a "$LOGFILE" | send_to_telemetry
+echo "SLURM_GPUS_ON_NODE: $SLURM_GPUS_ON_NODE" | tee -a "$LOGFILE" | send_to_telemetry
+echo "SLURM_STEP_GPUS: $SLURM_STEP_GPUS" | tee -a "$LOGFILE" | send_to_telemetry
+echo "SLURM_LOCALID: $SLURM_LOCALID" | tee -a "$LOGFILE" | send_to_telemetry
+echo "SLURMD_NODENAME: $SLURMD_NODENAME" | tee -a "$LOGFILE" | send_to_telemetry
+echo "nvidia-smi Output:" | tee -a "$LOGFILE" | send_to_telemetry
+nvidia-smi 2>&1 | tee -a "$LOGFILE" | send_to_telemetry
 
 # # Run CUDA environment fix (Vorerst auskommentieren, um die Basis-Slurm-Umgebung zu testen)
-# echo "🛠️ Running CUDA environment fix..."
-# bash scripts/fix_cuda_environment.sh
+# echo "🛠️ Running CUDA environment fix..." | tee -a "$LOGFILE" | send_to_telemetry
+# bash scripts/fix_cuda_environment.sh 2>&1 | tee -a "$LOGFILE" | send_to_telemetry
 
 # # Source the generated CUDA environment (Vorerst auskommentieren)
 # if [ -f "cuda_env.sh" ]; then
 #     source cuda_env.sh
-#     echo "✅ Loaded CUDA environment from fix script"
+#     echo "✅ Loaded CUDA environment from fix script" | tee -a "$LOGFILE" | send_to_telemetry
 # else
-#     echo "⚠️ No cuda_env.sh found, using default configuration"
+#     echo "⚠️ No cuda_env.sh found, using default configuration" | tee -a "$LOGFILE" | send_to_telemetry
 # fi
 
-echo "🔍 GPU Configuration vor Python-Diagnose (nach potenziellen Skripten, falls diese aktiviert wären):" | tee -a "$LOGFILE"
-echo "CUDA_VISIBLE_DEVICES (vor Python): $CUDA_VISIBLE_DEVICES" | tee -a "$LOGFILE"
-nvidia-smi | tee -a "$LOGFILE" # Erneut ausgeben, falls sich durch obige Skripte etwas geändert haben könnte
+echo "🔍 GPU Configuration vor Python-Diagnose (nach potenziellen Skripten, falls diese aktiviert wären):" | tee -a "$LOGFILE" | send_to_telemetry
+echo "CUDA_VISIBLE_DEVICES (vor Python): $CUDA_VISIBLE_DEVICES" | tee -a "$LOGFILE" | send_to_telemetry
+nvidia-smi 2>&1 | tee -a "$LOGFILE" | send_to_telemetry # Erneut ausgeben, falls sich durch obige Skripte etwas geändert haben könnte
 
 # Enable detailed CUDA device-side assertions
 export TORCH_USE_CUDA_DSA=1
-echo "TORCH_USE_CUDA_DSA in bash is set to: $TORCH_USE_CUDA_DSA" | tee -a "$LOGFILE"
+echo "TORCH_USE_CUDA_DSA in bash is set to: $TORCH_USE_CUDA_DSA" | tee -a "$LOGFILE" | send_to_telemetry
 
 # Final Python GPU diagnostics
-echo "🐍 Python GPU Detection:" | tee -a "$LOGFILE"
-python scripts/gpu_diag.py 2>&1 | tee -a "$LOGFILE" # Direkte Ausgabe und Fehler in Logfile
+echo "🐍 Python GPU Detection:" | tee -a "$LOGFILE" | send_to_telemetry
+python scripts/gpu_diag.py 2>&1 | tee -a "$LOGFILE" | send_to_telemetry
 
 # {
-#   echo "🚀 Launching benchmark command: $*"
+#   echo "🚀 Launching benchmark command: $*" | tee -a "$LOGFILE" | send_to_telemetry
 #   # Call benchmark script (e.g. accelerate launch ...) directly
 #   bash "$@"
 # } 2>&1 | tee -a "$LOGFILE" | send_to_telemetry # Diesen Block für den Diagnoselauf auskommentieren
