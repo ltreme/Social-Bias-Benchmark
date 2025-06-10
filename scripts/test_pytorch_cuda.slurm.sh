@@ -1,5 +1,3 @@
-  Beispiel `test_pytorch_cuda.slurm`:
-  ```bash
   #!/bin/bash
   #SBATCH --job-name=pytorch_cuda_test
   #SBATCH --output=pytorch_cuda_test_%j.out
@@ -45,5 +43,3 @@
   "
 
   echo "Python-Test beendet."
-  ```
-  Speichere dies als `test_pytorch_cuda.slurm` und starte es mit `sbatch test_pytorch_cuda.slurm`. Überprüfe dann die `.out` und `.err` Dateien.
