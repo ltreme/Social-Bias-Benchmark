@@ -5,7 +5,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=2 # Gib dem Job ein paar CPUs
-#SBATCH --gres=gpu:1      # Fordere 1 GPU an (oder mehr, wenn dein Benchmark es braucht)
+#SBATCH --gres=gpu:a6000:1     # Fordere 1 GPU an (oder mehr, wenn dein Benchmark es braucht)
 #SBATCH --time=00:15:00   # Zeitlimit (z.B. 15 Minuten für den Test)
 
 # Ggf. Modulpfade laden, falls auf dem Cluster nötig (z.B. für CUDA Toolkit)
