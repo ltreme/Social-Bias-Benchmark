@@ -1,2 +1,2 @@
-export CUDA_VISIBLE_DEVICES="0,1,2,3"
-export GPU_COUNT="4"
+export CUDA_VISIBLE_DEVICES="1"
+export GPU_COUNT="1"
