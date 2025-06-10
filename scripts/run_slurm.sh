@@ -62,7 +62,7 @@ fi
 
 # GPU Setup and Diagnostics
 echo "🔧 Initial GPU Status (direkt nach Aktivierung venv):" | tee -a "$LOGFILE" | send_to_telemetry
-echo "CUDA_VISIBLE_DEVICES (initial): $CUDA_VISIBLE_DEVICES" | tee -a "$LOGFILE" | send_to_telemetry
+echo "CUDA_VISIBLE_DEVICES (initial by Slurm): $CUDA_VISIBLE_DEVICES" | tee -a "$LOGFILE" | send_to_telemetry
 echo "SLURM_JOB_GPUS: $SLURM_JOB_GPUS" | tee -a "$LOGFILE" | send_to_telemetry
 echo "SLURM_GPUS_ON_NODE: $SLURM_GPUS_ON_NODE" | tee -a "$LOGFILE" | send_to_telemetry
 echo "SLURM_STEP_GPUS: $SLURM_STEP_GPUS" | tee -a "$LOGFILE" | send_to_telemetry
@@ -71,7 +71,14 @@ echo "SLURMD_NODENAME: $SLURMD_NODENAME" | tee -a "$LOGFILE" | send_to_telemetry
 echo "nvidia-smi Output:" | tee -a "$LOGFILE" | send_to_telemetry
 nvidia-smi 2>&1 | tee -a "$LOGFILE" | send_to_telemetry
 
-# # Run CUDA environment fix (Vorerst auskommentieren, um die Basis-Slurm-Umgebung zu testen)
+# WORKAROUND: Manually set CUDA_VISIBLE_DEVICES to use only healthy GPUs
+# Based on slurm-2204.out, nvidia-smi physical GPUs 1 and 3 are healthy.
+# Slurm set CUDA_VISIBLE_DEVICES=0,1,2,3.
+# So we want to use the 2nd and 4th device from that list, which are indices 1 and 3.
+export CUDA_VISIBLE_DEVICES=1,3
+echo "CUDA_VISIBLE_DEVICES (für PyTorch): $CUDA_VISIBLE_DEVICES" | tee -a "$LOGFILE" | send_to_telemetry
+
+# # Run CUDA environment fix (Vorerst auskommentieren)
 # echo "🛠️ Running CUDA environment fix..." | tee -a "$LOGFILE" | send_to_telemetry
 # bash scripts/fix_cuda_environment.sh 2>&1 | tee -a "$LOGFILE" | send_to_telemetry
 
@@ -84,8 +91,8 @@ nvidia-smi 2>&1 | tee -a "$LOGFILE" | send_to_telemetry
 # fi
 
 echo "🔍 GPU Configuration vor Python-Diagnose (nach potenziellen Skripten, falls diese aktiviert wären):" | tee -a "$LOGFILE" | send_to_telemetry
-echo "CUDA_VISIBLE_DEVICES (vor Python): $CUDA_VISIBLE_DEVICES" | tee -a "$LOGFILE" | send_to_telemetry
-nvidia-smi 2>&1 | tee -a "$LOGFILE" | send_to_telemetry # Erneut ausgeben, falls sich durch obige Skripte etwas geändert haben könnte
+echo "CUDA_VISIBLE_DEVICES (vor Python, nach Workaround): $CUDA_VISIBLE_DEVICES" | tee -a "$LOGFILE" | send_to_telemetry
+nvidia-smi 2>&1 | tee -a "$LOGFILE" | send_to_telemetry # Erneut ausgeben
 
 # Enable detailed CUDA device-side assertions
 export TORCH_USE_CUDA_DSA=1
