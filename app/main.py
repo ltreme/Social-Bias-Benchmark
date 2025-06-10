@@ -2,60 +2,87 @@
 Main script to run the LikertBench evaluation using a specified LLM model.
 """
 
-from llm_handler.model import LLMModel
-from notification.telegram_notifier import send_telegram_message
-from benchmark.likert_benchmark import run_likert_bench
 import os
 import torch
+import argparse
+from llm_handler.model import LLMModel
+from notification.telegram_notifier import send_telegram_message
+from benchmark.likert_benchmark import LikertBenchmark
+from benchmark.bias_benchmark import BiasBenchmark
+
+def run_specific_benchmark(model_identifier: str, benchmark_type: str, mixed_precision: str) -> bool:
+    """
+    Runs a specific benchmark with the given LLM model.
+    Returns True on success, False otherwise.
+    """
+    try:
+        print(f"\n🚀 Initializing LLM: {model_identifier} with precision: {mixed_precision}")
+        llm = LLMModel(model_identifier=model_identifier, mixed_precision=mixed_precision)
+
+        benchmark_instance = None
+        benchmark_name_display = ""
+
+        if benchmark_type == 'likert':
+            benchmark_instance = LikertBenchmark(model=llm)
+            benchmark_name_display = "Likert Benchmark"
+        elif benchmark_type == 'bias':
+            benchmark_instance = BiasBenchmark(model=llm)
+            benchmark_name_display = "Bias Benchmark"
+        else:
+            error_msg = f"❌ Unknown benchmark type: {benchmark_type}"
+            print(error_msg)
+            send_telegram_message(error_msg)
+            return False
+
+        print(f"\n🚀 Starting {benchmark_name_display} for model: {model_identifier}")
+        benchmark_instance.run()
+        summary = benchmark_instance.report()
+
+        print(f"\n✅ {benchmark_name_display} summary for {model_identifier}:")
+        summary_text_parts = []
+        for metric, value in summary.items():
+            print(f"{metric}: {value}")
+            summary_text_parts.append(f"{metric}: {value}")
+        
+        send_telegram_message(
+            f"✅ {benchmark_name_display} completed for {model_identifier}\n" +
+            f"Summary:\n" +
+            "\n".join(summary_text_parts)
+        )
+        return True
+
+    except Exception as e:
+        error_msg = f"❌ Error running {benchmark_type} benchmark for {model_identifier}: {str(e)}"
+        print(error_msg)
+        send_telegram_message(error_msg)
+        if "CUDA" in str(e) or "GPU" in str(e) or "device" in str(e).lower():
+            print("ℹ️ GPU-related error detected during execution.")
+        return False
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Run LLM Benchmarks.")
+    parser.add_argument("--model_name", type=str, required=True, 
+                        help="Identifier of the LLM model to use (e.g. 'meta-llama/Llama-3.3-70B-Instruct')")
+    parser.add_argument("--benchmark_type", type=str, required=True, choices=['likert', 'bias'],
+                        help="Type of benchmark to run ('likert' or 'bias')")
+    parser.add_argument("--mixed_precision", type=str, default="fp16",
+                        help="Mixed Precision for the model (e.g. 'fp16', 'bf16', default: 'fp16')")
+    # Additional arguments can be added here, e.g. paths to data,
+    # if not hard-coded in the benchmark classes.
+
+    args = parser.parse_args()
+
     # GPU diagnostics
     print(f"🔍 GPU Setup:")
     print(f"CUDA available: {torch.cuda.is_available()}")
     print(f"GPU count: {torch.cuda.device_count()}")
     print(f"CUDA_VISIBLE_DEVICES: {os.environ.get('CUDA_VISIBLE_DEVICES', 'Not set')}")
     
-    # Model selection with fallbacks for different GPU configurations
-    model_names = [
-        # Primary: Large model for multi-GPU setup
-        #"meta-llama/Meta-Llama-3-70B-Instruct",
-        #"meta-llama/Meta-Llama-3-8B-Instruct",
-        "meta-llama/Llama-3.3-70B-Instruct",
-        # "mistralai/Mistral-Small-24B-Instruct-2501",
-        # "mistralai/Mistral-7B-Instruct-v0.1", 
-    ]
+    # Run the specific benchmark with the provided arguments
+    success = run_specific_benchmark(args.model_name, args.benchmark_type, args.mixed_precision)
     
-    successful_runs = 0
-    
-    for model_name in model_names:
-        try:
-            print(f"\n🚀 Starting benchmark with model: {model_name}")
-            llm = LLMModel(model_identifier=model_name, mixed_precision="fp16")
-
-            summary = run_likert_bench(llm)
-
-            print(f"\n✅ Likert-5 Benchmark Summary for {model_name}:")
-            for metric, value in summary.items():
-                print(f"{metric}: {value}")
-            
-            send_telegram_message(
-                f"✅ Benchmark completed for {model_name}\n" + 
-                f"Likert-5 Summary:\n" + 
-                "\n".join(f"{metric}: {value}" for metric, value in summary.items())
-            )
-            successful_runs += 1
-            
-        except Exception as e:
-            error_msg = f"❌ Failed to run benchmark for {model_name}: {str(e)}"
-            print(error_msg)
-            send_telegram_message(error_msg)
-            
-            # If it's a CUDA/GPU error, don't try more models
-            if "CUDA" in str(e) or "GPU" in str(e) or "device" in str(e).lower():
-                print("🛑 GPU-related error detected. Stopping further model attempts.")
-                break
-    
-    final_msg = f"📊 Benchmark session completed. Successful runs: {successful_runs}/{len(model_names)}"
+    final_msg_outcome = "successful" if success else "failed"
+    final_msg = f"📊 Benchmark run for {args.model_name} on {args.benchmark_type} benchmark {final_msg_outcome}."
     print(f"\n{final_msg}")
     send_telegram_message(final_msg)
 
