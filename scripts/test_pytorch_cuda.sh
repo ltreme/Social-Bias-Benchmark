@@ -1,23 +1,7 @@
-#!/bin/bash
-#SBATCH --job-name=pytorch_cuda_test
-#SBATCH --output=pytorch_cuda_test_%j.out
-#SBATCH --error=pytorch_cuda_test_%j.err
-#SBATCH --nodes=1
-#SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=2 # Gib dem Job ein paar CPUs
-#SBATCH --gres=gpu:a6000:1     # Fordere 1 GPU an (oder mehr, wenn dein Benchmark es braucht)
-#SBATCH --time=00:15:00   # Zeitlimit (z.B. 15 Minuten für den Test)
-
-# Ggf. Modulpfade laden, falls auf dem Cluster nötig (z.B. für CUDA Toolkit)
-# module load cuda/12.1 # Beispiel, an deine Cluster-Konfiguration anpassen
-
 echo "Job gestartet auf Host: $(hostname)"
 echo "SLURM Job ID: $SLURM_JOB_ID"
 echo "Zugewiesene GPUs (SLURM_JOB_GPUS): $SLURM_JOB_GPUS"
 echo "CUDA_VISIBLE_DEVICES (von Slurm gesetzt?): $CUDA_VISIBLE_DEVICES"
-
-# Aktiviere dein virtuelles Environment
-source /mnt/md0/mertl/projects/Social-Bias-Benchmark/venv/bin/activate
 
 # Führe den Python-Testcode aus
 python -c "
