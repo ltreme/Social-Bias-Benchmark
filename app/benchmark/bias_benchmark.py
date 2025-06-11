@@ -5,7 +5,7 @@ import pandas as pd
 from datetime import datetime
 import os
 from .benchmark import Benchmark # Import Benchmark base class
-from eval.bias_eval import BiasResultEvaluator
+from eval.bias_eval import LLMResultEvaluator
 
 CASE_CSV_PATH = "data/biasBench/cases.csv"
 PERSONA_CSV_PATH = "data/biasBench/personas.csv"
@@ -101,7 +101,7 @@ class BiasBenchmark(Benchmark):
         # This could involve loading the CSV and performing analysis.
         print(f"Bias benchmark reporting. Results are in {self.results_output_file}")
         # Example: return pd.read_csv(self.results_output_file).describe().to_dict()
-        eval = BiasResultEvaluator(self.results_output_file,
+        eval = LLMResultEvaluator(self.results_output_file,
                                    personas_path=PERSONA_CSV_PATH,
                                    cases_path=CASE_CSV_PATH)
         return eval.short_summary()
