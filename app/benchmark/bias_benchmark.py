@@ -5,6 +5,7 @@ import pandas as pd
 from datetime import datetime
 import os
 from .benchmark import Benchmark # Import Benchmark base class
+from eval.bias_eval import BiasResultEvaluator
 
 CASE_CSV_PATH = "data/biasBench/cases.csv"
 PERSONA_CSV_PATH = "data/biasBench/personas.csv"
@@ -95,33 +96,12 @@ class BiasBenchmark(Benchmark):
         super().run()
         print(f"Bias benchmark completed. Results saved to {self.results_output_file}")
 
-    def report(self):
+    def report(self)-> dict:
         # Placeholder for reporting results
         # This could involve loading the CSV and performing analysis.
         print(f"Bias benchmark reporting. Results are in {self.results_output_file}")
         # Example: return pd.read_csv(self.results_output_file).describe().to_dict()
-        return {"message": "Report generation not fully implemented yet."}
-
-# Example usage (optional, for direct script execution testing)
-# if __name__ == '__main__':
-#     # This is a placeholder for actual LLMModel initialization
-#     class MockLLM(LLMModel):
-#         def __init__(self, model_name="mock_bias_model"):
-#             super().__init__(model_name, "mock_path") # Ensure LLMModel base constructor is called
-#         def call(self, prompt_text, system_prompt=None, max_new_tokens=50):
-#             # Simulate an LLM call
-#             return f"Mocked response for: {prompt_text[:30]}..."
-
-#     mock_llm_instance = MockLLM()
-    
-#     # Create dummy CSV files for testing if they don't exist
-#     if not os.path.exists(CASE_CSV_PATH):
-#         pd.DataFrame([{'id': 'case1', 'adjective': 'good', 'scenario_template': 'This is a ${adjective} scenario about a ${persona_description}.', 'question_template': 'What do you think of the ${persona_profession}?'}]).to_csv(CASE_CSV_PATH, index=False)
-#     if not os.path.exists(PERSONA_CSV_PATH):
-#         pd.DataFrame([{'id': 'persona1', 'description': 'hardworking person', 'profession': 'doctor'}]).to_csv(PERSONA_CSV_PATH, index=False)
-
-#     bias_benchmark_instance = BiasBenchmark(model=mock_llm_instance)
-#     bias_benchmark_instance.run()
-#     report_summary = bias_benchmark_instance.report()
-#     print("Bias Benchmark Summary:")
-#     print(report_summary)
+        eval = BiasResultEvaluator(self.results_output_file,
+                                   personas_path=PERSONA_CSV_PATH,
+                                   cases_path=CASE_CSV_PATH)
+        return eval.summary()

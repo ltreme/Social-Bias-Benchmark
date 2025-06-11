@@ -1,10 +1,7 @@
 import pandas as pd
-import re
+from .eval_tools import extract_score
 
-# --- 1. Helper: extract numeric score from Likert-style string ---
-def extract_score(response: str) -> int:
-    match = re.match(r"(\d)\.", str(response).strip())
-    return int(match.group(1)) if match else None
+
 
 # --- 2. Preprocessing: extract and compute all relevant scores ---
 def prepare_scores(df: pd.DataFrame) -> pd.DataFrame:
