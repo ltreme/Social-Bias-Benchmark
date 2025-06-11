@@ -104,4 +104,4 @@ class BiasBenchmark(Benchmark):
         eval = BiasResultEvaluator(self.results_output_file,
                                    personas_path=PERSONA_CSV_PATH,
                                    cases_path=CASE_CSV_PATH)
-        return eval.summary()
+        return eval.short_summary()
