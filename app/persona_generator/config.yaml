@@ -1,0 +1,3 @@
+seed: 42
+name_mode: neutral # neutral, stereotypical, llm
+output_format: csv # csv, parquet

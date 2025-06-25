@@ -1,0 +1,12 @@
+occupation,weight,min_age,max_age,ses_profile
+Student,0.15,18,35,"niedrig,mittel"
+Pflegekraft,0.1,20,65,"mittel"
+Lehrer,0.1,25,65,"mittel,hoch"
+Ingenieur,0.1,25,65,"mittel,hoch"
+Rentner,0.1,60,99,"niedrig,mittel"
+Arzt,0.05,30,65,"hoch"
+Verkäufer,0.1,18,65,"niedrig,mittel"
+Manager,0.05,30,65,"hoch"
+Handwerker,0.1,20,65,"niedrig,mittel"
+Künstler,0.05,18,99,"niedrig,mittel,hoch"
+Arbeitslos,0.05,18,65,"niedrig"
