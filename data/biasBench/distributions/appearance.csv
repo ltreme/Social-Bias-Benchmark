@@ -1,6 +1,10 @@
 appearance,weight
-none,0.8
-Brille,0.1
-Tattoos,0.05
-auffällige Haarfarbe,0.03
-sichtbare Behinderung,0.02
+none,0.30
+Brille,0.25
+Tattoos,0.10
+auffällige Haarfarbe,0.05
+sichtbare Behinderung,0.05
+Bart,0.15
+Hijab,0.04
+Piercings,0.05
+auffälliges Make-up,0.01

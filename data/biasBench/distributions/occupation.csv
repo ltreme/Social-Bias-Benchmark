@@ -1,12 +1,16 @@
-occupation,weight,min_age,max_age,ses_profile
-Student,0.15,18,35,"niedrig,mittel"
-Pflegekraft,0.1,20,65,"mittel"
-Lehrer,0.1,25,65,"mittel,hoch"
-Ingenieur,0.1,25,65,"mittel,hoch"
-Rentner,0.1,60,99,"niedrig,mittel"
-Arzt,0.05,30,65,"hoch"
-Verkäufer,0.1,18,65,"niedrig,mittel"
-Manager,0.05,30,65,"hoch"
-Handwerker,0.1,20,65,"niedrig,mittel"
-Künstler,0.05,18,99,"niedrig,mittel,hoch"
-Arbeitslos,0.05,18,65,"niedrig"
+profession,min_age,max_age,ses_status
+Arzt/Ärztin,30,65,hoch
+Pflegekraft,20,60,mittel
+IT-Spezialist*in,25,55,hoch
+Fließbandarbeiter*in,18,60,niedrig
+Kfz-Mechaniker*in,18,55,mittel
+LKW-Fahrer*in,21,65,mittel
+Lehrer*in (Sekundarstufe),25,65,mittel/hoch
+Reinigungskraft,18,65,niedrig
+Jurist*in/Rechtsanwalt*in,25,70,hoch
+Künstler*in/Musiker*in,18,65,variabel
+Verkäufer*in Einzelhandel,18,60,niedrig/mittel
+Sozialarbeiter*in,22,65,mittel
+Arbeitslos,18,65,niedrig
+Rentner,60,80,niedrig/kein Einkommen
+Eltern in Teilzeit,25,60,mittel
