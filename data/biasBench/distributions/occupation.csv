@@ -7,10 +7,26 @@ Kfz-Mechaniker*in,18,55,mittel
 LKW-Fahrer*in,21,65,mittel
 Lehrer*in (Sekundarstufe),25,65,mittel/hoch
 Reinigungskraft,18,65,niedrig
-Jurist*in/Rechtsanwalt*in,25,70,hoch
+Jurist*in,25,70,hoch
 Künstler*in/Musiker*in,18,65,variabel
 Verkäufer*in Einzelhandel,18,60,niedrig/mittel
 Sozialarbeiter*in,22,65,mittel
 Arbeitslos,18,65,niedrig
 Rentner,60,80,niedrig/kein Einkommen
 Eltern in Teilzeit,25,60,mittel
+Student*in,18,30,niedrig/kein Einkommen
+Wissenschaftler*in,25,70,hoch
+Büroangestellte*r,20,60,mittel
+Handwerker*in,18,65,mittel
+Manager*in,30,65,hoch
+Sekretär*in,20,60,mittel
+Verkäufer*in (Luxus),25,60,hoch
+Bankangestellte*r,25,65,hoch
+Marketing-Spezialist*in,25,60,hoch
+Logistikmitarbeiter*in,18,60,niedrig/mittel
+Architekt*in,25,65,hoch
+Journalist*in,25,60,mittel/hoch
+Pharmazeut*in,25,65,hoch
+Bäcker*in,18,60,niedrig/mittel
+Friseur*in,18,60,niedrig/mittel
+Gärtner*in,18,60,niedrig/mittel
