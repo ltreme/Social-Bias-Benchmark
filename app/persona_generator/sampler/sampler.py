@@ -1,19 +1,11 @@
 from abc import ABC, abstractmethod
-import pandas as pd
+import numpy as np
 
 class Sampler(ABC):
-    required_columns = []
 
-    def __init__(self, df: pd.DataFrame, temperature: float = 0.0):
-        self.df = df
+    def __init__(self,temperature: float = 0.0):
         self.temperature = temperature
-        self.validate_df()
         self._prepare()
-
-    def validate_df(self):
-        missing = set(self.required_columns) - set(self.df.columns)
-        if missing:
-            raise ValueError(f"Missing columns: {missing}")
 
     @abstractmethod
     def _prepare(self):
@@ -29,9 +21,9 @@ class Sampler(ABC):
         pass
 
     @staticmethod
-    def power_scaling(weights, alpha):
+    def power_scaling(weights: np.ndarray, alpha: float):
         scaled = weights ** alpha
         return scaled / scaled.sum()
 
-    def power_scaling_with_temperature(self, w, T):
+    def power_scaling_with_temperature(self, w: np.ndarray, T: float):
         return self.power_scaling(w, 1 - T)

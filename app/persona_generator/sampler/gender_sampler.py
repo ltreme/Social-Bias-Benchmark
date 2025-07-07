@@ -1,26 +1,23 @@
 from persona_generator.sampler.sampler import Sampler
-import pandas as pd
 import numpy as np
+from models.db import Age
 
 class GenderSampler(Sampler):
-    required_columns = ["age", "male_adjusted", "female_adjusted", "diverse"]
 
-    def __init__(self, df: pd.DataFrame, temperature: float = 0.0, exclude: list = None):
+    def __init__(self, temperature: float = 0.0, exclude: list = None):
         self.exclude = set(exclude) if exclude else set()
-        super().__init__(df, temperature)
+        super().__init__(temperature)
 
     def _prepare(self):
         self.gender_probs = {}
-        for _, row in self.df.iterrows():
-            age = int(row["age"])
-            counts = {
-                "male": row["male_adjusted"],
-                "female": row["female_adjusted"],
-                "diverse": row["diverse"]
-            }
-            # Remove excluded genders
-            for gender in self.exclude:
-                counts.pop(gender, None)
+        # Bestimme, welche Geschlechter verwendet werden sollen
+        all_genders = {"male", "female", "diverse"}
+        used_genders = list(all_genders - self.exclude)
+        used_genders.sort()  # Für konsistente Reihenfolge
+        # Hole alle Altersdatensätze
+        for age_row in Age.select():
+            age = age_row.age
+            counts = {g: getattr(age_row, g) for g in used_genders}
             total = sum(counts.values())
             if total > 0:
                 probs = np.array(list(counts.values()), dtype=float)

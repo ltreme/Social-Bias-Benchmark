@@ -1,26 +1,26 @@
 from persona_generator.sampler.sampler import Sampler
-import pandas as pd
 import numpy as np
+from models.db import Age
 
 class AgeSampler(Sampler):
-    required_columns = ["age", "total"]
 
-    def __init__(self, df: pd.DataFrame, age_min: int = None, age_max: int = None, temperature: float = 0.0):
+    def __init__(self, age_min: int = None, age_max: int = None, temperature: float = 0.0):
         self.age_min = age_min
         self.age_max = age_max
-        super().__init__(df, temperature)
+        super().__init__(temperature)
 
     def _prepare(self):
         # Filter by age range if given
-        df = self.df
+        ages = Age.select()
         if self.age_min is not None:
-            df = df[df["age"] >= self.age_min]
+            ages = ages.where(Age.age >= self.age_min)
         if self.age_max is not None:
-            df = df[df["age"] <= self.age_max]
+            ages = ages.where(Age.age <= self.age_max)
         # Prepare distributions
-        weights = df["total"].values.astype(float)
+        ages = list(ages)
+        weights = np.array([a.total for a in ages], dtype=float)
         weights = self.power_scaling_with_temperature(weights, self.temperature)
-        self.ages = df["age"].values
+        self.ages = np.array([a.age for a in ages])
         self.weights = weights
 
     def sample(self) -> int:
