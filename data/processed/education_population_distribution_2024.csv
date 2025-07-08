@@ -1,0 +1,103 @@
+Geschlecht;Schulabschluss;Anzahl;age_from;age_to
+männlich;Noch in schulischer Ausbildung;1276;15;24
+männlich;Noch in schulischer Ausbildung;10;25;34
+weiblich;Noch in schulischer Ausbildung;1223;15;24
+weiblich;Noch in schulischer Ausbildung;9;25;34
+Insgesamt;Noch in schulischer Ausbildung;2499;15;24
+Insgesamt;Noch in schulischer Ausbildung;19;25;34
+männlich;Haupt- (Volks-)schulabschluss;504;15;24
+männlich;Haupt- (Volks-)schulabschluss;797;25;34
+männlich;Haupt- (Volks-)schulabschluss;1106;35;44
+männlich;Haupt- (Volks-)schulabschluss;1223;45;54
+männlich;Haupt- (Volks-)schulabschluss;1860;55;64
+männlich;Haupt- (Volks-)schulabschluss;1591;65;74
+männlich;Haupt- (Volks-)schulabschluss;1798;75;100
+weiblich;Haupt- (Volks-)schulabschluss;269;15;24
+weiblich;Haupt- (Volks-)schulabschluss;480;25;34
+weiblich;Haupt- (Volks-)schulabschluss;721;35;44
+weiblich;Haupt- (Volks-)schulabschluss;893;45;54
+weiblich;Haupt- (Volks-)schulabschluss;1490;55;64
+weiblich;Haupt- (Volks-)schulabschluss;1799;65;74
+weiblich;Haupt- (Volks-)schulabschluss;2837;75;100
+Insgesamt;Haupt- (Volks-)schulabschluss;774;15;24
+Insgesamt;Haupt- (Volks-)schulabschluss;1277;25;34
+Insgesamt;Haupt- (Volks-)schulabschluss;1827;35;44
+Insgesamt;Haupt- (Volks-)schulabschluss;2116;45;54
+Insgesamt;Haupt- (Volks-)schulabschluss;3350;55;64
+Insgesamt;Haupt- (Volks-)schulabschluss;3390;65;74
+Insgesamt;Haupt- (Volks-)schulabschluss;4635;75;100
+männlich;Abschluss der polytechnischen Oberschule;344;45;54
+männlich;Abschluss der polytechnischen Oberschule;861;55;64
+männlich;Abschluss der polytechnischen Oberschule;657;65;74
+männlich;Abschluss der polytechnischen Oberschule;263;75;100
+weiblich;Abschluss der polytechnischen Oberschule;353;45;54
+weiblich;Abschluss der polytechnischen Oberschule;891;55;64
+weiblich;Abschluss der polytechnischen Oberschule;786;65;74
+weiblich;Abschluss der polytechnischen Oberschule;381;75;100
+Insgesamt;Abschluss der polytechnischen Oberschule;698;45;54
+Insgesamt;Abschluss der polytechnischen Oberschule;1752;55;64
+Insgesamt;Abschluss der polytechnischen Oberschule;1443;65;74
+Insgesamt;Abschluss der polytechnischen Oberschule;644;75;100
+männlich;Realschule oder gleichwertiger Abschluss;989;15;24
+männlich;Realschule oder gleichwertiger Abschluss;1310;25;34
+männlich;Realschule oder gleichwertiger Abschluss;1484;35;44
+männlich;Realschule oder gleichwertiger Abschluss;1268;45;54
+männlich;Realschule oder gleichwertiger Abschluss;1284;55;64
+männlich;Realschule oder gleichwertiger Abschluss;704;65;74
+männlich;Realschule oder gleichwertiger Abschluss;486;75;100
+weiblich;Realschule oder gleichwertiger Abschluss;807;15;24
+weiblich;Realschule oder gleichwertiger Abschluss;1167;25;34
+weiblich;Realschule oder gleichwertiger Abschluss;1577;35;44
+weiblich;Realschule oder gleichwertiger Abschluss;1556;45;54
+weiblich;Realschule oder gleichwertiger Abschluss;1886;55;64
+weiblich;Realschule oder gleichwertiger Abschluss;1087;65;74
+weiblich;Realschule oder gleichwertiger Abschluss;817;75;100
+Insgesamt;Realschule oder gleichwertiger Abschluss;1795;15;24
+Insgesamt;Realschule oder gleichwertiger Abschluss;2478;25;34
+Insgesamt;Realschule oder gleichwertiger Abschluss;3062;35;44
+Insgesamt;Realschule oder gleichwertiger Abschluss;2824;45;54
+Insgesamt;Realschule oder gleichwertiger Abschluss;3170;55;64
+Insgesamt;Realschule oder gleichwertiger Abschluss;1791;65;74
+Insgesamt;Realschule oder gleichwertiger Abschluss;1303;75;100
+männlich;Fachhochschul- oder Hochschulreife;1258;15;24
+männlich;Fachhochschul- oder Hochschulreife;2822;25;34
+männlich;Fachhochschul- oder Hochschulreife;2541;35;44
+männlich;Fachhochschul- oder Hochschulreife;1993;45;54
+männlich;Fachhochschul- oder Hochschulreife;2128;55;64
+männlich;Fachhochschul- oder Hochschulreife;1388;65;74
+männlich;Fachhochschul- oder Hochschulreife;882;75;100
+weiblich;Fachhochschul- oder Hochschulreife;1496;15;24
+weiblich;Fachhochschul- oder Hochschulreife;3014;25;34
+weiblich;Fachhochschul- oder Hochschulreife;2793;35;44
+weiblich;Fachhochschul- oder Hochschulreife;2027;45;54
+weiblich;Fachhochschul- oder Hochschulreife;1951;55;64
+weiblich;Fachhochschul- oder Hochschulreife;1114;65;74
+weiblich;Fachhochschul- oder Hochschulreife;608;75;100
+Insgesamt;Fachhochschul- oder Hochschulreife;2754;15;24
+Insgesamt;Fachhochschul- oder Hochschulreife;5836;25;34
+Insgesamt;Fachhochschul- oder Hochschulreife;5335;35;44
+Insgesamt;Fachhochschul- oder Hochschulreife;4020;45;54
+Insgesamt;Fachhochschul- oder Hochschulreife;4079;55;64
+Insgesamt;Fachhochschul- oder Hochschulreife;2502;65;74
+Insgesamt;Fachhochschul- oder Hochschulreife;1490;75;100
+männlich;Ohne allgemeinen Schulabschluss;291;15;24
+männlich;Ohne allgemeinen Schulabschluss;381;25;34
+männlich;Ohne allgemeinen Schulabschluss;405;35;44
+männlich;Ohne allgemeinen Schulabschluss;348;45;54
+männlich;Ohne allgemeinen Schulabschluss;332;55;64
+männlich;Ohne allgemeinen Schulabschluss;182;65;74
+männlich;Ohne allgemeinen Schulabschluss;153;75;100
+weiblich;Ohne allgemeinen Schulabschluss;202;15;24
+weiblich;Ohne allgemeinen Schulabschluss;278;25;34
+weiblich;Ohne allgemeinen Schulabschluss;349;35;44
+weiblich;Ohne allgemeinen Schulabschluss;346;45;54
+weiblich;Ohne allgemeinen Schulabschluss;334;55;64
+weiblich;Ohne allgemeinen Schulabschluss;258;65;74
+weiblich;Ohne allgemeinen Schulabschluss;331;75;100
+Insgesamt;Ohne allgemeinen Schulabschluss;493;15;24
+Insgesamt;Ohne allgemeinen Schulabschluss;659;25;34
+Insgesamt;Ohne allgemeinen Schulabschluss;753;35;44
+Insgesamt;Ohne allgemeinen Schulabschluss;694;45;54
+Insgesamt;Ohne allgemeinen Schulabschluss;666;55;64
+Insgesamt;Ohne allgemeinen Schulabschluss;440;65;74
+Insgesamt;Ohne allgemeinen Schulabschluss;485;75;100

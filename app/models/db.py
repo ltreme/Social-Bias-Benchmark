@@ -52,6 +52,14 @@ class ForeignCountry(BaseModel):
     value = IntegerField()
 
 
+class Education(BaseModel):
+    id = AutoField()  # Automatischer Primary Key
+    age_from = IntegerField()
+    age_to = IntegerField()
+    gender = CharField()
+    education_level = CharField()
+    value = IntegerField()
+
 
 # class Persona(BaseModel):
 #     uuid = CharField(primary_key=True)
@@ -140,11 +148,27 @@ def fill_db_tables():
             print(f"Error saving country {row['country']}: {e}")
     print("Countries have been saved to the database.")
 
+    # fill education
+    df_education = read_csv('data/processed/education_population_distribution_2024.csv')
+    for index, row in df_education.iterrows():
+        education = Education(
+            age_from=row['age_from'],
+            age_to=row['age_to'],
+            gender=map_gender(row['Geschlecht']),
+            education_level=row['Schulabschluss'],
+            value=row['Anzahl']
+        )
+        try:
+            education.save()
+        except Exception as e:
+            print(f"Error saving education {row['age_from']}-{row['age_to']} {row['Geschlecht']} {row['Schulabschluss']}: {e}")
+    print("Education levels have been saved to the database.")
+
 def init_db():
     """Create all tables if they do not already exist."""
     db.connect()
     db.create_tables([
-        Age, MarriageStatus, MigrationStatus, ForeignCountry
+        Age, MarriageStatus, MigrationStatus, ForeignCountry, Education
     ])
 
     fill_db_tables()
