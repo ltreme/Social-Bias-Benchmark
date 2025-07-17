@@ -1,6 +1,6 @@
 import numpy as np
 from .sampler import Sampler
-from models.db import ForeignCountry
+from models.db import ForeignersPerCountry, Country
 
 GERMANY = "Deutschland"
 
@@ -11,9 +11,12 @@ class OriginSampler(Sampler):
     def _prepare(self):
         self.countries = []
         self.values = []
-        for row in ForeignCountry.select():
-            self.countries.append(row.country)
-            self.values.append(row.value)
+        result = (ForeignersPerCountry
+         .select(ForeignersPerCountry, Country)
+         .join(Country))
+        for row in result:
+            self.countries.append(row.country.country_de)
+            self.values.append(row.total)
         self.values = np.array(self.values, dtype=float)
         if self.values.sum() > 0:
             self.values = self.values / self.values.sum()

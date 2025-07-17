@@ -1,11 +1,11 @@
 from peewee import *
 import os
 import pandas as pd
+import locale
 
 # SQLite-Datenbank (Datei im lokalen Verzeichnis)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(BASE_DIR, '..', 'data', 'personas.db')
-db = SqliteDatabase(DB_PATH)
 db = SqliteDatabase(DB_PATH)
 
 
@@ -46,11 +46,26 @@ class MigrationStatus(BaseModel):
             (('age_from', 'age_to', 'gender'), True),  # True = unique
         )
 
-class ForeignCountry(BaseModel):
+class Country(BaseModel):
     id = AutoField()  # Automatischer Primary Key
-    country = CharField(unique=True)
-    value = IntegerField()
+    country_en = CharField(unique=True)
+    country_de = CharField()
+    region = CharField()
+    subregion = CharField()
+    population = IntegerField()
+    country_code_alpha2 = CharField(unique=True)
+    country_code_numeric = IntegerField(unique=True)
 
+class ForeignersPerCountry(BaseModel):
+    id = AutoField()  # Automatischer Primary Key
+    country = ForeignKeyField(Country, backref='foreigners_per_country')
+    total = IntegerField()
+
+class ReligionPerCountry(BaseModel):
+    id = AutoField()  # Automatischer Primary Key
+    country = ForeignKeyField(Country, backref='religion_per_country')
+    religion = CharField()
+    total = IntegerField()
 
 class Education(BaseModel):
     id = AutoField()  # Automatischer Primary Key
@@ -76,6 +91,52 @@ def read_csv(file_path):
     Reads a CSV file and returns a DataFrame.
     """
     return pd.read_csv(f"{file_path}", sep=';')
+
+def parse_number_locale(s):
+    # Set locale to US (works for "1,234,567")
+    locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
+    return locale.atoi(s)
+
+
+def fill_countries_religion_foreigner():
+    df = read_csv('data/processed/countries_religion_foreigner.csv')
+    for index, row in df.iterrows():
+        country = Country(
+            country_en=row['country'],
+            country_de=row['country_de'],
+            region=row['region_y'],
+            subregion=row['sub-region'],
+            population=row['population'],
+            country_code_alpha2=row['country_code_alpha2'],
+            country_code_numeric=row['country-code']
+        )
+        try:
+            country.save()
+        except Exception as e:
+            print(f"Error saving country {row['country']}: {e}")
+            return
+        if not pd.isna(row['foreigners']):
+            foreign_country = ForeignersPerCountry(
+                country=country,
+                total=int(row['foreigners'])
+            )
+        try:
+            foreign_country.save()
+        except Exception as e:
+            print(f"Error saving foreigners for country {row['country']}: {e}")
+            return
+        religion_columns = ['Christians', 'Muslims', 'Religiously_unaffiliated', 'Buddhists', 'Hindus', 'Jews', 'Other_religions']
+        for religion in religion_columns:
+            religion = ReligionPerCountry(
+                country=country,
+                religion=religion,
+                total=parse_number_locale(row[religion])
+            )
+            try:
+                religion.save()
+            except Exception as e:
+                print(f"Error saving religion {religion} for country {row['country']}: {e}")
+                return
 
 def fill_db_tables():
     # fill ages
@@ -135,18 +196,8 @@ def fill_db_tables():
             print(f"Error saving migration status {row['age_from']}-{row['age_to']}: {e}")
     print("Migration statuses have been saved to the database.")
 
-    # fill foreign countries
-    df_countries = read_csv('data/raw/Anzahl_Ausländer_nach_Staatsangehörigkeit.csv')
-    for index, row in df_countries.iterrows():
-        country = ForeignCountry(
-            country=row['Land'],
-            value=row['Anzahl']
-        )
-        try:
-            country.save()
-        except Exception as e:
-            print(f"Error saving country {row['country']}: {e}")
-    print("Countries have been saved to the database.")
+    # fill countries, religion, and foreigners
+    fill_countries_religion_foreigner()
 
     # fill education
     df_education = read_csv('data/processed/education_population_distribution_2024.csv')
@@ -168,7 +219,7 @@ def init_db():
     """Create all tables if they do not already exist."""
     db.connect()
     db.create_tables([
-        Age, MarriageStatus, MigrationStatus, ForeignCountry, Education
+        Age, MarriageStatus, MigrationStatus, Education, Country, ForeignersPerCountry, ReligionPerCountry, 
     ])
 
     fill_db_tables()
