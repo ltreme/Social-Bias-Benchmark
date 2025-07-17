@@ -75,6 +75,14 @@ class Education(BaseModel):
     education_level = CharField()
     value = IntegerField()
 
+class Occupation(BaseModel):
+    id = AutoField()  # Automatischer Primary Key
+    age_from = IntegerField()
+    age_to = IntegerField()
+    category = CharField()
+    job_de = CharField()
+    job_en = CharField()
+
 
 # class Persona(BaseModel):
 #     uuid = CharField(primary_key=True)
@@ -86,11 +94,11 @@ class Education(BaseModel):
 #     religion = ForeignKeyField(Religion, backref='personas')
 #     ses = ForeignKeyField(SES, backref='personas')
 
-def read_csv(file_path):
+def read_csv(file_path, sep=';'):
     """
     Reads a CSV file and returns a DataFrame.
     """
-    return pd.read_csv(f"{file_path}", sep=';')
+    return pd.read_csv(f"{file_path}", sep=sep)
 
 def parse_number_locale(s):
     # Set locale to US (works for "1,234,567")
@@ -198,6 +206,7 @@ def fill_db_tables():
 
     # fill countries, religion, and foreigners
     fill_countries_religion_foreigner()
+    print("Countries, religions, and foreigners have been saved to the database.")
 
     # fill education
     df_education = read_csv('data/processed/education_population_distribution_2024.csv')
@@ -215,11 +224,34 @@ def fill_db_tables():
             print(f"Error saving education {row['age_from']}-{row['age_to']} {row['Geschlecht']} {row['Schulabschluss']}: {e}")
     print("Education levels have been saved to the database.")
 
+    # fill jobs
+    df_jobs = read_csv('data/raw/occupation.csv', sep=',')
+    for index, row in df_jobs.iterrows():
+        occupation = Occupation(
+            age_from=row['from_age'],
+            age_to=row['to_age'],
+            category=row['category'],
+            job_de=row['job_de'],
+            job_en=row['job_en']
+        )
+        try:
+            occupation.save()
+        except Exception as e:
+            print(f"Error saving occupation {row['age_from']}-{row['age_to']} {row['category']} {row['job_de']}: {e}")
+    print("Occupations have been saved to the database.")
+
 def init_db():
     """Create all tables if they do not already exist."""
     db.connect()
     db.create_tables([
-        Age, MarriageStatus, MigrationStatus, Education, Country, ForeignersPerCountry, ReligionPerCountry, 
+        Age,
+        MarriageStatus,
+        MigrationStatus,
+        Education,
+        Country,
+        ForeignersPerCountry,
+        ReligionPerCountry,
+        Occupation
     ])
 
     fill_db_tables()

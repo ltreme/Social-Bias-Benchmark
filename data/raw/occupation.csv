@@ -1,0 +1,27 @@
+job_de,job_en,category,from_age,to_age
+Schüler/in,student/pupil,Bildung,6,20
+Arzt/Ärztin,doctor,Gesundheit,25,67
+Krankenpfleger/in,nurse,Gesundheit,18,67
+Lehrer/in,teacher,Bildung,23,67
+Erzieher/in,childcare worker,Soziales,18,67
+Informatiker/in,computer scientist,IT,21,67
+Ingenieur/in,engineer,Technik,23,67
+Mechaniker/in,mechanic,Handwerk,18,67
+Verkäufer/in,salesperson,Handel,16,67
+Polizist/in,police officer,Schutz/Sicherheit,18,65
+Reinigungskraft,cleaner,Dienstleistung,16,67
+Manager/in,manager,Wirtschaft,27,67
+Buchhalter/in,accountant,Wirtschaft,18,67
+Lkw-Fahrer/in,truck driver,Transport,21,67
+Bauarbeiter/in,construction worker,Bau,18,67
+Wissenschaftler/in,scientist,Wissenschaft,25,67
+Künstler/in,artist,Kunst/Kultur,18,67
+Sekretär/in,secretary,Büro,18,67
+Friseur/in,hairdresser,Dienstleistung,16,67
+Richter/in,judge,Justiz,28,67
+Anwalt/Anwältin,lawyer,Justiz,25,67
+Soldat/in,soldier,Militär,17,65
+Koch/Köchin,chef,Gastronomie,16,67
+Journalist/in,journalist,Medien,21,67
+Elektriker/in,electrician,Handwerk,18,67
+Sozialarbeiter/in,social worker,Soziales,21,67
