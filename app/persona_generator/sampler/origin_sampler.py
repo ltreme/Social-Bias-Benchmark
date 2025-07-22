@@ -5,17 +5,22 @@ from models.db import ForeignersPerCountry, Country
 GERMANY = "Deutschland"
 
 class OriginSampler(Sampler):
-    def __init__(self, temperature: float = 0.0):
+    def __init__(self, temperature: float = 0.0, exclude: list = None):
+        self.exclude = exclude
         super().__init__(temperature)
 
     def _prepare(self):
         self.countries = []
         self.values = []
         result = (ForeignersPerCountry
-         .select(ForeignersPerCountry, Country)
-         .join(Country))
+            .select(ForeignersPerCountry, Country)
+            .join(Country))
+        exclude_set = set(self.exclude) if self.exclude else set()
         for row in result:
-            self.countries.append(row.country.country_de)
+            country_name = row.country.country_de
+            if country_name in exclude_set:
+                continue
+            self.countries.append(country_name)
             self.values.append(row.total)
         self.values = np.array(self.values, dtype=float)
         if self.values.sum() > 0:

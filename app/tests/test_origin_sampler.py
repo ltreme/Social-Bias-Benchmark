@@ -10,6 +10,16 @@ from persona_generator.sampler.origin_sampler import OriginSampler
 GERMANY = "Deutschland"
 
 class TestOriginSampler(unittest.TestCase):
+    def test_exclude_countries(self):
+        # Wähle ein Land aus der Liste, das ausgeschlossen werden soll
+        if len(self.countries) > 0:
+            exclude_country = self.countries[0]
+            sampler_exclude = OriginSampler(exclude=[exclude_country])
+            # Die Länder-Liste sollte das ausgeschlossene Land nicht enthalten
+            self.assertNotIn(exclude_country, sampler_exclude.countries)
+            # Es sollte niemals gesampelt werden
+            samples = [sampler_exclude.sample(True) for _ in range(100)]
+            self.assertNotIn(exclude_country, samples)
     def setUp(self):
         self.sampler = OriginSampler()
         self.sampler_T1 = OriginSampler(temperature=1.0)
