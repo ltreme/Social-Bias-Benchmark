@@ -3,8 +3,8 @@ from models.db import Occupation
 import numpy as np
 
 class OccupationSampler(Sampler):
-    def __init__(self, exclude_categories=None):
-        self.exclude_categories = set(exclude_categories) if exclude_categories else set()
+    def __init__(self, exclude=None):
+        self.exclude_categories = set(exclude) if exclude else set()
         super().__init__(temperature=0.0)
 
     def _prepare(self):

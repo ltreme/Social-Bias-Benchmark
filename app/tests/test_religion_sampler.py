@@ -10,6 +10,13 @@ from persona_generator.sampler.religion_sampler import ReligionSampler
 from models.db import ReligionPerCountry, Country
 
 class TestReligionSampler(unittest.TestCase):
+    def test_exclude_religions_enum(self):
+        from models.enum.religion_enum import ReligionEnum
+        country = "Deutschland"
+        exclude_religion = ReligionEnum.CHRISTIANS.value
+        sampler_exclude = ReligionSampler(exclude=[exclude_religion])
+        religions_sampled = [sampler_exclude.sample(country) for _ in range(100)]
+        self.assertNotIn(exclude_religion, religions_sampled)
     def setUp(self):
         self.sampler = ReligionSampler()
         self.sampler_T1 = ReligionSampler(temperature=1.0)

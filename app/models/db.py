@@ -83,6 +83,18 @@ class Occupation(BaseModel):
     job_de = CharField()
     job_en = CharField()
 
+class Persona(BaseModel):
+    id = AutoField()  # Automatischer Primary Key
+    age = IntegerField()
+    gender = CharField()
+    origin = CharField()
+    migration_status = CharField()
+    religion = CharField()
+    occupation = CharField()
+    sexuality = CharField()
+    marriage_status = CharField()
+    education = CharField()
+
 
 # class Persona(BaseModel):
 #     uuid = CharField(primary_key=True)
@@ -251,7 +263,8 @@ def init_db():
         Country,
         ForeignersPerCountry,
         ReligionPerCountry,
-        Occupation
+        Occupation,
+        Persona
     ])
 
     fill_db_tables()

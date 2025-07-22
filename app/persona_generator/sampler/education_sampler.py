@@ -26,10 +26,10 @@ class EducationSampler(Sampler):
         gender_db = self._map_gender(gender)
         key = (age, gender_db)
         if key not in self.age_gender2levels:
-            raise ValueError(f"No data for age {age} and gender {gender_db}")
+            return "Unknown"  # Default value if no data is available
         levels = {k: v for k, v in self.age_gender2levels[key].items() if k not in self.exclude}
         if not levels:
-            raise ValueError(f"No education levels left after exclusion for age {age} and gender {gender_db}")
+            return "Unknown"  # Default value if no data is available
         values = np.array(list(levels.values()), dtype=float)
         values = values / values.sum()
         values = self.power_scaling_with_temperature(values, self.temperature)

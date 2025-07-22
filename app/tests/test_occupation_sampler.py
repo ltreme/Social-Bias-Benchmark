@@ -30,7 +30,7 @@ class TestOccupationSampler(TestSamplerBase):
 
     def test_exclude_categories(self):
         exclude = ["Gesundheit", "IT"]
-        sampler = OccupationSampler(exclude_categories=exclude)
+        sampler = OccupationSampler(exclude=exclude)
         age = 30
         for _ in range(20):
             job = sampler.sample(age)

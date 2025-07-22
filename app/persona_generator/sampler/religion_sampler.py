@@ -3,7 +3,8 @@ from .sampler import Sampler
 from models.db import ReligionPerCountry, Country
 
 class ReligionSampler(Sampler):
-    def __init__(self, temperature: float = 0.0):
+    def __init__(self, temperature: float = 0.0, exclude: list = None):
+        self.exclude = exclude
         super().__init__(temperature)
 
     def _prepare(self):
@@ -24,7 +25,10 @@ class ReligionSampler(Sampler):
 
         religions = []
         totals = []
+        exclude_set = set(self.exclude) if self.exclude else set()
         for row in query:
+            if row.religion in exclude_set:
+                continue
             religions.append(row.religion)
             totals.append(row.total)
 
