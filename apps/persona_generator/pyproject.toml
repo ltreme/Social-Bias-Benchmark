@@ -1,0 +1,14 @@
+[project]
+name = "persona_generator"
+version = "0.1"
+dependencies = [
+    "numpy",
+    "pandas",
+    "peewee",
+    "python-dateutil",
+    "pytz",
+    "six",
+    "tqdm",
+    "tzdata",
+    "torch"
+]

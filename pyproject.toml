@@ -1,0 +1,20 @@
+[tool.black]
+line-length = 88
+target-version = ['py38']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # Add directories to exclude here
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+line_length = 88
+known_first_party = ["benchmark", "persona_generator", "shared", "tests"]
+src_paths = ["apps/benchmark/src", "apps/persona_generator/src", "apps/shared/src", "apps/persona_generator/tests"]
