@@ -1,10 +1,11 @@
 from datetime import datetime
 
 import pandas as pd
-from eval.likert_eval import benchmark_summary_from_file
-from llm_handler.model import LLMModel
-from utils.prompt_loader import LikertPrompt  # Added LikertPrompt
-from utils.prompt_loader import load_prompts_from_file
+
+from benchmark.evaluation.likert_eval import benchmark_summary_from_file
+from benchmark.llm.model import LLMModel
+from benchmark.utils.prompt_loader import LikertPrompt  # Added LikertPrompt
+from benchmark.utils.prompt_loader import load_prompts_from_file
 
 from .benchmark import Benchmark  # Import Benchmark base class
 

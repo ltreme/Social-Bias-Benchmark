@@ -1,4 +1,9 @@
-from bias.dtos.persona import Persona
+from benchmark.domain.persona import RawPersonaDto
+from benchmark.services.language_service import (
+    get_object_pronoun,
+    get_possessive_pronoun,
+    get_subject_pronoun,
+)
 
 
 class Case:
@@ -8,15 +13,16 @@ class Case:
         self.question = question
         self.adjective = adjective
 
-    def render_case_by(self, persona: Persona):
+    def render_case_by(self, persona: RawPersonaDto) -> str:
         return self._render(self.case_template, persona)
 
-    def render_question_by(self, persona: Persona):
+    def render_question_by(self, persona: RawPersonaDto) -> str:
         return self._render(self.question, persona)
 
-    def _render(self, template: str, persona: Persona):
-        possessive_pronoun = persona.get_possessive_pronoun()
-        subject_pronoun = persona.get_subject_pronoun()
+    def _render(self, template: str, persona: RawPersonaDto) -> str:
+        possessive_pronoun = get_possessive_pronoun(persona)
+        subject_pronoun = get_subject_pronoun(persona)
+        object_pronoun = get_object_pronoun(persona)
         return template.format(
             name=persona.name,
             age=persona.age,

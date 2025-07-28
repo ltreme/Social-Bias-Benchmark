@@ -13,6 +13,7 @@ from sampler.religion_sampler import ReligionSampler
 from sampler.sexuality_sampler import SexualitySampler
 
 from shared.core_types import MigrationStatusEnum
+from shared.paths import PATH_PERSONAS_CSV
 
 
 def sample(
@@ -140,7 +141,7 @@ def main():
     parser.add_argument(
         "--out",
         type=str,
-        default="data/benchmark/bias/personas/personas.csv",
+        default=PATH_PERSONAS_CSV,
         help="Output CSV file",
     )
     parser.add_argument("--age_from", type=int, default=0, help="Minimum age")

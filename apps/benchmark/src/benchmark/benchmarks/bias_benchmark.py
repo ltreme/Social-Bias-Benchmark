@@ -2,10 +2,11 @@ import os
 from datetime import datetime
 
 import pandas as pd
-from eval.bias_eval import LLMResultEvaluator
-from llm_handler.model import LLMModel
 from tqdm import tqdm
-from utils.prompt_loader import (
+
+from benchmark.evaluation.bias_eval import LLMResultEvaluator
+from benchmark.llm.model import LLMModel
+from benchmark.utils.prompt_loader import (
     LikertPrompt,
     case_factory,
     load_objects_from_csv,

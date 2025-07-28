@@ -1,4 +1,4 @@
-from benchmark.bias.dtos.persona import RawPersonaDto
+from benchmark.domain.persona import RawPersonaDto
 from shared.core_types import GenderEnum
 
 

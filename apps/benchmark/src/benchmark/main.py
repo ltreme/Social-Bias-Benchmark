@@ -7,8 +7,8 @@ import os
 
 import torch
 
-from benchmark.bias.bias_benchmark import BiasBenchmark
-from benchmark.likert.likert_benchmark import LikertBenchmark
+from benchmark.benchmarks.bias_benchmark import BiasBenchmark
+from benchmark.benchmarks.likert_benchmark import LikertBenchmark
 from benchmark.llm.model import LLMModel
 from shared.notification.telegram_notifier import send_telegram_message
 

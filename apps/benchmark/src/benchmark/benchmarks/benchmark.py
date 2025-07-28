@@ -3,8 +3,9 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 
 import pandas as pd
-from llm.model import LLMModel
-from utils.prompt_loader import LikertPrompt
+
+from benchmark.llm.model import LLMModel
+from benchmark.utils.prompt_loader import LikertPrompt
 
 
 class Benchmark(ABC):
