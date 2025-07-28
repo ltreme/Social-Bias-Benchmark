@@ -1,7 +1,9 @@
 venv
+venv_*
 .env
 *.out
 .DS_Store
 **/.DS_Store
 # Python cache files
 __pycache__/
+*.egg-info/

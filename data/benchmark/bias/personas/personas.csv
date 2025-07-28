@@ -1,0 +1,1001 @@
+uuid,age,gender,education,occupation,marriage_status,migration_status,origin,religion,sexuality
+37bafb46-ae9a-4c08-a692-1916cc6df314,33,male,Fachhochschul- oder Hochschulreife,Friseur/in,single,with_migration,Afghanistan,Muslims,heterosexual
+2089c0c0-7308-44ef-996c-d11ef6041751,33,male,Fachhochschul- oder Hochschulreife,Erzieher/in,divorced,with_migration,Syrien,Muslims,heterosexual
+e4fee8e4-37ab-44c7-8f9e-33e34781b5e2,81,female,Haupt- (Volks-)schulabschluss,Rentner/in,married,with_migration,Bosnien und Herzegowina,Christians,heterosexual
+b7fabcfe-d6c4-41f9-8910-2073a2fef652,80,female,Realschule oder gleichwertiger Abschluss,Rentner/in,widowed,with_migration,Russland,Religiously_unaffiliated,heterosexual
+10be2860-2788-4164-b1f9-2a1ae1957907,21,female,Realschule oder gleichwertiger Abschluss,Erzieher/in,single,with_migration,Türkei,Muslims,heterosexual
+5358a30d-aa6e-485e-9082-5652d7a3cd3c,5,male,Unknown,Unemployed,single,with_migration,Türkei,Muslims,heterosexual
+cd03c8e7-bbd9-4215-8394-be9f7dbaf7d6,19,male,Fachhochschul- oder Hochschulreife,Schüler/in,single,with_migration,Iran,Muslims,heterosexual
+8c3be5c5-e5fd-41d6-857d-125d3d40402a,18,male,Fachhochschul- oder Hochschulreife,Reinigungskraft,single,with_migration,Polen,Christians,heterosexual
+da8ced65-f19b-45e6-80fb-03f9d7ae8632,48,male,Fachhochschul- oder Hochschulreife,Sozialarbeiter/in,married,with_migration,Italien,Christians,heterosexual
+9de88a1d-3024-4dde-b894-db9051b2d76b,81,male,Realschule oder gleichwertiger Abschluss,Rentner/in,divorced,without_migration,Deutschland,Christians,heterosexual
+ad458017-c7e9-443d-9f77-8e598ba12153,23,male,Realschule oder gleichwertiger Abschluss,Lehrer/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+b648397f-0592-4100-b1e0-3a7177ee8ab4,58,female,Abschluss der polytechnischen Oberschule,Erzieher/in,married,without_migration,Deutschland,Christians,heterosexual
+c0c12c7b-fe97-4345-ac52-7f5374254f95,51,male,Fachhochschul- oder Hochschulreife,Buchhalter/in,single,without_migration,Deutschland,Muslims,heterosexual
+629d4264-24d3-40cd-8e03-1a4abe81b684,54,female,Realschule oder gleichwertiger Abschluss,Wissenschaftler/in,married,without_migration,Deutschland,Christians,heterosexual
+cfa34f11-5dab-432c-927b-1c6dfb3335da,0,male,Unknown,Unemployed,single,with_migration,Jordanien,Muslims,heterosexual
+d2effa72-ed51-4009-a443-8dc0dc694c91,87,female,Haupt- (Volks-)schulabschluss,Rentner/in,widowed,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+78214f92-df23-4ac3-a8bb-a3ef2be74976,35,female,Fachhochschul- oder Hochschulreife,Anwalt/Anwältin,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+765cb220-2436-4d63-951a-756edf933d5e,1,male,Unknown,Unemployed,single,without_migration,Deutschland,Christians,heterosexual
+ea97e944-2d34-4478-b94f-0fe72327aa5f,54,female,Realschule oder gleichwertiger Abschluss,Sozialarbeiter/in,single,with_migration,Irak,Muslims,heterosexual
+65d97cd2-d614-4c3d-9863-1e5882c37eeb,44,male,Realschule oder gleichwertiger Abschluss,Polizist/in,single,without_migration,Deutschland,Muslims,heterosexual
+bb83bded-fb9a-4f23-9e79-01cbd6ed7c06,68,female,Realschule oder gleichwertiger Abschluss,Rentner/in,married,with_migration,Syrien,Muslims,heterosexual
+30db49f4-552b-4f73-9fff-6d319218de59,9,female,Unknown,Schüler/in,single,with_migration,Ukraine,Christians,heterosexual
+5fea54ce-c91f-4801-bc3b-6df6d48165b4,53,male,Realschule oder gleichwertiger Abschluss,Sozialarbeiter/in,single,with_migration,Malta,Christians,heterosexual
+9b43c89a-2fc1-4f7b-af60-59a0a59ff2e8,37,female,Fachhochschul- oder Hochschulreife,Anwalt/Anwältin,married,with_migration,Polen,Christians,heterosexual
+c0ebc49f-feb6-42db-be3f-05e525225a75,62,female,Realschule oder gleichwertiger Abschluss,Arzt/Ärztin,widowed,with_migration,Bulgarien,Religiously_unaffiliated,heterosexual
+a400a819-8895-4aa2-b2cd-1bcf49b95e0c,13,female,Unknown,Schüler/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+a4427bd1-1fe4-4134-8440-5c17628d9c55,52,female,Realschule oder gleichwertiger Abschluss,Lehrer/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+0979904f-cf5e-4ccd-837b-09ceac0c10b4,57,female,Realschule oder gleichwertiger Abschluss,Soldat/in,divorced,with_migration,Ukraine,Muslims,heterosexual
+8d572b3f-d006-4cb1-94b8-ac884f976382,1,female,Unknown,Unemployed,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+99494bdc-806a-4e5f-8026-3293cb77adbc,11,female,Unknown,Schüler/in,single,without_migration,Deutschland,Christians,heterosexual
+408147eb-d1e3-4203-8244-374b85973d3d,30,female,Fachhochschul- oder Hochschulreife,Mechaniker/in,single,with_migration,Indien,Hindus,heterosexual
+4ccaaa4f-046b-487b-ac0a-aef7d15d013d,41,male,Haupt- (Volks-)schulabschluss,Koch/Köchin,divorced,with_migration,Bulgarien,Christians,heterosexual
+00a80a13-d5a6-4a67-985e-f6ff61c45687,54,male,Haupt- (Volks-)schulabschluss,Bauarbeiter/in,single,with_migration,Bosnien und Herzegowina,Christians,heterosexual
+7d1f8802-c0f8-40ea-80a1-6b52cf79bdee,58,male,Fachhochschul- oder Hochschulreife,Sekretär/in,married,without_migration,Deutschland,Muslims,heterosexual
+296d4c1d-8078-4a0c-b49a-663d4d265252,28,male,Fachhochschul- oder Hochschulreife,Lehrer/in,single,without_migration,Deutschland,Christians,heterosexual
+86c4207c-f8d6-4db1-a4fc-66ae42da9178,50,female,Haupt- (Volks-)schulabschluss,Wissenschaftler/in,married,with_migration,Gambia,Muslims,heterosexual
+ac05f98f-8bf5-4a24-a6f1-7dd79fdba648,34,female,Realschule oder gleichwertiger Abschluss,Koch/Köchin,married,with_migration,Ukraine,Religiously_unaffiliated,heterosexual
+8e8c22a5-990a-47ed-ac16-f850ef288317,77,female,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+d7d1e26a-f280-4e73-9ef7-cf6f243e2962,26,diverse,Fachhochschul- oder Hochschulreife,Informatiker/in,single,with_migration,Aserbaidschan,Muslims,heterosexual
+c48ac87f-d4ef-4275-80cb-311088f18fd9,73,male,Fachhochschul- oder Hochschulreife,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+a2a625eb-a621-4a62-b246-a24958d8877b,10,female,Unknown,Schüler/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+51b33860-7fc1-49f7-a4d7-3f77a68c798d,69,female,Abschluss der polytechnischen Oberschule,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+15f1abf7-5753-4254-aa35-f475961324f2,23,male,Realschule oder gleichwertiger Abschluss,Verkäufer/in,single,with_migration,Eritrea,Christians,heterosexual
+e7a7a47d-b3ab-4bcd-b715-a3cc966ad0d1,57,female,Fachhochschul- oder Hochschulreife,Krankenpfleger/in,married,with_migration,Österreich,Christians,heterosexual
+59b9b9d1-0a40-4968-bb50-39e31a78eb95,66,male,Haupt- (Volks-)schulabschluss,Künstler/in,married,with_migration,Aserbaidschan,Muslims,heterosexual
+a3913846-6de0-4f90-86b0-bcd200e2a893,64,female,Realschule oder gleichwertiger Abschluss,Krankenpfleger/in,single,with_migration,Serbien,Christians,heterosexual
+82aca805-9c8d-40a0-bea6-0a1caec92a72,62,female,Abschluss der polytechnischen Oberschule,Lkw-Fahrer/in,married,without_migration,Deutschland,Christians,heterosexual
+e963de9a-fcb1-4de3-8ec7-f82d75ef5af4,35,male,Fachhochschul- oder Hochschulreife,Informatiker/in,single,with_migration,Rumänien,Christians,heterosexual
+e0d5ad16-a69b-48c1-90b2-4b29ed29d131,54,female,Haupt- (Volks-)schulabschluss,Künstler/in,married,without_migration,Deutschland,Christians,heterosexual
+baf5a599-c3ed-41d1-ae7a-a82d057e3994,24,female,Fachhochschul- oder Hochschulreife,Lkw-Fahrer/in,single,without_migration,Deutschland,Christians,heterosexual
+b186e0bd-6426-4ee4-a7f1-3fc89ce79bad,24,female,Fachhochschul- oder Hochschulreife,Künstler/in,single,without_migration,Deutschland,Christians,heterosexual
+2aa74b65-5f61-4a10-a11e-8054fcee49d8,7,female,Unknown,Schüler/in,single,with_migration,Türkei,Muslims,heterosexual
+5f7bac52-63e3-4b40-8ab4-62509e1de473,59,male,Realschule oder gleichwertiger Abschluss,Wissenschaftler/in,married,without_migration,Deutschland,Christians,heterosexual
+019aad7c-ebf6-4b25-9045-9d1d2e72c9ff,68,male,Haupt- (Volks-)schulabschluss,Rentner/in,married,with_migration,Türkei,Muslims,heterosexual
+4a13306c-140b-4174-945a-7e2834425187,9,female,Unknown,Schüler/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+2061d30a-759f-44c0-bd9c-7bf9834e17d8,15,female,Noch in schulischer Ausbildung,Schüler/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+e0ca3ab6-e6fe-41e9-b156-b7f8a252d44e,56,male,Abschluss der polytechnischen Oberschule,Anwalt/Anwältin,married,without_migration,Deutschland,Christians,heterosexual
+0efb1c94-de11-457a-8c0e-374b10805b58,71,male,Abschluss der polytechnischen Oberschule,Rentner/in,widowed,without_migration,Deutschland,Christians,heterosexual
+afe711e5-580f-48c7-bd01-4bfacadf6c1d,69,male,Fachhochschul- oder Hochschulreife,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+3add3ecb-889a-45d0-88cb-6641b7bc1cb4,46,female,Haupt- (Volks-)schulabschluss,Elektriker/in,single,without_migration,Deutschland,Christians,heterosexual
+aa3cd833-8511-444a-95ef-399b4758ab8c,8,female,Unknown,Schüler/in,single,with_migration,Afghanistan,Muslims,heterosexual
+2f32cf5b-597b-4d87-9630-1bbc007e64c1,70,female,Abschluss der polytechnischen Oberschule,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+1031e1ca-a2fc-446e-9d02-936aeb8daaaf,1,female,Unknown,Unemployed,single,with_migration,Kosovo,Muslims,heterosexual
+bd26788f-554e-4117-8124-83b52f103a91,47,female,Fachhochschul- oder Hochschulreife,Ingenieur/in,married,with_migration,Syrien,Muslims,heterosexual
+c03ee307-b4cf-48f4-8cc1-8061162bb166,71,female,Realschule oder gleichwertiger Abschluss,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+b119aef8-2a2b-4806-9efa-351110fea235,7,male,Unknown,Schüler/in,single,without_migration,Deutschland,Christians,heterosexual
+81f9fd6b-22cf-467d-8331-76b222700916,46,male,Fachhochschul- oder Hochschulreife,Informatiker/in,married,with_migration,Pakistan,Muslims,heterosexual
+cca557f1-e075-4fb5-8b4f-1b2911098355,66,male,Realschule oder gleichwertiger Abschluss,Krankenpfleger/in,married,with_migration,Belgien,Christians,heterosexual
+c8a19af7-b9c2-4368-880a-9f149b7f135a,48,female,Fachhochschul- oder Hochschulreife,Wissenschaftler/in,single,with_migration,Albanien,Christians,heterosexual
+a7a4db33-f255-47bb-8efe-580e40f4dd89,63,female,Realschule oder gleichwertiger Abschluss,Künstler/in,single,with_migration,Schweiz,Religiously_unaffiliated,heterosexual
+6532d9ad-9915-4e45-97b8-6e28007c241d,49,male,Haupt- (Volks-)schulabschluss,Journalist/in,single,with_migration,Syrien,Muslims,heterosexual
+4e670443-d654-49d5-a42c-45488a943a39,61,male,Fachhochschul- oder Hochschulreife,Krankenpfleger/in,married,without_migration,Deutschland,Christians,heterosexual
+4c3a56c9-673c-491d-b87c-83eac6b1e601,78,female,Fachhochschul- oder Hochschulreife,Rentner/in,widowed,without_migration,Deutschland,Christians,heterosexual
+196d88a8-81ae-433f-883a-eff7ca89d41b,50,male,Fachhochschul- oder Hochschulreife,Reinigungskraft,single,without_migration,Deutschland,Christians,heterosexual
+3052d049-53e8-4f0c-8bf7-4d6738392955,58,male,Fachhochschul- oder Hochschulreife,Arzt/Ärztin,single,without_migration,Deutschland,Christians,heterosexual
+f38fa3ba-399f-4bc9-b691-cd74f8a69ea5,0,male,Unknown,Unemployed,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+8974fadc-2a09-4fa8-ac0f-fcd9378f3045,74,male,Haupt- (Volks-)schulabschluss,Rentner/in,married,with_migration,Ukraine,Religiously_unaffiliated,heterosexual
+b8fbc37b-b7ae-48c9-9e49-7d7b2c049d23,29,female,Fachhochschul- oder Hochschulreife,Bauarbeiter/in,single,without_migration,Deutschland,Christians,heterosexual
+926f4864-1f2b-4627-a061-f9c7d145d103,72,male,Fachhochschul- oder Hochschulreife,Rentner/in,married,with_migration,Syrien,Muslims,heterosexual
+72ece9dc-f27b-4942-9430-4e0dd0912085,62,male,Realschule oder gleichwertiger Abschluss,Künstler/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+721f08a9-3684-473c-bfcd-0c768ae144f1,47,diverse,Haupt- (Volks-)schulabschluss,Sozialarbeiter/in,divorced,without_migration,Deutschland,Christians,heterosexual
+cc41db33-873c-4c6e-b61f-89baefc482bc,31,female,Realschule oder gleichwertiger Abschluss,Richter/in,single,without_migration,Deutschland,Christians,heterosexual
+0db3c3bb-137b-46ae-830d-b1c0f909e61d,62,female,Haupt- (Volks-)schulabschluss,Friseur/in,divorced,with_migration,Ungarn,Religiously_unaffiliated,heterosexual
+d3a2a613-2b26-48c3-b30c-1775a87ce322,31,male,Fachhochschul- oder Hochschulreife,Wissenschaftler/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+035825e6-cf29-4ef0-a3a8-a00a68cdc867,72,female,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+cf298f3e-5efd-4e63-bb00-e301647a6a88,20,male,Realschule oder gleichwertiger Abschluss,Koch/Köchin,single,without_migration,Deutschland,Christians,heterosexual
+713b3156-867e-4636-ac4e-53eebe217ac9,57,male,Realschule oder gleichwertiger Abschluss,Reinigungskraft,married,without_migration,Deutschland,Christians,heterosexual
+a399de4b-d745-4952-bf7e-de4523b4761f,39,male,Ohne allgemeinen Schulabschluss,Friseur/in,single,with_migration,Türkei,Muslims,heterosexual
+9f70fbc5-9652-40c5-954c-5892c246911a,76,female,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+b4d862e5-1566-4666-8317-3ae9f21f84fe,21,male,Ohne allgemeinen Schulabschluss,Koch/Köchin,single,with_migration,Ukraine,Christians,heterosexual
+c3eaef7e-5d63-4d6d-a57e-427ca2adea9a,80,male,Fachhochschul- oder Hochschulreife,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+51b0d167-b3d5-482e-ad93-8726fd862115,3,male,Unknown,Unemployed,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+ca6a5034-bf58-4e2f-81c4-543845682ff7,54,diverse,Haupt- (Volks-)schulabschluss,Lkw-Fahrer/in,married,with_migration,China,Religiously_unaffiliated,heterosexual
+e0b52dcd-6a01-4aae-bbb3-4bb3dafe0296,83,male,Fachhochschul- oder Hochschulreife,Rentner/in,widowed,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+b21488b9-edf7-4a19-a534-0404fb319371,63,male,Fachhochschul- oder Hochschulreife,Verkäufer/in,single,with_migration,Polen,Christians,heterosexual
+5af328fe-65e5-402d-bbdd-3710d4b02ce5,89,male,Abschluss der polytechnischen Oberschule,Rentner/in,widowed,without_migration,Deutschland,Christians,heterosexual
+186b44ba-23fd-46b7-916e-533f43aaab6a,10,female,Unknown,Schüler/in,single,without_migration,Deutschland,Christians,heterosexual
+342f67f2-4c99-4a95-a699-e7f92328fb1c,41,female,Ohne allgemeinen Schulabschluss,Sozialarbeiter/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+bacf0129-812d-48d0-9090-cd45a9be4b23,56,female,Abschluss der polytechnischen Oberschule,Mechaniker/in,married,with_migration,Türkei,Muslims,heterosexual
+594cae55-259e-4aab-bbe6-baccc74c87a5,43,female,Realschule oder gleichwertiger Abschluss,Journalist/in,married,without_migration,Deutschland,Christians,heterosexual
+efbb7aab-b9a9-4604-8b79-dda82fa49258,73,male,Fachhochschul- oder Hochschulreife,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+6e281213-5f11-40ab-996e-77659cd1f9aa,53,female,Realschule oder gleichwertiger Abschluss,Reinigungskraft,married,with_migration,Südkorea,Buddhists,heterosexual
+28068d17-e600-4c36-a656-9a485e1b8cbb,63,male,Fachhochschul- oder Hochschulreife,Erzieher/in,married,with_migration,Rumänien,Christians,heterosexual
+71d26cd8-9969-47b4-849e-912339825dd1,9,female,Unknown,Schüler/in,single,without_migration,Deutschland,Christians,heterosexual
+f99220d7-1afd-44d3-8b1f-d882dc410423,39,male,Realschule oder gleichwertiger Abschluss,Erzieher/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+ba3b8095-c446-4319-b3bf-91924494879d,12,female,Unknown,Schüler/in,single,without_migration,Deutschland,Christians,heterosexual
+68df3332-7f8f-4773-87f5-e7f887f628c5,47,male,Realschule oder gleichwertiger Abschluss,Buchhalter/in,married,with_migration,China,Religiously_unaffiliated,heterosexual
+d35ab692-b938-4b0a-88e4-abf2ea27a965,8,male,Unknown,Schüler/in,single,with_migration,Rumänien,Christians,heterosexual
+6712322b-e006-40f4-a1f2-75b0db276fdd,59,male,Fachhochschul- oder Hochschulreife,Journalist/in,married,without_migration,Deutschland,Christians,heterosexual
+a14efe47-2119-41da-ba96-879745a1abaf,65,female,Fachhochschul- oder Hochschulreife,Buchhalter/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+75944355-4edd-49b0-9cbd-93ab44f5fea8,14,male,Unknown,Schüler/in,single,with_migration,Syrien,Muslims,heterosexual
+8aac5ea2-a1e7-4f48-8ee2-ac6246c8c6e6,9,female,Unknown,Schüler/in,single,without_migration,Deutschland,Christians,heterosexual
+c1893ec7-57ca-4e01-bcf3-9c2832f50091,58,male,Haupt- (Volks-)schulabschluss,Richter/in,married,without_migration,Deutschland,Christians,heterosexual
+8b36e962-6318-41c8-99f3-6911e895591f,89,female,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+e9276736-ff04-4442-ba2d-d88339edd107,81,female,Fachhochschul- oder Hochschulreife,Rentner/in,single,with_migration,Bulgarien,Christians,heterosexual
+c02259c7-7074-4830-a958-4dfc4897df7d,77,male,Haupt- (Volks-)schulabschluss,Rentner/in,widowed,without_migration,Deutschland,Christians,heterosexual
+a96e4e90-b592-408a-8df5-e198a0105460,27,female,Fachhochschul- oder Hochschulreife,Ingenieur/in,single,with_migration,Bosnien und Herzegowina,Christians,heterosexual
+86a7aabf-5119-42c2-a54a-1ce8a24231f8,63,female,Haupt- (Volks-)schulabschluss,Sozialarbeiter/in,divorced,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+1c695c49-6a13-4f70-a4cb-514e46234d1e,43,female,Fachhochschul- oder Hochschulreife,Friseur/in,single,with_migration,Ukraine,Religiously_unaffiliated,heterosexual
+5b6cd84b-4eb0-4129-af7d-f3996042b070,76,male,Haupt- (Volks-)schulabschluss,Rentner/in,widowed,without_migration,Deutschland,Christians,heterosexual
+4eab19d8-80e1-4d2f-ad81-74a4e7c1bea2,43,female,Fachhochschul- oder Hochschulreife,Bauarbeiter/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+66fedc67-d981-45b7-a6c9-358d473ceeda,36,male,Haupt- (Volks-)schulabschluss,Künstler/in,married,with_migration,Ukraine,Christians,heterosexual
+aa6461ce-e9d9-4a76-b89d-82258e09ac9c,72,male,Haupt- (Volks-)schulabschluss,Rentner/in,single,without_migration,Deutschland,Christians,heterosexual
+97d2b2e3-c178-432d-acf7-29436a61df6d,69,female,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+8e375c13-6256-41f0-9448-fc0a5f37d292,50,female,Realschule oder gleichwertiger Abschluss,Manager/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+cc492d38-09d0-434f-bfac-c72eab07af9c,49,female,Fachhochschul- oder Hochschulreife,Arzt/Ärztin,single,without_migration,Deutschland,Christians,heterosexual
+d587c78e-7bb3-4331-a853-7d73c5b7ba52,33,male,Ohne allgemeinen Schulabschluss,Mechaniker/in,single,with_migration,Ukraine,Christians,heterosexual
+c790efa2-d5c6-4740-93d9-4814f985f121,67,male,Realschule oder gleichwertiger Abschluss,Anwalt/Anwältin,divorced,without_migration,Deutschland,Christians,heterosexual
+a8ad0b0f-404d-4355-9924-7c21e91a9504,77,female,Haupt- (Volks-)schulabschluss,Rentner/in,widowed,with_migration,Pakistan,Muslims,heterosexual
+609adc9a-dbc8-4063-9506-ede4cd329fda,63,female,Ohne allgemeinen Schulabschluss,Informatiker/in,married,without_migration,Deutschland,Christians,heterosexual
+3827a974-b772-4995-bcc3-baaecfb76e96,55,female,Realschule oder gleichwertiger Abschluss,Anwalt/Anwältin,single,without_migration,Deutschland,Muslims,heterosexual
+7936df22-9efe-47d2-9788-8b0ec88c4c89,81,female,Abschluss der polytechnischen Oberschule,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+3ca1a77e-3682-4b58-b9b2-2b967467c8e5,49,female,Fachhochschul- oder Hochschulreife,Ingenieur/in,married,with_migration,Ukraine,Religiously_unaffiliated,heterosexual
+bcbcc869-9b08-4d67-9de4-c11313327541,59,male,Realschule oder gleichwertiger Abschluss,Künstler/in,single,with_migration,Irak,Muslims,heterosexual
+58bcd89b-ec3c-499a-a2e9-639cf0fdd743,46,female,Realschule oder gleichwertiger Abschluss,Buchhalter/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+1abc09b7-a021-4d7d-b0b2-d5d476d96520,78,male,Haupt- (Volks-)schulabschluss,Rentner/in,widowed,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+5bfd89c5-f33b-488a-8c0c-668c8240bf45,32,male,Fachhochschul- oder Hochschulreife,Manager/in,single,with_migration,Rumänien,Christians,heterosexual
+31c2d4a8-be61-4683-ae75-3604b195183e,86,female,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+b1ea56c8-1601-4afc-b90f-98d4510949ea,61,male,Fachhochschul- oder Hochschulreife,Soldat/in,single,without_migration,Deutschland,Muslims,heterosexual
+ce5cf8f2-dc68-459d-8866-a3f7b893ce9a,47,female,Abschluss der polytechnischen Oberschule,Manager/in,married,without_migration,Deutschland,Christians,heterosexual
+4076d2fb-eeec-4c12-bfd3-4f6c04a831bf,76,female,Haupt- (Volks-)schulabschluss,Rentner/in,married,with_migration,Schweiz,Christians,heterosexual
+b25c1b6f-9495-41e4-b43c-6b1cb0d22be3,72,male,Haupt- (Volks-)schulabschluss,Rentner/in,widowed,with_migration,Italien,Christians,heterosexual
+cc541cee-e6c8-4b65-bcb6-6697648eaa92,65,female,Realschule oder gleichwertiger Abschluss,Krankenpfleger/in,married,with_migration,Vereinigtes Königreich,Christians,heterosexual
+84448e4f-ff5a-48e7-97e1-81a93e2235c3,17,male,Fachhochschul- oder Hochschulreife,Verkäufer/in,single,without_migration,Deutschland,Christians,heterosexual
+d81bd64d-451e-4b74-959b-4818312fdfa2,55,female,Realschule oder gleichwertiger Abschluss,Polizist/in,divorced,with_migration,Bulgarien,Christians,heterosexual
+7f04b9b0-18b1-4348-b250-d9d30be0d297,63,male,Fachhochschul- oder Hochschulreife,Soldat/in,married,with_migration,Syrien,Muslims,heterosexual
+05cabd80-9efd-40aa-ad49-6a5636b1fbff,67,female,Fachhochschul- oder Hochschulreife,Sekretär/in,widowed,with_migration,Pakistan,Muslims,heterosexual
+1e03b07a-1ad8-4475-98f1-95de154ce2f6,10,male,Unknown,Schüler/in,single,with_migration,Kroatien,Christians,heterosexual
+740d76a3-72b7-49ab-9a6c-d716988a266b,38,male,Haupt- (Volks-)schulabschluss,Mechaniker/in,married,without_migration,Deutschland,Christians,heterosexual
+bb577467-1b1a-4878-ab0b-6cb2d2c7b0b7,55,female,Fachhochschul- oder Hochschulreife,Sozialarbeiter/in,married,without_migration,Deutschland,Christians,heterosexual
+bb3ae400-0642-47bf-b3e3-15f9993d2a27,56,male,Realschule oder gleichwertiger Abschluss,Soldat/in,married,with_migration,Rumänien,Christians,heterosexual
+5c12bc00-baa2-4f68-b168-d6e4b845857e,56,male,Fachhochschul- oder Hochschulreife,Buchhalter/in,married,with_migration,Georgien,Christians,heterosexual
+d8f0a4fd-9235-44ea-8279-d8c3a8c7bf49,53,female,Realschule oder gleichwertiger Abschluss,Anwalt/Anwältin,married,without_migration,Deutschland,Christians,heterosexual
+3578e21b-2c80-4ead-b748-2182324219e6,57,female,Realschule oder gleichwertiger Abschluss,Anwalt/Anwältin,married,without_migration,Deutschland,Christians,heterosexual
+bde05d4f-16f9-4beb-8bd4-78faa53dc31e,61,male,Abschluss der polytechnischen Oberschule,Reinigungskraft,married,with_migration,Belgien,Christians,heterosexual
+b85513dc-d989-4015-95e8-3b55e61574b9,0,male,Unknown,Unemployed,single,with_migration,Ungarn,Religiously_unaffiliated,heterosexual
+f007ff9c-e65a-4ede-9ae4-59b0a367a860,2,male,Unknown,Unemployed,single,with_migration,Tschechien,Religiously_unaffiliated,homosexual
+828af6fc-922f-48c4-b07c-a40d792354ef,83,male,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+ef5cf4f1-7674-46bd-9663-c567e4b6a2fc,33,female,Ohne allgemeinen Schulabschluss,Sozialarbeiter/in,married,with_migration,Kroatien,Christians,heterosexual
+b7470ff7-ea15-4e63-ab07-2d816cb17574,67,female,Fachhochschul- oder Hochschulreife,Manager/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+533ae6b2-c6d7-4811-8d81-4e84c5360eda,8,female,Unknown,Schüler/in,single,without_migration,Deutschland,Christians,heterosexual
+33d7619a-2420-4b83-987f-7cb4cfd28723,12,female,Unknown,Schüler/in,single,without_migration,Deutschland,Christians,heterosexual
+ab42724c-92a9-43a6-9164-3d8ba55d93b5,54,male,Realschule oder gleichwertiger Abschluss,Koch/Köchin,married,without_migration,Deutschland,Religiously_unaffiliated,homosexual
+c2cd4a79-de37-42fb-9add-0a28e2c3a3f7,18,female,Fachhochschul- oder Hochschulreife,Krankenpfleger/in,single,without_migration,Deutschland,Christians,heterosexual
+0139f4b9-bc8a-42e8-be50-c24cae53b7a1,54,female,Abschluss der polytechnischen Oberschule,Soldat/in,married,without_migration,Deutschland,Christians,heterosexual
+4c053806-1249-4dad-bd03-3097069f25ad,47,male,Haupt- (Volks-)schulabschluss,Krankenpfleger/in,married,without_migration,Deutschland,Christians,heterosexual
+6b24b46e-4dec-49f3-a3ec-a667dfa082fe,60,female,Ohne allgemeinen Schulabschluss,Informatiker/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+50f1e219-696b-40c2-a12f-973f61ce69f1,59,male,Fachhochschul- oder Hochschulreife,Lehrer/in,married,without_migration,Deutschland,Other_religions,heterosexual
+c74aee67-6dc7-4ec5-a7ea-277deecbb319,49,male,Realschule oder gleichwertiger Abschluss,Sozialarbeiter/in,married,with_migration,Äthiopien,Christians,heterosexual
+a39cf2cc-12c6-4b5b-b935-32c90ee30e9c,59,male,Realschule oder gleichwertiger Abschluss,Lehrer/in,married,without_migration,Deutschland,Christians,heterosexual
+9016f266-b7c0-4e81-b3d5-78f8f692004e,6,female,Unknown,Schüler/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+f6ba1e5c-01e8-48fc-b4bf-f88ba2d1837f,63,male,Haupt- (Volks-)schulabschluss,Erzieher/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+74db26e2-33b4-439e-8628-52d78ce2a5fc,50,female,Realschule oder gleichwertiger Abschluss,Arzt/Ärztin,married,without_migration,Deutschland,Christians,heterosexual
+c89b83f2-5b72-44ef-bcbe-c004b7ba3483,6,female,Unknown,Schüler/in,single,without_migration,Deutschland,Christians,heterosexual
+da16b439-a409-411b-baa0-802cef2edb88,9,male,Unknown,Schüler/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+28d48ab6-26c1-40fa-b5d9-83d3be814503,68,male,Fachhochschul- oder Hochschulreife,Rentner/in,single,without_migration,Deutschland,Christians,heterosexual
+75a36f2d-fefa-446f-972c-5c4e2ac755ab,86,male,Haupt- (Volks-)schulabschluss,Rentner/in,widowed,with_migration,Thailand,Buddhists,heterosexual
+ded857eb-0d14-4de8-aae6-79b29fff243b,17,female,Fachhochschul- oder Hochschulreife,Verkäufer/in,single,with_migration,Syrien,Muslims,heterosexual
+93c63a49-1c4b-42ed-a606-f03ecef1b1db,58,male,Fachhochschul- oder Hochschulreife,Journalist/in,married,without_migration,Deutschland,Christians,heterosexual
+2c49d70c-5b32-4dc9-851a-07cea0c887a4,20,female,Fachhochschul- oder Hochschulreife,Reinigungskraft,single,with_migration,Syrien,Muslims,heterosexual
+68ea0199-2e10-4187-8336-d7e004d87698,38,male,Realschule oder gleichwertiger Abschluss,Mechaniker/in,married,without_migration,Deutschland,Christians,heterosexual
+3d40bf23-546e-4945-a2c1-282bb26c6483,39,male,Fachhochschul- oder Hochschulreife,Friseur/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+de12b907-6f75-4c60-ab3c-689488f8e325,62,male,Fachhochschul- oder Hochschulreife,Buchhalter/in,married,without_migration,Deutschland,Christians,heterosexual
+1cadbec1-be0e-436f-a3c6-5aa08c36d603,9,male,Unknown,Schüler/in,single,with_migration,Afghanistan,Muslims,heterosexual
+95f762e2-0ea3-43a7-801a-83361fea0e3d,72,male,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+f76f0d19-c596-4059-9327-efdc6b8daaa0,15,female,Fachhochschul- oder Hochschulreife,Schüler/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+41585456-74d4-42e2-b4fd-43ca23b8cfe5,58,male,Abschluss der polytechnischen Oberschule,Anwalt/Anwältin,divorced,with_migration,Kroatien,Christians,heterosexual
+fbaf35ee-8de8-4425-88ba-8820f61d0dc6,29,female,Haupt- (Volks-)schulabschluss,Wissenschaftler/in,single,with_migration,Rumänien,Christians,heterosexual
+54ff2a6f-a951-4701-a94d-28d31dad1718,41,male,Realschule oder gleichwertiger Abschluss,Krankenpfleger/in,married,without_migration,Deutschland,Christians,heterosexual
+d15c1bfc-29a4-43c1-99fc-d9dc481c3d3d,57,female,Fachhochschul- oder Hochschulreife,Ingenieur/in,married,without_migration,Deutschland,Christians,heterosexual
+b1c9ffb6-adf8-4215-913d-ac07c6faf492,80,male,Abschluss der polytechnischen Oberschule,Rentner/in,married,with_migration,Niederlande,Christians,heterosexual
+7b9de190-461c-4234-a624-735b183a64b7,48,male,Realschule oder gleichwertiger Abschluss,Ingenieur/in,single,with_migration,Kanada,Christians,heterosexual
+d55abb8e-9ea4-4c93-ac4f-ba1911aec9af,65,female,Haupt- (Volks-)schulabschluss,Verkäufer/in,married,with_migration,Niederlande,Religiously_unaffiliated,heterosexual
+fdf5b019-6dc3-4126-ba1f-bac54567710e,58,female,Haupt- (Volks-)schulabschluss,Mechaniker/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+30f7be4c-2fc8-43c7-aead-a4d49f8df6c4,44,female,Realschule oder gleichwertiger Abschluss,Ingenieur/in,married,with_migration,Serbien,Christians,heterosexual
+06fca04b-e6c6-4b1b-940b-4c0b7477d1be,56,male,Haupt- (Volks-)schulabschluss,Erzieher/in,married,with_migration,Afghanistan,Muslims,heterosexual
+80263ad8-735a-4e7c-97a5-3cff70950842,5,female,Unknown,Unemployed,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+977f3c37-5834-4b6c-92a7-1b4a531ab224,42,female,Fachhochschul- oder Hochschulreife,Buchhalter/in,single,with_migration,Bosnien und Herzegowina,Muslims,heterosexual
+729de10e-73cf-4fd8-b560-e40a930c172a,50,female,Abschluss der polytechnischen Oberschule,Krankenpfleger/in,married,with_migration,Griechenland,Christians,heterosexual
+dc139916-1f29-45ba-8e34-0b910e8fbba3,65,female,Abschluss der polytechnischen Oberschule,Anwalt/Anwältin,widowed,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+0a266f18-4d00-4aff-9ab7-ba5c31d9cd07,2,male,Unknown,Unemployed,single,with_migration,Niederlande,Christians,heterosexual
+d9031258-6fe1-4cc6-adde-eaf3d2be4622,75,female,Realschule oder gleichwertiger Abschluss,Rentner/in,divorced,without_migration,Deutschland,Christians,heterosexual
+4e3ccb98-3aef-4ac6-bf68-12bc461aa737,66,male,Fachhochschul- oder Hochschulreife,Elektriker/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+315fa8f6-7edd-4859-a9f6-fa684cb15b8f,69,male,Fachhochschul- oder Hochschulreife,Rentner/in,divorced,without_migration,Deutschland,Christians,heterosexual
+a6602e8b-4aec-4a80-b903-78e30400742d,10,male,Unknown,Schüler/in,single,with_migration,Kosovo,Muslims,heterosexual
+eea33723-716b-43de-adcd-944b9e99f1cd,62,female,Realschule oder gleichwertiger Abschluss,Wissenschaftler/in,married,with_migration,Ukraine,Christians,heterosexual
+2c9c5a60-8b9f-4af0-9a66-1c302c350f2b,57,male,Fachhochschul- oder Hochschulreife,Lehrer/in,married,without_migration,Deutschland,Christians,heterosexual
+0ab43cfc-fc9a-451a-9182-8305d9432f84,7,male,Unknown,Schüler/in,single,without_migration,Deutschland,Christians,heterosexual
+d3442e06-d724-4220-bc39-a215fa010f1e,7,male,Unknown,Schüler/in,single,with_migration,Tschechien,Religiously_unaffiliated,heterosexual
+dab2803c-c523-4f78-a1d5-1930f1f6b00f,3,male,Unknown,Unemployed,single,with_migration,Russland,Christians,heterosexual
+37c81344-e374-45f4-9c8e-3b9fa9d81660,37,female,Realschule oder gleichwertiger Abschluss,Sekretär/in,married,without_migration,Deutschland,Christians,heterosexual
+55a5fb29-eab4-4330-90b6-b660ef307997,83,female,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+90c3ffb0-f724-4a7f-866b-f780e9243243,13,male,Unknown,Schüler/in,single,with_migration,Türkei,Muslims,heterosexual
+24d5ad1c-631b-4099-a15b-d113eb7b8393,71,male,Fachhochschul- oder Hochschulreife,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+c79c6a0c-47df-4a37-910a-ad95fcbc83e6,60,female,Realschule oder gleichwertiger Abschluss,Erzieher/in,single,with_migration,Griechenland,Christians,heterosexual
+ef507272-3383-4982-b54e-2aed92d53a4f,65,male,Realschule oder gleichwertiger Abschluss,Anwalt/Anwältin,married,without_migration,Deutschland,Christians,heterosexual
+7c55ac1f-2cff-4491-9dfa-6990e5311533,13,male,Unknown,Schüler/in,single,with_migration,Australien,Religiously_unaffiliated,heterosexual
+0c2bed8c-f03a-4055-ba77-09c6e050c9e7,73,male,Fachhochschul- oder Hochschulreife,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+ffa5ea4b-f1c6-462e-a3f6-d07dc7b6252c,5,female,Unknown,Unemployed,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+87fd112c-0b4b-4df1-8e82-63680b271799,68,male,Realschule oder gleichwertiger Abschluss,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+9988e3b1-cedc-4bd5-a878-0580d7da6414,32,female,Fachhochschul- oder Hochschulreife,Bauarbeiter/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+e74e6ec8-e856-430e-9371-14ca5d0bb9f9,28,female,Haupt- (Volks-)schulabschluss,Reinigungskraft,single,with_migration,China,Religiously_unaffiliated,heterosexual
+78f40a3a-efa1-4f73-81ae-4765a7ed2fca,39,male,Fachhochschul- oder Hochschulreife,Sozialarbeiter/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+16dd9daa-8c49-4e8a-8f82-4bdb8b119834,57,male,Haupt- (Volks-)schulabschluss,Wissenschaftler/in,married,without_migration,Deutschland,Christians,heterosexual
+ce59ee23-a436-4284-bfbf-512278131925,42,male,Fachhochschul- oder Hochschulreife,Elektriker/in,married,with_migration,Rumänien,Christians,heterosexual
+a6e1dc8b-b059-4bfb-9806-ebf109838476,71,male,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+bf22c91c-b170-4eec-afdd-85382b47f577,38,female,Fachhochschul- oder Hochschulreife,Lkw-Fahrer/in,single,with_migration,Ukraine,Christians,heterosexual
+de7992a7-860d-42d6-a2c4-830e00591fb4,57,female,Haupt- (Volks-)schulabschluss,Mechaniker/in,married,with_migration,Kroatien,Christians,heterosexual
+f4c3d84f-9fad-4a46-8614-33946d3a55a4,67,female,Haupt- (Volks-)schulabschluss,Künstler/in,married,without_migration,Deutschland,Christians,heterosexual
+a39e50c8-37ea-4775-8ee1-197262dbc8b9,40,female,Fachhochschul- oder Hochschulreife,Lehrer/in,married,without_migration,Deutschland,Christians,heterosexual
+6237709a-5e5d-4e7e-b7fd-74881f5a37b0,78,female,Realschule oder gleichwertiger Abschluss,Rentner/in,married,without_migration,Deutschland,Muslims,heterosexual
+d666334b-da48-4492-a847-c10ae1ea5bf5,62,female,Realschule oder gleichwertiger Abschluss,Lkw-Fahrer/in,married,without_migration,Deutschland,Christians,heterosexual
+b85fbd5b-8c7c-4ac1-9694-51e42920f884,40,female,Realschule oder gleichwertiger Abschluss,Lehrer/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+d8d424fb-b598-4099-bd1c-646af9e703e3,90,female,Haupt- (Volks-)schulabschluss,Rentner/in,divorced,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+4beb9558-4c74-46e3-bb92-64e027034b0f,99,female,Abschluss der polytechnischen Oberschule,Rentner/in,widowed,without_migration,Deutschland,Muslims,heterosexual
+0192e192-9af7-470c-acb1-dcfd781d024d,33,female,Fachhochschul- oder Hochschulreife,Lkw-Fahrer/in,single,with_migration,Ukraine,Christians,heterosexual
+7c25c406-e3c6-4389-90e8-814f4cf25b71,19,male,Realschule oder gleichwertiger Abschluss,Koch/Köchin,single,with_migration,Rumänien,Christians,heterosexual
+d1ec5070-6824-4063-80b3-715bba74a5a7,55,female,Fachhochschul- oder Hochschulreife,Reinigungskraft,married,without_migration,Deutschland,Christians,heterosexual
+2db69c33-7341-4efc-8fa7-2a4480a8160c,79,female,Realschule oder gleichwertiger Abschluss,Rentner/in,married,without_migration,Deutschland,Muslims,heterosexual
+0b0be0e9-3e39-42ab-8169-55c0e41f2704,76,diverse,Haupt- (Volks-)schulabschluss,Rentner/in,widowed,without_migration,Deutschland,Christians,heterosexual
+737cce37-428b-498a-b716-d2b835600351,76,female,Realschule oder gleichwertiger Abschluss,Rentner/in,married,with_migration,Spanien,Christians,heterosexual
+054b2f73-f98a-4053-a9a2-ab2475e55c1e,10,male,Unknown,Schüler/in,single,with_migration,Afghanistan,Muslims,heterosexual
+1a180bb6-55a8-4266-96e0-baad1347393e,36,female,Fachhochschul- oder Hochschulreife,Richter/in,married,without_migration,Deutschland,Christians,heterosexual
+1060b90f-ffe6-49d5-9cc2-9e85531eba2c,37,male,Fachhochschul- oder Hochschulreife,Krankenpfleger/in,single,with_migration,Polen,Christians,heterosexual
+ff16c405-1d72-43c4-a62c-7fe54bb51d51,42,female,Fachhochschul- oder Hochschulreife,Bauarbeiter/in,married,with_migration,Serbien,Christians,heterosexual
+57895660-d908-4e1d-b7a4-9cc56d8edcaa,24,female,Realschule oder gleichwertiger Abschluss,Künstler/in,single,without_migration,Deutschland,Christians,heterosexual
+e265445b-0cbe-4d21-a366-79a6937c4368,47,female,Ohne allgemeinen Schulabschluss,Krankenpfleger/in,married,with_migration,Kroatien,Christians,heterosexual
+04fe23e5-c063-4946-8603-bea9164b9da6,34,male,Fachhochschul- oder Hochschulreife,Mechaniker/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+6e7fe454-208a-4073-b254-95c69d7f65b3,65,male,Haupt- (Volks-)schulabschluss,Mechaniker/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+8ddb10d5-eebf-438c-8db7-55bb2d2d380b,46,female,Realschule oder gleichwertiger Abschluss,Elektriker/in,married,with_migration,Frankreich,Christians,heterosexual
+6e55e17e-7dbb-46ad-aed9-35d3a1275f4e,8,male,Unknown,Schüler/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+33cfcb8f-bbbf-43d8-ab75-a0f184703640,56,female,Realschule oder gleichwertiger Abschluss,Soldat/in,married,with_migration,Bulgarien,Religiously_unaffiliated,heterosexual
+70682bbc-8bc9-424d-9a0c-ed2c4f4a2249,8,male,Unknown,Schüler/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+e4c0b3c6-31cc-45e2-bf8d-006f4427d624,41,female,Fachhochschul- oder Hochschulreife,Künstler/in,divorced,without_migration,Deutschland,Christians,heterosexual
+3ec32748-c2da-4b68-89d6-f47936e872a5,0,female,Unknown,Unemployed,single,without_migration,Deutschland,Christians,heterosexual
+f9549360-3dd5-44b3-a8f0-f073b9bdfc90,28,male,Fachhochschul- oder Hochschulreife,Verkäufer/in,single,with_migration,Syrien,Christians,heterosexual
+e9c1f38e-289e-418a-a24e-c6fe475af8de,32,male,Fachhochschul- oder Hochschulreife,Mechaniker/in,single,without_migration,Deutschland,Christians,heterosexual
+87ad2b61-95e0-493d-8419-59234d29bac4,66,female,Fachhochschul- oder Hochschulreife,Journalist/in,married,without_migration,Deutschland,Christians,heterosexual
+9a3579c4-3e72-4e5c-9e4f-a59ab14e5398,75,male,Fachhochschul- oder Hochschulreife,Rentner/in,married,with_migration,Österreich,Christians,heterosexual
+3f3d4f14-da05-4e25-ae67-2717a570150f,43,male,Haupt- (Volks-)schulabschluss,Lehrer/in,married,with_migration,Ukraine,Christians,heterosexual
+38de8643-a137-4fa4-a4b9-20542bb65d47,29,female,Fachhochschul- oder Hochschulreife,Verkäufer/in,single,with_migration,Ukraine,Christians,heterosexual
+10c101ec-bc80-4894-bb40-54f9f0960e15,17,female,Realschule oder gleichwertiger Abschluss,Friseur/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+b40b8dc6-96b0-4788-9acd-e43858826d86,41,female,Ohne allgemeinen Schulabschluss,Lkw-Fahrer/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+fe1d7adb-ed87-4985-b4ea-65a49f1e6015,56,male,Realschule oder gleichwertiger Abschluss,Verkäufer/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+633f47bf-41f1-418b-906d-3f0f850bf69a,78,female,Realschule oder gleichwertiger Abschluss,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+f407118a-5fa7-4a90-b26c-821b5151d6a6,21,male,Ohne allgemeinen Schulabschluss,Sozialarbeiter/in,single,with_migration,Ukraine,Christians,heterosexual
+32e9ecb0-219d-41c1-8b48-cb59ca7b7c62,76,male,Haupt- (Volks-)schulabschluss,Rentner/in,widowed,without_migration,Deutschland,Muslims,heterosexual
+fe4b4922-2e8a-4c80-b2df-028f2e4c7601,93,female,Haupt- (Volks-)schulabschluss,Rentner/in,widowed,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+f1b17a93-7adb-4ce0-a9a4-62a5151eec2c,5,male,Unknown,Unemployed,single,with_migration,Ukraine,Christians,heterosexual
+0b526218-4b4c-4080-bb8f-0989bfaab4de,84,female,Realschule oder gleichwertiger Abschluss,Rentner/in,widowed,without_migration,Deutschland,Christians,heterosexual
+60f4a0ba-ff72-4412-b476-9cb94bc34f53,10,male,Unknown,Schüler/in,single,without_migration,Deutschland,Muslims,heterosexual
+89011638-ef93-4ec3-8b25-1fef4d258ced,28,female,Fachhochschul- oder Hochschulreife,Ingenieur/in,single,with_migration,Polen,Christians,heterosexual
+eaca2432-ed96-4377-8ca0-3eda4e3a5881,41,male,Fachhochschul- oder Hochschulreife,Arzt/Ärztin,married,without_migration,Deutschland,Christians,heterosexual
+ffab72b9-8c46-4f42-bf09-bc73c44e008b,35,male,Fachhochschul- oder Hochschulreife,Sozialarbeiter/in,married,with_migration,USA,Christians,heterosexual
+bbd96d55-9c25-4d64-8196-bb38614a62bb,57,female,Realschule oder gleichwertiger Abschluss,Sekretär/in,divorced,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+d20a5fa2-ce05-455c-b645-7e1758993308,33,male,Realschule oder gleichwertiger Abschluss,Wissenschaftler/in,single,with_migration,Syrien,Muslims,heterosexual
+187c161a-0cec-4b3e-81f0-be9d1ee6767c,12,female,Unknown,Schüler/in,single,without_migration,Deutschland,Muslims,heterosexual
+4fa5a860-5ae5-46a1-b7aa-f05b2131cce9,39,female,Fachhochschul- oder Hochschulreife,Anwalt/Anwältin,married,with_migration,Bulgarien,Christians,heterosexual
+8442ca95-4869-40bd-9732-ab1280f417a6,59,male,Abschluss der polytechnischen Oberschule,Manager/in,divorced,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+63ef869c-cb54-4855-8368-217d9f0dfb39,35,female,Realschule oder gleichwertiger Abschluss,Koch/Köchin,divorced,with_migration,Türkei,Muslims,heterosexual
+90653cc9-f521-4d4d-b0f7-ee350c13d252,33,female,Fachhochschul- oder Hochschulreife,Journalist/in,single,with_migration,Mexiko,Christians,heterosexual
+2a1a5eaf-f7a9-4142-82b1-d15eee639e0f,85,female,Fachhochschul- oder Hochschulreife,Rentner/in,married,with_migration,Italien,Christians,heterosexual
+79fcea90-1eea-4047-af45-308f12784e5b,74,female,Realschule oder gleichwertiger Abschluss,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,homosexual
+0773c335-0061-4131-972b-3a1cae999754,60,male,Realschule oder gleichwertiger Abschluss,Krankenpfleger/in,married,with_migration,Bosnien und Herzegowina,Muslims,heterosexual
+21f30aeb-a25b-4f07-8856-98a3fc054ba9,67,female,Haupt- (Volks-)schulabschluss,Friseur/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+d66874aa-b471-4e8b-8773-80cd8dfa131f,6,male,Unknown,Schüler/in,single,without_migration,Deutschland,Christians,homosexual
+afe2dd44-6f49-4754-a550-78d1ab836cc6,8,female,Unknown,Schüler/in,single,with_migration,USA,Religiously_unaffiliated,heterosexual
+c2132713-79b4-41ab-8910-386c5811eed7,62,female,Realschule oder gleichwertiger Abschluss,Erzieher/in,single,without_migration,Deutschland,Christians,heterosexual
+d6b8f067-8e50-4f64-9ccb-c7b4963d607e,63,female,Fachhochschul- oder Hochschulreife,Informatiker/in,married,with_migration,Bulgarien,Religiously_unaffiliated,heterosexual
+f0bcd721-5688-4ae3-a040-9820781f6adb,20,female,Fachhochschul- oder Hochschulreife,Künstler/in,single,without_migration,Deutschland,Christians,heterosexual
+a48c0bf5-18e7-4cad-9698-43bbf2770ab3,47,male,Fachhochschul- oder Hochschulreife,Manager/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+1ceb2dab-6a48-4ab2-8da4-5f7d1659810c,33,male,Realschule oder gleichwertiger Abschluss,Lkw-Fahrer/in,single,without_migration,Deutschland,Christians,heterosexual
+938b5e8f-18a9-42f0-9329-941c70d1352c,62,female,Fachhochschul- oder Hochschulreife,Koch/Köchin,married,with_migration,Ungarn,Religiously_unaffiliated,heterosexual
+47aeb3c7-2645-4999-9593-81223f90a30d,77,female,Haupt- (Volks-)schulabschluss,Rentner/in,divorced,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+3ecc593e-54b9-4d21-8e05-8cf83cdeb71f,40,female,Fachhochschul- oder Hochschulreife,Lkw-Fahrer/in,married,without_migration,Deutschland,Christians,heterosexual
+7ce17e1e-b31a-42c5-befd-90dcfd1d3b57,43,male,Fachhochschul- oder Hochschulreife,Verkäufer/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+6ffb2ac2-8592-4000-9e64-65ae738c9805,52,female,Fachhochschul- oder Hochschulreife,Erzieher/in,single,with_migration,Ukraine,Christians,heterosexual
+280b5cff-6bc9-47b7-a762-57f83feaf36d,1,female,Unknown,Unemployed,single,with_migration,Kroatien,Christians,heterosexual
+42100f32-182e-4b77-b5ac-1f56f4cedd23,17,male,Fachhochschul- oder Hochschulreife,Friseur/in,single,without_migration,Deutschland,Christians,heterosexual
+719e01b7-f4d9-4562-8675-1a9bfdab6841,35,male,Ohne allgemeinen Schulabschluss,Ingenieur/in,married,with_migration,Rumänien,Christians,heterosexual
+81d49f27-7dae-40e1-a7f3-a4afa8c2f0b0,83,female,Ohne allgemeinen Schulabschluss,Rentner/in,widowed,without_migration,Deutschland,Christians,heterosexual
+d084b7df-a76e-417b-b44c-ec76bc30a867,43,male,Realschule oder gleichwertiger Abschluss,Mechaniker/in,married,with_migration,Ukraine,Christians,heterosexual
+ec5e8148-23e1-4527-92c4-347008e39f49,25,female,Fachhochschul- oder Hochschulreife,Wissenschaftler/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+4263570a-646f-4618-b5c2-8beaaa0abfd7,51,female,Realschule oder gleichwertiger Abschluss,Informatiker/in,single,without_migration,Deutschland,Christians,heterosexual
+bd480da4-c2d9-4019-b026-6a4d5f3438ed,36,male,Fachhochschul- oder Hochschulreife,Arzt/Ärztin,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+8fdaf0a8-d610-4de7-bc90-22bd569c335e,59,female,Haupt- (Volks-)schulabschluss,Arzt/Ärztin,single,without_migration,Deutschland,Muslims,heterosexual
+3bc04df0-8f3f-4f12-8ab4-7ada68665aa7,56,female,Realschule oder gleichwertiger Abschluss,Richter/in,married,with_migration,Griechenland,Christians,heterosexual
+f35f7afd-0b03-4454-8a47-bb4a234aeb98,59,male,Haupt- (Volks-)schulabschluss,Koch/Köchin,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+402ce59d-b105-4927-861a-a96699fd9f39,63,male,Haupt- (Volks-)schulabschluss,Ingenieur/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+9b04a934-71db-4ed2-908e-b8b50cc33bb7,27,male,Haupt- (Volks-)schulabschluss,Verkäufer/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+bb52476f-c7db-4dfd-bda4-3f45ff298e19,49,female,Fachhochschul- oder Hochschulreife,Koch/Köchin,divorced,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+a629e278-7fe1-4fc0-8ba6-a51bdc52dd25,45,female,Fachhochschul- oder Hochschulreife,Anwalt/Anwältin,single,without_migration,Deutschland,Christians,heterosexual
+b3e8805a-eb20-4187-be49-99940d38ade4,60,female,Abschluss der polytechnischen Oberschule,Mechaniker/in,divorced,without_migration,Deutschland,Christians,heterosexual
+f73d24c7-08b3-45dd-a23e-fc575143579f,61,female,Fachhochschul- oder Hochschulreife,Bauarbeiter/in,married,without_migration,Deutschland,Christians,heterosexual
+204161f3-7fa5-4c24-b9eb-fe0ca91a0d01,42,male,Fachhochschul- oder Hochschulreife,Journalist/in,single,with_migration,Türkei,Muslims,heterosexual
+7e1c31d5-d8c3-4fe0-8a42-8974ad67bb9a,28,female,Haupt- (Volks-)schulabschluss,Friseur/in,single,without_migration,Deutschland,Christians,heterosexual
+0b264d6a-f411-4060-a7fb-519abc764903,50,female,Abschluss der polytechnischen Oberschule,Arzt/Ärztin,married,with_migration,Portugal,Religiously_unaffiliated,heterosexual
+212e1275-ee0e-43b1-b1ad-d5d19d33c199,12,male,Unknown,Schüler/in,single,without_migration,Deutschland,Christians,heterosexual
+3998656e-0077-4bb7-b2fe-a8aeeee2a29d,37,male,Fachhochschul- oder Hochschulreife,Journalist/in,married,with_migration,Tschechien,Religiously_unaffiliated,heterosexual
+d4e6a579-a02c-4f1e-8b5c-10fd0d13286d,58,female,Haupt- (Volks-)schulabschluss,Friseur/in,divorced,with_migration,Türkei,Muslims,heterosexual
+657f22b3-b94c-466f-9152-39cce27f3304,66,female,Haupt- (Volks-)schulabschluss,Erzieher/in,married,with_migration,Nigeria,Muslims,heterosexual
+15cc0b58-f5dd-49d2-a0ca-9b32a065838a,83,female,Realschule oder gleichwertiger Abschluss,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+1d033878-1930-4944-9a4e-2168828a9ace,28,female,Realschule oder gleichwertiger Abschluss,Mechaniker/in,single,with_migration,Bulgarien,Christians,heterosexual
+337f27a6-2dda-4ee9-8d76-73585349ceba,77,female,Realschule oder gleichwertiger Abschluss,Rentner/in,divorced,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+87a35715-6d74-4506-bad1-dfdb4a27831a,83,female,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+f0c3d14c-bd1d-452a-a259-08816494bcb0,60,male,Realschule oder gleichwertiger Abschluss,Lehrer/in,married,with_migration,Griechenland,Christians,heterosexual
+3141bd59-3106-45fc-9213-7717efe115cb,51,female,Fachhochschul- oder Hochschulreife,Informatiker/in,married,with_migration,Ukraine,Christians,heterosexual
+a81e6d24-f808-4639-9a59-983acb4766c9,23,female,Realschule oder gleichwertiger Abschluss,Ingenieur/in,single,with_migration,Ukraine,Christians,heterosexual
+0f7a30e0-ead6-462b-aea3-91dbf9bf5b25,24,male,Noch in schulischer Ausbildung,Künstler/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+8e3ff4a0-ba46-4127-858c-051bf2ede803,4,female,Unknown,Unemployed,single,with_migration,Türkei,Muslims,heterosexual
+aa8d480b-6d15-4e7a-94a2-c88fbf2c4d6c,27,female,Fachhochschul- oder Hochschulreife,Verkäufer/in,single,with_migration,Marokko,Muslims,heterosexual
+b9977712-722a-468d-8aa3-34a9b00c499d,55,male,Fachhochschul- oder Hochschulreife,Buchhalter/in,married,without_migration,Deutschland,Christians,heterosexual
+cc9471ac-95c3-4b44-844d-6379b67b5bc4,37,male,Fachhochschul- oder Hochschulreife,Soldat/in,single,with_migration,Spanien,Christians,heterosexual
+30f99d7f-3287-49a3-91c8-8d849f6d8d4e,5,male,Unknown,Unemployed,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+4fec193b-855d-4b30-933d-91a420ac553d,56,female,Fachhochschul- oder Hochschulreife,Journalist/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+f72d5c2e-3e0c-4fb6-a00d-69174c09a8e9,68,male,Fachhochschul- oder Hochschulreife,Rentner/in,divorced,without_migration,Deutschland,Christians,heterosexual
+4c8e07e4-4066-40ce-a95f-5e874fb74183,13,female,Unknown,Schüler/in,single,without_migration,Deutschland,Christians,heterosexual
+603fe679-1b78-4805-9d8e-5f519f7f6868,32,male,Fachhochschul- oder Hochschulreife,Arzt/Ärztin,divorced,without_migration,Deutschland,Christians,heterosexual
+88bb70a8-6dbd-479a-a399-d3b9a8da278e,53,female,Haupt- (Volks-)schulabschluss,Reinigungskraft,divorced,without_migration,Deutschland,Muslims,heterosexual
+ca61a29b-4ab9-4e2b-a126-629a71669a92,35,male,Realschule oder gleichwertiger Abschluss,Buchhalter/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+8c6013c9-a0df-4afc-86eb-c3cfb9caa1d4,2,female,Unknown,Unemployed,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+05c01673-7096-43a9-96cc-9c07ac8619f1,67,female,Haupt- (Volks-)schulabschluss,Reinigungskraft,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+f483305f-19cb-45de-8f72-166cfe2f4da5,36,female,Realschule oder gleichwertiger Abschluss,Sozialarbeiter/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+250398ed-40ba-40b9-ba4a-f1d48729bee1,60,male,Ohne allgemeinen Schulabschluss,Verkäufer/in,single,with_migration,Afghanistan,Muslims,heterosexual
+b9725323-c1bb-4bf7-88d3-3f2f7b96afb8,54,female,Fachhochschul- oder Hochschulreife,Bauarbeiter/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+9653a37d-b5da-4cac-98df-f7973be9a649,32,male,Fachhochschul- oder Hochschulreife,Künstler/in,married,without_migration,Deutschland,Christians,heterosexual
+d3650032-e43d-4d92-848a-9418acc86396,28,female,Haupt- (Volks-)schulabschluss,Sozialarbeiter/in,single,with_migration,Tunesien,Muslims,heterosexual
+9770c07f-490e-4005-a8bd-387e2ec9b3d7,31,male,Haupt- (Volks-)schulabschluss,Erzieher/in,divorced,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+c68a1332-0673-4e8b-9ea4-2c8baeb193ef,13,male,Unknown,Schüler/in,single,with_migration,Irak,Muslims,heterosexual
+995f4053-dc0f-410a-9b8f-06d5a797c706,59,female,Realschule oder gleichwertiger Abschluss,Erzieher/in,single,without_migration,Deutschland,Christians,heterosexual
+cf6d2033-9cc0-4c86-a7b9-cdae1efbdcb8,7,female,Unknown,Schüler/in,single,with_migration,Österreich,Christians,bisexual
+4f7f5a70-0be5-4a59-b3c0-ca946a5df905,59,female,Realschule oder gleichwertiger Abschluss,Bauarbeiter/in,single,without_migration,Deutschland,Christians,heterosexual
+355762a3-24a0-495d-83a2-998b0b1440ad,38,female,Fachhochschul- oder Hochschulreife,Informatiker/in,single,with_migration,Syrien,Muslims,heterosexual
+49af5d49-a362-4e56-a667-4984bd0cd3e2,27,female,Fachhochschul- oder Hochschulreife,Polizist/in,single,without_migration,Deutschland,Christians,heterosexual
+49f0b83e-e80d-4ff6-8235-9104a2307592,23,male,Haupt- (Volks-)schulabschluss,Sekretär/in,single,with_migration,Syrien,Muslims,heterosexual
+3bbf51ae-7d30-41e1-b5d4-eb7dca70a3b7,27,male,Fachhochschul- oder Hochschulreife,Journalist/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+1299d027-6b7f-4585-a8df-2193c5da077a,35,female,Realschule oder gleichwertiger Abschluss,Buchhalter/in,married,with_migration,Syrien,Muslims,heterosexual
+58f64a8f-4707-4d9f-9eb9-091e171ba63a,44,female,Realschule oder gleichwertiger Abschluss,Lehrer/in,married,with_migration,Syrien,Muslims,heterosexual
+73bbc33f-54f5-44bf-a2db-b99aacc89307,72,female,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+fecd0cba-fae4-498b-9d81-90098e780baa,15,male,Ohne allgemeinen Schulabschluss,Schüler/in,single,without_migration,Deutschland,Muslims,heterosexual
+a1340142-ca59-4031-82ce-5b9839da2494,74,female,Realschule oder gleichwertiger Abschluss,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+5449d9b9-47eb-48e9-b875-6f8a88792956,69,female,Haupt- (Volks-)schulabschluss,Rentner/in,married,with_migration,Italien,Christians,heterosexual
+3579f843-308e-4a19-8375-1643e9a78399,60,male,Fachhochschul- oder Hochschulreife,Verkäufer/in,married,without_migration,Deutschland,Christians,heterosexual
+66d5e6e7-aa48-4ed9-a883-1de8c5dd8231,32,male,Fachhochschul- oder Hochschulreife,Anwalt/Anwältin,single,with_migration,China,Religiously_unaffiliated,heterosexual
+8c6cb9cc-5425-44b1-a638-aa128bf26838,23,female,Noch in schulischer Ausbildung,Polizist/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+8f902295-fb75-4f1a-b7c1-09436024d304,92,female,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+98c589b5-0385-416f-bf87-1aaad9064409,74,female,Realschule oder gleichwertiger Abschluss,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+76e66e9c-8a22-4385-9324-baf8ec817728,64,female,Realschule oder gleichwertiger Abschluss,Reinigungskraft,married,without_migration,Deutschland,Christians,heterosexual
+d121789d-4e32-445b-8ee1-81089ffb08e7,31,male,Fachhochschul- oder Hochschulreife,Reinigungskraft,married,with_migration,Nordmazedonien,Christians,heterosexual
+338cc79f-4bd7-4831-8bbf-628922449799,12,female,Unknown,Schüler/in,single,with_migration,Indien,Hindus,heterosexual
+d36bf83c-04b9-40d6-9aff-c23d9e0eb498,41,female,Fachhochschul- oder Hochschulreife,Richter/in,married,with_migration,Italien,Hindus,heterosexual
+a9993f45-daf1-48d1-89c1-54590807f612,25,male,Fachhochschul- oder Hochschulreife,Bauarbeiter/in,single,with_migration,Iran,Muslims,heterosexual
+8640fcc6-41a7-44a7-8c1b-710aa05ac599,55,male,Abschluss der polytechnischen Oberschule,Bauarbeiter/in,married,without_migration,Deutschland,Christians,heterosexual
+a97d1e27-f06b-4596-9244-f24a6a9926e7,74,female,Realschule oder gleichwertiger Abschluss,Rentner/in,married,with_migration,Kenia,Christians,heterosexual
+73ea5b7c-d365-41c6-8fbf-52e62c1a57ce,73,male,Fachhochschul- oder Hochschulreife,Rentner/in,married,with_migration,Schweden,Christians,heterosexual
+cac574bd-e163-44a8-8047-43af1b87ad09,13,female,Unknown,Schüler/in,single,without_migration,Deutschland,Christians,heterosexual
+dfa68607-22c3-43b0-91f8-0bcebb4ac146,38,female,Fachhochschul- oder Hochschulreife,Buchhalter/in,married,without_migration,Deutschland,Christians,heterosexual
+231caf5a-78dc-47ee-8c29-4f087b7fe07e,31,male,Fachhochschul- oder Hochschulreife,Journalist/in,single,with_migration,Indien,Hindus,heterosexual
+229d1610-6f27-4f7b-8f76-b10db0127f59,59,male,Abschluss der polytechnischen Oberschule,Wissenschaftler/in,married,with_migration,Rumänien,Christians,heterosexual
+d38244b6-ea4a-4cac-a649-3b9ba541eacc,65,female,Haupt- (Volks-)schulabschluss,Krankenpfleger/in,married,with_migration,Italien,Christians,heterosexual
+e2c8415d-57f9-4e49-8b3c-d6c774b5598f,9,male,Unknown,Schüler/in,single,without_migration,Deutschland,Christians,heterosexual
+253fcceb-dd56-45aa-a86a-5867b2ad0e4f,22,female,Ohne allgemeinen Schulabschluss,Bauarbeiter/in,single,with_migration,Syrien,Religiously_unaffiliated,heterosexual
+bc0f90ce-c498-4777-98ed-176458fe23ad,62,male,Realschule oder gleichwertiger Abschluss,Verkäufer/in,married,without_migration,Deutschland,Christians,heterosexual
+e71adaa5-dce9-40c6-a356-c4746bace670,39,female,Haupt- (Volks-)schulabschluss,Reinigungskraft,married,with_migration,Brasilien,Christians,heterosexual
+d958aa0d-f4d0-4617-87ea-27403be9716e,84,male,Haupt- (Volks-)schulabschluss,Rentner/in,married,with_migration,Ukraine,Christians,heterosexual
+581b34ec-e658-4b2e-9465-3f4b8d47e758,64,female,Fachhochschul- oder Hochschulreife,Lehrer/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+74171445-528c-40db-9407-3764dae91103,65,female,Abschluss der polytechnischen Oberschule,Buchhalter/in,married,without_migration,Deutschland,Christians,heterosexual
+496535a5-41b8-492f-92ef-0f96dfe30737,12,male,Unknown,Schüler/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+4546bd2c-9c0c-497b-b758-c130a23125ac,27,female,Fachhochschul- oder Hochschulreife,Sozialarbeiter/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+a56dd28c-7703-4a25-8573-a6072e62717e,74,male,Abschluss der polytechnischen Oberschule,Rentner/in,married,without_migration,Deutschland,Muslims,heterosexual
+30d3993c-69d0-4741-a416-ddf6db4d0699,62,female,Fachhochschul- oder Hochschulreife,Verkäufer/in,divorced,without_migration,Deutschland,Christians,heterosexual
+e9d3364c-961b-4c6f-a1a1-a879c294ced2,45,male,Realschule oder gleichwertiger Abschluss,Manager/in,single,without_migration,Deutschland,Christians,heterosexual
+40168ad5-ab11-443b-9b05-564eec826727,34,male,Realschule oder gleichwertiger Abschluss,Lehrer/in,married,without_migration,Deutschland,Christians,heterosexual
+920942d0-4d5c-43c6-b08d-7d2ec8ba9786,42,male,Fachhochschul- oder Hochschulreife,Journalist/in,single,without_migration,Deutschland,Other_religions,heterosexual
+ff95799d-54c0-40ca-9088-22dc26e86b94,83,male,Haupt- (Volks-)schulabschluss,Rentner/in,widowed,without_migration,Deutschland,Christians,heterosexual
+656e5e81-661e-4b12-81ea-90559ca9b511,15,female,Fachhochschul- oder Hochschulreife,Schüler/in,single,with_migration,Griechenland,Christians,heterosexual
+0161a531-50f8-47d5-a287-f5306caa84d9,62,male,Haupt- (Volks-)schulabschluss,Lehrer/in,single,with_migration,Albanien,Muslims,heterosexual
+3422cd90-8166-4028-b5ca-e40c2feeb0ca,58,female,Fachhochschul- oder Hochschulreife,Ingenieur/in,married,with_migration,Kosovo,Muslims,heterosexual
+cfa04d3c-0a47-4bbe-ad01-b38e38d7d858,5,male,Unknown,Unemployed,single,with_migration,Polen,Christians,heterosexual
+bc7054f4-eeba-41d0-8b5a-017830c944a4,59,male,Fachhochschul- oder Hochschulreife,Richter/in,divorced,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+d771cab8-9ec8-44e7-b6a6-3a7ebb86c35d,38,female,Realschule oder gleichwertiger Abschluss,Verkäufer/in,divorced,with_migration,Kroatien,Christians,heterosexual
+35bdf113-9ce1-45f2-bce4-de383d1c3de4,36,female,Fachhochschul- oder Hochschulreife,Manager/in,single,with_migration,Türkei,Muslims,heterosexual
+f94c9331-e4f2-4496-a2be-c84051330ed3,14,male,Unknown,Schüler/in,single,with_migration,Vietnam,Buddhists,heterosexual
+0fb53c85-7e5d-44ce-860c-29e3a6a0a3da,19,male,Fachhochschul- oder Hochschulreife,Friseur/in,single,without_migration,Deutschland,Christians,heterosexual
+97ad9c43-15c3-4663-8ffe-d6d231bb013d,4,male,Unknown,Unemployed,single,with_migration,Syrien,Muslims,heterosexual
+50399250-3d93-46c6-a864-ec178b27b4fc,49,male,Fachhochschul- oder Hochschulreife,Anwalt/Anwältin,single,with_migration,Griechenland,Christians,heterosexual
+186acc66-04b9-493b-b491-2736ee79bf80,40,female,Fachhochschul- oder Hochschulreife,Erzieher/in,married,without_migration,Deutschland,Christians,heterosexual
+21154ba2-1380-4b7d-afb6-1907b74d84ab,46,female,Fachhochschul- oder Hochschulreife,Mechaniker/in,married,without_migration,Deutschland,Christians,heterosexual
+9d62733a-405f-4e66-b80b-8b4e61c0147c,35,male,Fachhochschul- oder Hochschulreife,Informatiker/in,single,without_migration,Deutschland,Christians,heterosexual
+cc92a0b5-4fdd-4d34-910c-372e5615c350,60,male,Haupt- (Volks-)schulabschluss,Richter/in,divorced,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+cc7d05ba-df8b-434b-9ee6-61b495d36dfe,26,male,Fachhochschul- oder Hochschulreife,Verkäufer/in,married,with_migration,Irak,Muslims,heterosexual
+7fcd9cca-523c-4036-b8c3-7efdebcaf345,24,male,Realschule oder gleichwertiger Abschluss,Ingenieur/in,single,without_migration,Deutschland,Christians,heterosexual
+4f20cf57-2aad-4ba1-b801-a0f42a09cb26,12,female,Unknown,Schüler/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+a943845c-1a93-4560-bb97-c1665c1ac88e,6,male,Unknown,Schüler/in,single,with_migration,Bulgarien,Christians,heterosexual
+1c3fd4c0-0201-4679-82fe-7a68c29085dd,64,female,Abschluss der polytechnischen Oberschule,Soldat/in,married,without_migration,Deutschland,Christians,heterosexual
+06977ffc-9b08-43e9-b5c4-885450612d91,57,female,Fachhochschul- oder Hochschulreife,Sozialarbeiter/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+78497059-41c1-4521-96d1-800a9bf8c249,29,male,Fachhochschul- oder Hochschulreife,Krankenpfleger/in,single,with_migration,Indien,Hindus,heterosexual
+4fc7350e-1670-4a75-930b-1d72bd75736c,36,female,Haupt- (Volks-)schulabschluss,Friseur/in,married,without_migration,Deutschland,Christians,heterosexual
+3a396364-312f-4f6c-b8f7-8c5b72d658e9,12,male,Unknown,Schüler/in,single,without_migration,Deutschland,Christians,heterosexual
+5da4e968-4b25-4481-97da-d34ac349ad16,7,male,Unknown,Schüler/in,single,with_migration,Pakistan,Muslims,heterosexual
+cea73794-cbe3-49a6-8771-f0decf6e1a48,76,male,Ohne allgemeinen Schulabschluss,Rentner/in,divorced,without_migration,Deutschland,Christians,heterosexual
+33d751d7-2831-47f9-9cb4-d4f58fc12bd2,69,male,Realschule oder gleichwertiger Abschluss,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+d28df365-be48-4d6b-ae09-8e99ea5dafd6,9,female,Unknown,Schüler/in,single,with_migration,Algerien,Muslims,heterosexual
+0954abfa-3153-435e-ac82-f01a19c692e5,73,male,Haupt- (Volks-)schulabschluss,Rentner/in,divorced,without_migration,Deutschland,Christians,heterosexual
+8bdbd96e-256c-4c44-8b2d-87c7b2aef7c8,54,female,Haupt- (Volks-)schulabschluss,Soldat/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+706c3fd0-bef6-45cf-b1b3-18469ba975f8,56,male,Fachhochschul- oder Hochschulreife,Journalist/in,married,without_migration,Deutschland,Christians,heterosexual
+d7ac31e6-16ba-4b86-a924-1ce4923dd000,56,male,Abschluss der polytechnischen Oberschule,Informatiker/in,married,without_migration,Deutschland,Christians,heterosexual
+b86e8684-cb54-4a47-9e83-b297f296eb77,46,female,Realschule oder gleichwertiger Abschluss,Buchhalter/in,married,with_migration,Usbekistan,Muslims,heterosexual
+ab647909-939e-4dab-915a-4abed1ab15c4,41,male,Realschule oder gleichwertiger Abschluss,Verkäufer/in,single,without_migration,Deutschland,Christians,heterosexual
+90180c5a-d226-4cfc-8db4-e44fe22dd882,20,male,Noch in schulischer Ausbildung,Reinigungskraft,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+c022f086-08ca-4b38-bfeb-ec9100d3615e,45,male,Abschluss der polytechnischen Oberschule,Journalist/in,married,with_migration,Kroatien,Christians,heterosexual
+9c524dc1-4e37-43d6-af3e-73fa5c40cd07,87,female,Realschule oder gleichwertiger Abschluss,Rentner/in,widowed,with_migration,Syrien,Muslims,heterosexual
+f2b6f64d-ca63-4b42-b480-03ac3ca0b45b,80,female,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,homosexual
+11b25fb9-769c-4289-a762-724df48bea46,29,female,Realschule oder gleichwertiger Abschluss,Wissenschaftler/in,married,with_migration,Ukraine,Christians,heterosexual
+69ff9db8-2c72-4668-8d00-c99875746422,38,male,Haupt- (Volks-)schulabschluss,Bauarbeiter/in,single,with_migration,Türkei,Muslims,heterosexual
+74f7fe20-5f33-40bf-881a-cb57d830a6d4,17,female,Fachhochschul- oder Hochschulreife,Soldat/in,single,with_migration,Afghanistan,Muslims,heterosexual
+392537ef-ccfd-4292-a27f-d64781c56ed3,17,female,Fachhochschul- oder Hochschulreife,Reinigungskraft,single,without_migration,Deutschland,Christians,heterosexual
+76f60f95-4757-4d83-b05a-f83a9220c8d7,83,female,Abschluss der polytechnischen Oberschule,Rentner/in,divorced,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+bd0b8b5f-d6ea-4abc-ac22-7d8c575a4606,86,female,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+3f843db3-85f0-4a9c-845b-737990244003,56,female,Realschule oder gleichwertiger Abschluss,Buchhalter/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+0c52bd46-54b8-4bd1-9a39-53c0fa35e293,75,female,Fachhochschul- oder Hochschulreife,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+6f04b198-42c0-4648-bbd8-a9dc152474ff,80,female,Ohne allgemeinen Schulabschluss,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+763bd2ce-208c-4724-8668-9f81dc324415,77,female,Haupt- (Volks-)schulabschluss,Rentner/in,widowed,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+764e2c60-a636-4656-ac1c-e541b8136534,36,male,Realschule oder gleichwertiger Abschluss,Lkw-Fahrer/in,married,without_migration,Deutschland,Christians,heterosexual
+21b02c92-e4e6-45ff-8996-a33a77ca806c,33,female,Fachhochschul- oder Hochschulreife,Friseur/in,single,without_migration,Deutschland,Christians,heterosexual
+eb25bbe4-66ad-4389-8e3c-e784579854b9,0,male,Unknown,Unemployed,single,without_migration,Deutschland,Christians,heterosexual
+4169d187-13de-4c71-bd51-e3d38a214a96,55,female,Fachhochschul- oder Hochschulreife,Erzieher/in,married,with_migration,Kosovo,Muslims,heterosexual
+add83658-f143-4e68-9411-39c1f3b4aa5d,88,male,Realschule oder gleichwertiger Abschluss,Rentner/in,married,with_migration,Polen,Christians,heterosexual
+300c1027-7d98-4dc0-8ddc-efd54ebff402,31,female,Haupt- (Volks-)schulabschluss,Soldat/in,married,with_migration,Bulgarien,Muslims,heterosexual
+317bc928-83d5-4a52-9475-3f7affeb3221,77,male,Fachhochschul- oder Hochschulreife,Rentner/in,widowed,without_migration,Deutschland,Christians,heterosexual
+2e7a9deb-8287-4451-b0ea-37fc4e903637,17,male,Noch in schulischer Ausbildung,Schüler/in,single,with_migration,Ukraine,Religiously_unaffiliated,heterosexual
+26739eff-9322-4664-b5f0-0865b758acd4,43,female,Realschule oder gleichwertiger Abschluss,Buchhalter/in,married,without_migration,Deutschland,Christians,heterosexual
+5b6b1c25-666a-4876-a15f-a2e5e8f1d5fd,43,female,Fachhochschul- oder Hochschulreife,Reinigungskraft,married,with_migration,Türkei,Muslims,heterosexual
+0be0788d-2747-41c7-80d3-2c957cd21b43,8,male,Unknown,Schüler/in,single,with_migration,Kosovo,Muslims,heterosexual
+2b5644a2-3a74-420f-af14-7b1572c2e107,10,male,Unknown,Schüler/in,single,with_migration,Syrien,Muslims,heterosexual
+7ae4619d-eb66-4739-8a92-b5b1936e5a9c,25,diverse,Fachhochschul- oder Hochschulreife,Soldat/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+75d7b84f-6971-49bc-980f-687f7b05a4be,16,female,Fachhochschul- oder Hochschulreife,Koch/Köchin,single,with_migration,Polen,Christians,heterosexual
+8d90ea3b-590f-4ff1-bc64-5564895cb03d,64,female,Realschule oder gleichwertiger Abschluss,Arzt/Ärztin,widowed,without_migration,Deutschland,Christians,heterosexual
+c400207d-5144-4155-be0c-c7c55cd46fc5,16,male,Noch in schulischer Ausbildung,Friseur/in,single,with_migration,Türkei,Muslims,heterosexual
+f5c06b26-447b-48e9-b0b2-ba742a9e741d,0,female,Unknown,Unemployed,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+bdd49718-1841-4c81-b976-648416987d90,14,male,Unknown,Schüler/in,single,with_migration,Vietnam,Religiously_unaffiliated,heterosexual
+d70e9eed-4759-42ef-ba15-9f924d7688c1,76,male,Fachhochschul- oder Hochschulreife,Rentner/in,married,with_migration,Armenien,Christians,heterosexual
+6dcbc2af-f017-4e16-bc8f-1acd518ac486,79,male,Abschluss der polytechnischen Oberschule,Rentner/in,married,with_migration,Nordmazedonien,Christians,heterosexual
+64e5229b-c2ef-4b24-9d43-951d28f97a4c,31,male,Realschule oder gleichwertiger Abschluss,Mechaniker/in,married,with_migration,Serbien,Religiously_unaffiliated,heterosexual
+5c0e82ed-906e-4c9a-b2d3-c040d2dc93a4,65,male,Fachhochschul- oder Hochschulreife,Sozialarbeiter/in,married,without_migration,Deutschland,Christians,heterosexual
+116f24e4-b0e4-4943-b56d-e4299a673681,79,female,Realschule oder gleichwertiger Abschluss,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+218cf191-01c2-446c-9546-5612f37c6368,49,female,Fachhochschul- oder Hochschulreife,Soldat/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+289d845f-36ba-47b6-9cd4-717b3dc584e3,34,male,Realschule oder gleichwertiger Abschluss,Richter/in,single,with_migration,Ukraine,Christians,heterosexual
+236ae0b6-1b98-42f2-99be-05f4c8e4eace,4,male,Unknown,Unemployed,single,without_migration,Deutschland,Christians,heterosexual
+e75ac0e8-de97-410d-9fdf-875365943c28,33,male,Fachhochschul- oder Hochschulreife,Polizist/in,married,without_migration,Deutschland,Christians,heterosexual
+72c1396d-8e37-4e9e-a837-ac5c28557452,22,female,Fachhochschul- oder Hochschulreife,Journalist/in,single,without_migration,Deutschland,Christians,heterosexual
+3fefcf49-8f84-4bba-9bb5-3aaac06405bc,10,male,Unknown,Schüler/in,single,without_migration,Deutschland,Christians,heterosexual
+24669f35-e74e-4a27-8754-a26006007a6f,82,male,Haupt- (Volks-)schulabschluss,Rentner/in,widowed,without_migration,Deutschland,Christians,heterosexual
+6f472fe4-574c-4d2b-a3b7-b82be03fba44,68,male,Fachhochschul- oder Hochschulreife,Rentner/in,married,with_migration,Kroatien,Religiously_unaffiliated,heterosexual
+0a30299f-88c1-454b-82c5-3062b1f1769b,32,male,Haupt- (Volks-)schulabschluss,Journalist/in,single,without_migration,Deutschland,Christians,heterosexual
+5d5df516-3661-4afc-8c88-3fec45c83f2b,22,male,Realschule oder gleichwertiger Abschluss,Verkäufer/in,single,without_migration,Deutschland,Christians,heterosexual
+fc58f49d-fcda-49f0-ae63-d487463d364c,64,female,Realschule oder gleichwertiger Abschluss,Verkäufer/in,married,without_migration,Deutschland,Christians,heterosexual
+821f05ec-5566-40d6-bf8c-8c73c0a2cf7a,12,male,Unknown,Schüler/in,single,without_migration,Deutschland,Christians,heterosexual
+745a0aee-7369-4f97-977f-ef83c2c01b2a,3,female,Unknown,Unemployed,single,with_migration,Griechenland,Muslims,heterosexual
+628f6762-4749-49b7-8dfa-c73c39ce3b1b,21,female,Noch in schulischer Ausbildung,Verkäufer/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+7142fa88-5f4e-4288-aa47-4b1429829d51,41,female,Fachhochschul- oder Hochschulreife,Manager/in,single,without_migration,Deutschland,Christians,heterosexual
+5d2fa068-7f83-400e-9a42-eb95b407b2d8,83,female,Fachhochschul- oder Hochschulreife,Rentner/in,divorced,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+004412b8-17de-4c42-bc75-b05eb0ed6190,71,female,Realschule oder gleichwertiger Abschluss,Rentner/in,divorced,without_migration,Deutschland,Christians,heterosexual
+1610c48d-8164-45e2-8b9f-626b1cd75013,47,female,Fachhochschul- oder Hochschulreife,Erzieher/in,single,with_migration,Kroatien,Christians,bisexual
+faf132eb-7075-40ce-a454-928aa0e98f13,49,female,Fachhochschul- oder Hochschulreife,Koch/Köchin,divorced,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+9bb8f3a3-5eab-43e6-902b-8b0c846a6989,58,male,Ohne allgemeinen Schulabschluss,Sekretär/in,divorced,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+ec537672-09fc-4a37-93ca-4c6c11f49816,83,male,Fachhochschul- oder Hochschulreife,Rentner/in,married,with_migration,Algerien,Muslims,heterosexual
+614c3bbd-0ac3-478f-89d9-4cedd3eb9cb5,18,male,Fachhochschul- oder Hochschulreife,Elektriker/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+472e382e-83c5-4daf-b259-718463f02dc8,74,male,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+d97294ec-835b-4167-83c9-0c0abcf239ad,13,male,Unknown,Schüler/in,single,without_migration,Deutschland,Christians,heterosexual
+1a196cf7-6906-4419-b0bb-9b09c9e58aab,71,male,Fachhochschul- oder Hochschulreife,Rentner/in,married,with_migration,Griechenland,Christians,heterosexual
+2ecefbf9-e2dc-4d81-b1fd-1f8541e4ecd3,5,female,Unknown,Unemployed,single,without_migration,Deutschland,Christians,heterosexual
+fccb8845-bd28-4e68-8f86-f0f58465b0e9,55,male,Realschule oder gleichwertiger Abschluss,Bauarbeiter/in,married,with_migration,Vietnam,Religiously_unaffiliated,heterosexual
+6dcd6a59-f036-4955-916d-5326e9f16f05,80,female,Realschule oder gleichwertiger Abschluss,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+f72ab492-9156-4807-bdc7-4d350b8b41f0,43,male,Ohne allgemeinen Schulabschluss,Verkäufer/in,single,with_migration,Kosovo,Muslims,heterosexual
+7980a91a-ae68-400d-bf8c-d648ef701ae8,90,female,Realschule oder gleichwertiger Abschluss,Rentner/in,widowed,with_migration,Schweiz,Christians,heterosexual
+4752c64b-c698-44dd-b0bb-d934851505f0,53,male,Abschluss der polytechnischen Oberschule,Polizist/in,married,without_migration,Deutschland,Christians,heterosexual
+43182eaf-8ac6-4ac8-be85-4f882c5cc9ee,62,female,Haupt- (Volks-)schulabschluss,Lkw-Fahrer/in,divorced,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+4ee072ba-9059-47a7-9166-5d0d64fd92ab,6,female,Unknown,Schüler/in,single,with_migration,Polen,Christians,heterosexual
+863b8745-1943-4e0d-9582-7fb1caf158fb,49,female,Ohne allgemeinen Schulabschluss,Krankenpfleger/in,married,with_migration,Indien,Hindus,heterosexual
+a263f131-b988-47b2-ae1b-017cb6fecb3e,25,male,Fachhochschul- oder Hochschulreife,Ingenieur/in,married,with_migration,Rumänien,Christians,heterosexual
+c6e805eb-14ad-4db5-b152-e02046926023,27,female,Realschule oder gleichwertiger Abschluss,Journalist/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+4c765ecb-6b96-41f8-9190-beb5137dc497,52,female,Fachhochschul- oder Hochschulreife,Anwalt/Anwältin,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+8cbaa912-a541-4695-aa36-cc9e921c58a4,1,male,Unknown,Unemployed,single,with_migration,Nordmazedonien,Christians,heterosexual
+a06f3b30-4e2c-42a4-a729-f422dfd6e351,54,female,Fachhochschul- oder Hochschulreife,Lehrer/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+a2964052-ffc7-48f0-a63b-e1bb444fbf3a,0,female,Unknown,Unemployed,single,without_migration,Deutschland,Christians,heterosexual
+83705aea-c4ff-41bd-a2bb-c43638f5b807,75,female,Haupt- (Volks-)schulabschluss,Rentner/in,divorced,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+18ffe193-bcad-4098-b872-ed371ccb1e26,41,male,Realschule oder gleichwertiger Abschluss,Richter/in,single,with_migration,Indonesien,Christians,heterosexual
+88059fa2-aa48-4299-ad7f-666c73c88a21,40,male,Realschule oder gleichwertiger Abschluss,Friseur/in,married,without_migration,Deutschland,Christians,heterosexual
+41ad7d28-cb89-4fb2-8258-7a78959536ad,30,female,Realschule oder gleichwertiger Abschluss,Sekretär/in,single,with_migration,Serbien,Christians,heterosexual
+280d6f4b-78a1-4b5d-8bc9-c8c9b7034db2,74,female,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+8675d4c1-0b09-42ec-9a34-5b45b5d23919,37,female,Realschule oder gleichwertiger Abschluss,Bauarbeiter/in,married,without_migration,Deutschland,Christians,heterosexual
+cfed89c7-1311-439d-889f-eba0d3aa8b34,57,female,Haupt- (Volks-)schulabschluss,Reinigungskraft,divorced,without_migration,Deutschland,Christians,heterosexual
+65a6b6a5-fa67-4aea-bee2-468f502e735f,4,male,Unknown,Unemployed,single,without_migration,Deutschland,Christians,heterosexual
+1fdd4906-d06a-4f0a-b009-3107178b2ffc,57,male,Abschluss der polytechnischen Oberschule,Koch/Köchin,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+599a06a7-dea5-4fa4-9b89-338773914538,79,male,Fachhochschul- oder Hochschulreife,Rentner/in,widowed,with_migration,Polen,Christians,heterosexual
+9b7c4ea2-c4d3-4548-9cc6-f4b01f63b1da,63,female,Fachhochschul- oder Hochschulreife,Elektriker/in,married,with_migration,Vietnam,Religiously_unaffiliated,heterosexual
+65eabb0d-497c-4146-9be7-c932fb0acdcd,89,female,Haupt- (Volks-)schulabschluss,Rentner/in,widowed,without_migration,Deutschland,Christians,heterosexual
+16fb4264-0bcd-4af8-a7ae-3be4602c1dd5,65,male,Haupt- (Volks-)schulabschluss,Friseur/in,widowed,with_migration,Türkei,Muslims,heterosexual
+4c6f46fc-7519-4beb-ab06-56ce363bb872,28,male,Fachhochschul- oder Hochschulreife,Informatiker/in,single,without_migration,Deutschland,Christians,heterosexual
+adf9d5a5-c670-4a04-a403-a523448ac01b,44,male,Fachhochschul- oder Hochschulreife,Sozialarbeiter/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+a4b8ebcc-dbee-463c-886e-629444c12e35,36,male,Fachhochschul- oder Hochschulreife,Künstler/in,married,with_migration,Türkei,Muslims,heterosexual
+3ecc8232-f4ce-42fb-80d1-b9e9db7bdc4a,46,male,Fachhochschul- oder Hochschulreife,Erzieher/in,married,without_migration,Deutschland,Muslims,heterosexual
+817f23b6-b8bd-4d25-8ea1-5c1cf8240540,84,female,Fachhochschul- oder Hochschulreife,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+36e541cc-05f7-4286-bee6-d01ed7284571,80,female,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+ffb71529-ca73-49d1-a729-c807d44c3624,80,male,Haupt- (Volks-)schulabschluss,Rentner/in,widowed,with_migration,Ukraine,Christians,heterosexual
+09cba7d1-4298-4563-83d1-af6444f0f87e,42,diverse,Fachhochschul- oder Hochschulreife,Verkäufer/in,single,with_migration,Afghanistan,Muslims,heterosexual
+f15f7ea8-c020-45c9-bd5d-24685b306540,23,female,Fachhochschul- oder Hochschulreife,Bauarbeiter/in,single,without_migration,Deutschland,Christians,heterosexual
+4aa422aa-c706-477d-95f7-07648a2665df,28,male,Fachhochschul- oder Hochschulreife,Sozialarbeiter/in,single,without_migration,Deutschland,Christians,heterosexual
+9b800270-9998-450f-b58e-ff50cd8ff3dc,67,male,Haupt- (Volks-)schulabschluss,Buchhalter/in,married,with_migration,Türkei,Muslims,heterosexual
+7e803c58-e2bb-4a2b-befb-c12ae27ce573,53,male,Realschule oder gleichwertiger Abschluss,Sozialarbeiter/in,single,without_migration,Deutschland,Christians,heterosexual
+3ca7bc63-111c-4c81-8305-ad853c4a06dd,66,female,Haupt- (Volks-)schulabschluss,Mechaniker/in,divorced,with_migration,Nigeria,Muslims,heterosexual
+744d27c5-e6f7-456a-a3be-dc726b273a44,36,male,Realschule oder gleichwertiger Abschluss,Buchhalter/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+758678be-6957-46bf-92fa-4f685801cd81,49,male,Fachhochschul- oder Hochschulreife,Lkw-Fahrer/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+e3efbb1c-39d0-4751-a0bd-45c9f6598555,77,male,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+8675c02a-0cf3-4635-adca-f9e7e6c3b011,12,male,Unknown,Schüler/in,single,without_migration,Deutschland,Christians,heterosexual
+3b7125bc-5f6d-44cb-887c-c44e873b2a8d,40,male,Fachhochschul- oder Hochschulreife,Künstler/in,divorced,without_migration,Deutschland,Christians,heterosexual
+aa264aea-6ad3-403f-83eb-ff3921e9cec8,45,male,Fachhochschul- oder Hochschulreife,Verkäufer/in,married,with_migration,China,Christians,heterosexual
+790a4caf-a03f-4812-b5ec-cdda12ba5a7e,32,female,Fachhochschul- oder Hochschulreife,Anwalt/Anwältin,married,with_migration,Spanien,Christians,heterosexual
+060a827f-c664-4d74-9898-ef5caf0ec9ff,65,diverse,Abschluss der polytechnischen Oberschule,Polizist/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+2d809135-9994-460b-b2af-580d73f83739,6,male,Unknown,Schüler/in,single,with_migration,Kosovo,Muslims,heterosexual
+bb20793b-1027-4e2e-9b9f-2c838c3e59ef,25,female,Fachhochschul- oder Hochschulreife,Sozialarbeiter/in,single,without_migration,Deutschland,Christians,heterosexual
+cb6f041a-db1c-41eb-815c-5a61583ead54,48,female,Fachhochschul- oder Hochschulreife,Buchhalter/in,married,with_migration,Rumänien,Christians,heterosexual
+ca758900-ae61-4ef8-804e-ca6f45833b05,24,female,Realschule oder gleichwertiger Abschluss,Bauarbeiter/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+78a6e0ab-f4d0-4ce6-bb1b-229324e1bb9c,77,female,Haupt- (Volks-)schulabschluss,Rentner/in,widowed,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+852ff84a-eaa6-47aa-a75a-b2486280ca1b,1,female,Unknown,Unemployed,single,with_migration,Ukraine,Christians,heterosexual
+2d940546-2507-42f3-9934-5e81775154a5,11,female,Unknown,Schüler/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+405ce9d1-8723-4470-9a10-368c5d8abc63,51,male,Realschule oder gleichwertiger Abschluss,Mechaniker/in,divorced,with_migration,Bulgarien,Christians,heterosexual
+dbe2ab22-871a-4a3d-bcc2-ab2fe4fecd8d,38,male,Fachhochschul- oder Hochschulreife,Anwalt/Anwältin,married,without_migration,Deutschland,Christians,heterosexual
+63254cbf-df39-4631-a872-cc427f2c15bd,43,female,Fachhochschul- oder Hochschulreife,Informatiker/in,single,without_migration,Deutschland,Christians,heterosexual
+51f492ca-58de-40a0-8112-90a7ce9726d3,48,female,Haupt- (Volks-)schulabschluss,Richter/in,married,without_migration,Deutschland,Christians,heterosexual
+b9028e60-3d6f-4306-81b1-e29f45e4c23b,71,female,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Muslims,heterosexual
+db72ec20-f5bd-4a9b-9b88-3f91eca599d9,11,female,Unknown,Schüler/in,single,without_migration,Deutschland,Christians,heterosexual
+3779752d-0e8a-48dd-9363-9ff9ab96bb1e,27,female,Fachhochschul- oder Hochschulreife,Reinigungskraft,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+09614f6b-acd2-4aa3-b5f7-85da79489b2b,99,female,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Christians,homosexual
+29eb88d6-14c4-46ce-b9bc-d6afd64ba695,55,female,Haupt- (Volks-)schulabschluss,Journalist/in,married,without_migration,Deutschland,Christians,heterosexual
+8570c579-14f6-470e-81fb-ece7b31b2301,37,male,Realschule oder gleichwertiger Abschluss,Lehrer/in,married,without_migration,Deutschland,Christians,heterosexual
+940464fd-2af9-4546-8ff3-57ac939ee21f,42,female,Fachhochschul- oder Hochschulreife,Lehrer/in,married,with_migration,Belgien,Muslims,heterosexual
+75e981a1-4c7d-469c-a466-fbe6665c3b17,15,female,Noch in schulischer Ausbildung,Schüler/in,single,with_migration,Türkei,Muslims,heterosexual
+03c12cba-b37e-4454-a810-4219b7eaea92,47,male,Realschule oder gleichwertiger Abschluss,Manager/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+cd2b6043-3b21-4b97-adad-a3c8ad4e0567,80,female,Realschule oder gleichwertiger Abschluss,Rentner/in,widowed,without_migration,Deutschland,Christians,heterosexual
+f9fb9ebc-38f8-4b99-89fb-a260dd7114c1,58,male,Fachhochschul- oder Hochschulreife,Sozialarbeiter/in,married,with_migration,Rumänien,Christians,heterosexual
+1cbeda19-aaf1-429b-a7ba-5b5f01c47ea4,20,male,Fachhochschul- oder Hochschulreife,Erzieher/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+46bb8f67-47c3-455b-a2b5-d55e5d6fd57a,47,female,Fachhochschul- oder Hochschulreife,Buchhalter/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+ff4e5896-3958-4408-a919-a697be955591,26,male,Ohne allgemeinen Schulabschluss,Ingenieur/in,single,without_migration,Deutschland,Christians,heterosexual
+7e04c024-4057-4835-a9bc-c929554bd315,40,female,Fachhochschul- oder Hochschulreife,Soldat/in,married,with_migration,Bosnien und Herzegowina,Christians,heterosexual
+c2152474-f7ba-4819-83eb-d4de4fb6ae63,80,male,Haupt- (Volks-)schulabschluss,Rentner/in,widowed,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+fc640f36-b664-492a-b601-02a28ff99545,23,female,Realschule oder gleichwertiger Abschluss,Buchhalter/in,single,with_migration,Türkei,Muslims,heterosexual
+1218b85a-1605-4314-b483-c09f62066e5b,43,female,Realschule oder gleichwertiger Abschluss,Anwalt/Anwältin,married,without_migration,Deutschland,Christians,heterosexual
+031b3d4e-892c-4dfd-b082-2a8aebadc678,78,male,Fachhochschul- oder Hochschulreife,Rentner/in,widowed,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+cc488b43-78e2-4969-b24f-ed68130a7af6,46,male,Haupt- (Volks-)schulabschluss,Richter/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+6a5dca05-70a7-4d52-9529-6014063e8535,5,male,Unknown,Unemployed,single,with_migration,Ukraine,Christians,heterosexual
+9e23cf62-918a-4520-ba72-a87c327dc671,42,male,Realschule oder gleichwertiger Abschluss,Sozialarbeiter/in,married,with_migration,Kolumbien,Christians,heterosexual
+a245e3c9-5847-4bf9-a436-2eb3513bd308,76,female,Realschule oder gleichwertiger Abschluss,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+3bdc545f-62c6-491a-8373-dcdec293b4ac,42,diverse,Haupt- (Volks-)schulabschluss,Erzieher/in,single,with_migration,Indien,Hindus,heterosexual
+33133be2-0b10-486f-bc08-ae700654dec7,8,male,Unknown,Schüler/in,single,without_migration,Deutschland,Muslims,heterosexual
+416ab091-d7c3-4867-b947-00c8ddcae3b8,62,male,Abschluss der polytechnischen Oberschule,Friseur/in,married,with_migration,Türkei,Muslims,heterosexual
+d1e3d65f-2ebf-4daa-941b-ce48b26fbb68,80,male,Realschule oder gleichwertiger Abschluss,Rentner/in,widowed,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+ac021180-39ba-4b69-b47d-ebc9b1446da4,8,female,Unknown,Schüler/in,single,without_migration,Deutschland,Christians,heterosexual
+3fe83e9e-1729-464d-95a5-91b4f2ce0535,12,female,Unknown,Schüler/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+9f8cff10-8544-4b0b-abdf-73edcb9595c1,42,male,Realschule oder gleichwertiger Abschluss,Wissenschaftler/in,married,with_migration,Syrien,Muslims,heterosexual
+e14972c1-13ff-4503-9196-6b13756abc7b,60,male,Fachhochschul- oder Hochschulreife,Ingenieur/in,divorced,with_migration,Polen,Christians,heterosexual
+197b91ee-f5c3-496b-8cb9-062ce15e1bcf,77,male,Realschule oder gleichwertiger Abschluss,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+b1a04ebd-174c-4d8f-8a53-9523e59452e1,45,male,Haupt- (Volks-)schulabschluss,Lkw-Fahrer/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+19d3a6c4-364e-4172-9c43-7f3862df2cf8,67,male,Fachhochschul- oder Hochschulreife,Lkw-Fahrer/in,divorced,with_migration,Ukraine,Christians,heterosexual
+1fd797e1-0bd8-46eb-a870-6bcacd15ad62,81,male,Haupt- (Volks-)schulabschluss,Rentner/in,widowed,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+c3f12b70-5fee-4ba2-b73f-c67b5cca5248,71,male,Ohne allgemeinen Schulabschluss,Rentner/in,married,with_migration,Bosnien und Herzegowina,Muslims,heterosexual
+d416ee50-6ae0-40fe-8ca2-53c731939194,61,male,Fachhochschul- oder Hochschulreife,Friseur/in,married,without_migration,Deutschland,Muslims,heterosexual
+83a1bbb4-94a2-412d-9de9-1b80130a57cc,4,male,Unknown,Unemployed,single,with_migration,USA,Christians,heterosexual
+b2fd747e-8f9d-40c4-ae4f-75af9beddd02,65,male,Realschule oder gleichwertiger Abschluss,Buchhalter/in,married,with_migration,Serbien,Christians,heterosexual
+413ea301-c1fd-48a1-b156-c7e11844165f,62,male,Ohne allgemeinen Schulabschluss,Informatiker/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+818d5401-feb1-4733-a656-a668c3c8dc95,66,female,Fachhochschul- oder Hochschulreife,Arzt/Ärztin,widowed,with_migration,Polen,Christians,heterosexual
+a2aecfcd-fa6d-4bac-b93c-f2766d69997b,80,female,Fachhochschul- oder Hochschulreife,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+aaadd160-fde6-40ca-9d54-bd59cc4b8e7f,25,male,Haupt- (Volks-)schulabschluss,Ingenieur/in,single,without_migration,Deutschland,Christians,heterosexual
+b1e4c3c5-3d66-42b1-8d15-32af4d762213,42,female,Realschule oder gleichwertiger Abschluss,Manager/in,married,with_migration,Tschechien,Religiously_unaffiliated,heterosexual
+3ef2c3c4-3756-4bc5-bef7-533dcf6f75b7,22,diverse,Fachhochschul- oder Hochschulreife,Künstler/in,single,without_migration,Deutschland,Christians,heterosexual
+25c7f6f2-67c5-4b88-9c40-87620ff09eac,64,female,Abschluss der polytechnischen Oberschule,Reinigungskraft,divorced,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+be87bd40-d727-46a0-8525-12999e150de8,28,female,Fachhochschul- oder Hochschulreife,Informatiker/in,married,with_migration,Rumänien,Christians,heterosexual
+7dfdf765-a78f-47c4-8822-0ff4c6f79534,74,female,Realschule oder gleichwertiger Abschluss,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+dd56f02a-a81b-4a5b-a153-5c8c7db8f5a2,72,male,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+c61f8a82-dcf1-4392-bf22-f874a37c44f2,69,male,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+59c692a5-6fc3-4d67-b0bd-c14d59733bb4,38,female,Fachhochschul- oder Hochschulreife,Erzieher/in,married,with_migration,Russland,Christians,heterosexual
+5bd27a3e-c996-46ae-aa1e-9bccfdd70348,39,male,Haupt- (Volks-)schulabschluss,Mechaniker/in,single,without_migration,Deutschland,Christians,heterosexual
+aa76d8d2-09c3-4bc0-bf52-b511c0e8a8c4,2,female,Unknown,Unemployed,single,with_migration,Österreich,Religiously_unaffiliated,heterosexual
+d6da2b1c-b11f-474c-8d81-3fa57415f186,24,male,Haupt- (Volks-)schulabschluss,Ingenieur/in,single,without_migration,Deutschland,Christians,heterosexual
+604c0bf3-53d8-4cd7-910e-f040807909b3,28,female,Ohne allgemeinen Schulabschluss,Koch/Köchin,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+d8b4abda-1804-4357-bc4a-5e90124fabf2,18,male,Fachhochschul- oder Hochschulreife,Bauarbeiter/in,single,without_migration,Deutschland,Christians,heterosexual
+7860ee05-b89b-481a-990e-2483959a62da,44,male,Realschule oder gleichwertiger Abschluss,Buchhalter/in,single,without_migration,Deutschland,Christians,heterosexual
+d8cf62c4-d42b-429b-a847-0a746e5c19ce,48,female,Fachhochschul- oder Hochschulreife,Verkäufer/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+ec230838-b0bd-4580-b94c-77266f6cee8c,10,female,Unknown,Schüler/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+abc7fb81-7094-4fd7-b4ea-7e2a3ab42090,41,female,Haupt- (Volks-)schulabschluss,Ingenieur/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+8cb03065-2f4f-49bc-9f1e-797a4ec8d1e9,4,male,Unknown,Unemployed,single,with_migration,Afghanistan,Muslims,heterosexual
+76d4f463-4a78-4bdf-86e8-a71960bc0731,67,male,Haupt- (Volks-)schulabschluss,Informatiker/in,married,with_migration,Somalia,Muslims,heterosexual
+78aec227-5b31-4ad7-ae3e-ffb4c1a1db1d,37,female,Fachhochschul- oder Hochschulreife,Bauarbeiter/in,divorced,without_migration,Deutschland,Christians,heterosexual
+6925845c-6f9d-42d2-8c4b-9cb48ae4d20e,29,female,Fachhochschul- oder Hochschulreife,Elektriker/in,single,with_migration,Bulgarien,Christians,heterosexual
+3b09e97f-3946-436e-a120-88ba96d8c04b,64,male,Fachhochschul- oder Hochschulreife,Mechaniker/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+259a1e01-06ee-4092-9da0-27030b3b1018,46,female,Fachhochschul- oder Hochschulreife,Soldat/in,married,with_migration,Tschechien,Religiously_unaffiliated,heterosexual
+1ed08457-fcd9-4cc4-868a-d9a38e61390b,1,female,Unknown,Unemployed,single,without_migration,Deutschland,Christians,heterosexual
+1a255667-6074-4ea2-a2ef-3f06be2e4d7e,34,male,Realschule oder gleichwertiger Abschluss,Reinigungskraft,single,with_migration,Polen,Christians,heterosexual
+fce51192-ad67-46f4-a30a-c8a97f4016bb,58,male,Abschluss der polytechnischen Oberschule,Manager/in,married,without_migration,Deutschland,Christians,heterosexual
+88b22a0f-593d-4c42-91a4-155600b8cdc0,30,male,Fachhochschul- oder Hochschulreife,Manager/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+436ae76f-0774-4a19-8c63-f2cca5a4c3b8,79,female,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+e022797c-7b19-4cff-a5b7-e19ca7787e9e,34,female,Fachhochschul- oder Hochschulreife,Künstler/in,single,with_migration,Syrien,Muslims,heterosexual
+faeb289c-3cf6-44f9-ac69-c814d4221f4a,4,female,Unknown,Unemployed,single,with_migration,Ukraine,Christians,heterosexual
+fe5e0da7-93b9-49a5-b735-2f8ad763b34b,44,male,Fachhochschul- oder Hochschulreife,Journalist/in,single,with_migration,Ukraine,Christians,heterosexual
+e871ab56-5ef3-4085-9677-53e51d0d354f,44,female,Realschule oder gleichwertiger Abschluss,Sozialarbeiter/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+251c7b3d-ff34-41cc-9674-27859439576c,73,female,Fachhochschul- oder Hochschulreife,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+ba0dcf17-1c6d-4ee3-bcf5-724a512f109e,62,female,Fachhochschul- oder Hochschulreife,Soldat/in,married,without_migration,Deutschland,Christians,heterosexual
+272e92b5-87ad-4d5d-97de-dd1cfd33aa83,48,diverse,Haupt- (Volks-)schulabschluss,Sekretär/in,married,without_migration,Deutschland,Christians,heterosexual
+0e1bcaff-e473-48d1-a11e-af75db913d5b,73,male,Fachhochschul- oder Hochschulreife,Rentner/in,divorced,without_migration,Deutschland,Christians,heterosexual
+f94001ca-63be-49be-95b5-44acbb1d0595,59,male,Haupt- (Volks-)schulabschluss,Elektriker/in,married,with_migration,Russland,Religiously_unaffiliated,heterosexual
+d21cd24f-c374-4ad4-a89b-ed146835636b,46,female,Realschule oder gleichwertiger Abschluss,Richter/in,single,without_migration,Deutschland,Christians,heterosexual
+7bcf54f8-a969-4aff-a194-098b13086c04,82,female,Ohne allgemeinen Schulabschluss,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+820a5c24-89f0-4e9b-8367-87ad9014c191,6,male,Unknown,Schüler/in,single,without_migration,Deutschland,Christians,heterosexual
+61bfc60f-34f1-44f2-b135-f46a50967249,23,male,Noch in schulischer Ausbildung,Friseur/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+86429207-dc44-4fa0-8f7e-03852e44f539,72,female,Realschule oder gleichwertiger Abschluss,Rentner/in,widowed,without_migration,Deutschland,Christians,heterosexual
+eab9602d-7a70-4484-8246-2feac180ea6b,36,male,Fachhochschul- oder Hochschulreife,Friseur/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+87beea5b-ed86-4672-86b5-a28c93d283b4,76,male,Fachhochschul- oder Hochschulreife,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+5eafae0a-b3f9-4b29-9868-2f70e479305d,37,male,Realschule oder gleichwertiger Abschluss,Koch/Köchin,married,without_migration,Deutschland,Christians,heterosexual
+149053e7-f3c1-4668-a21c-aed69d3ab523,74,female,Fachhochschul- oder Hochschulreife,Rentner/in,married,with_migration,Rumänien,Christians,heterosexual
+3665b30e-2ae5-4409-935f-65c006e211fd,63,female,Fachhochschul- oder Hochschulreife,Mechaniker/in,divorced,with_migration,Eritrea,Muslims,heterosexual
+18f89340-fdde-44d1-b10b-40be9f3e224e,22,male,Haupt- (Volks-)schulabschluss,Friseur/in,single,with_migration,Ukraine,Religiously_unaffiliated,heterosexual
+06112161-bd05-49e7-ab97-3b4678e051a9,68,male,Ohne allgemeinen Schulabschluss,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+d4eba211-bf87-4cec-bf97-e49e5789387e,13,female,Unknown,Schüler/in,single,with_migration,Rumänien,Christians,heterosexual
+61bd503c-fd80-4069-a676-f73877d571d3,3,female,Unknown,Unemployed,single,with_migration,Gambia,Muslims,heterosexual
+80e01185-a39e-4395-8e0c-2dfe88c7d6ae,66,female,Abschluss der polytechnischen Oberschule,Lehrer/in,married,with_migration,Italien,Christians,heterosexual
+05057448-5643-4f51-96c2-c8d9951ed759,30,female,Haupt- (Volks-)schulabschluss,Soldat/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+f0a38344-31a6-4491-a644-b200dce110ce,36,male,Realschule oder gleichwertiger Abschluss,Manager/in,married,without_migration,Deutschland,Christians,heterosexual
+35f956b7-47b4-4407-8fb7-74146c674578,13,female,Unknown,Schüler/in,single,with_migration,Portugal,Christians,heterosexual
+e1103f19-2e3e-432d-a338-2d6818890097,58,male,Realschule oder gleichwertiger Abschluss,Friseur/in,married,with_migration,China,Religiously_unaffiliated,heterosexual
+f48ba2c6-2b0f-47e5-9f42-7025a6de5864,47,female,Realschule oder gleichwertiger Abschluss,Erzieher/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+08466528-e9d0-45cc-b88c-1051ee91b88b,62,female,Haupt- (Volks-)schulabschluss,Verkäufer/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+0c49a83e-eb3e-46d7-b5f4-b3b06d23471d,82,female,Haupt- (Volks-)schulabschluss,Rentner/in,married,with_migration,Eritrea,Muslims,heterosexual
+0e36b2ac-cc3f-4547-99a4-6fef2863ccef,58,female,Haupt- (Volks-)schulabschluss,Sozialarbeiter/in,married,with_migration,Nepal,Hindus,heterosexual
+81b1a22b-21eb-442f-a40c-90392c996bee,74,female,Haupt- (Volks-)schulabschluss,Rentner/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+673e8257-34dd-4558-8e9e-e057db719b88,26,male,Fachhochschul- oder Hochschulreife,Elektriker/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+a074196a-46f0-46c6-9971-15cdcf42bf54,52,female,Realschule oder gleichwertiger Abschluss,Reinigungskraft,single,without_migration,Deutschland,Christians,heterosexual
+5a24210d-77b8-47c9-a3a2-eaeca8c4b456,49,female,Realschule oder gleichwertiger Abschluss,Mechaniker/in,single,with_migration,Afghanistan,Muslims,homosexual
+6aa618d9-00e3-4a1b-8429-d893e3d5df0b,65,male,Ohne allgemeinen Schulabschluss,Reinigungskraft,married,without_migration,Deutschland,Christians,heterosexual
+ee041647-f0c8-48cc-902d-180eb99e2fc6,35,male,Haupt- (Volks-)schulabschluss,Elektriker/in,single,with_migration,Kroatien,Religiously_unaffiliated,heterosexual
+4a6ba7b2-869c-417f-acc7-b38e4476e418,78,female,Realschule oder gleichwertiger Abschluss,Rentner/in,widowed,without_migration,Deutschland,Christians,heterosexual
+87e02dcf-2f7a-4106-acb2-b4948c1f32e5,37,male,Ohne allgemeinen Schulabschluss,Wissenschaftler/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+13be4f1a-0eb3-4c81-adb7-18abf08161e4,54,female,Realschule oder gleichwertiger Abschluss,Manager/in,married,without_migration,Deutschland,Christians,heterosexual
+8a2b495f-c8cb-4284-a62e-985cc18ab79d,27,female,Realschule oder gleichwertiger Abschluss,Reinigungskraft,single,without_migration,Deutschland,Muslims,heterosexual
+a9acb1d3-2fda-4bf0-b568-cde4a5855609,41,female,Fachhochschul- oder Hochschulreife,Erzieher/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+7a36f851-f5db-45e3-ae00-5daa80192f0e,23,female,Realschule oder gleichwertiger Abschluss,Friseur/in,single,with_migration,Kamerun,Christians,heterosexual
+f5f5227a-6be0-4211-bc4d-9de732172ff5,68,male,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+97d6ebd7-298c-4adf-a93f-5d9ab1910f74,18,female,Haupt- (Volks-)schulabschluss,Buchhalter/in,single,without_migration,Deutschland,Christians,heterosexual
+6456e57c-f4c2-4bcd-a86e-c7b011f3c2a5,43,male,Fachhochschul- oder Hochschulreife,Lehrer/in,single,with_migration,Kamerun,Christians,heterosexual
+c84eb880-2893-4c18-b311-e6d86bc8810a,89,female,Fachhochschul- oder Hochschulreife,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+8ddd1dcd-0f97-4a3f-be1e-e2b6c2b6c06f,26,diverse,Ohne allgemeinen Schulabschluss,Reinigungskraft,single,with_migration,Syrien,Muslims,heterosexual
+f2b07d66-7b13-493d-80c5-026d8710b6a0,24,female,Noch in schulischer Ausbildung,Friseur/in,single,with_migration,Polen,Christians,heterosexual
+8a161d97-def9-4bb6-b2fb-710f9fd15d61,28,female,Realschule oder gleichwertiger Abschluss,Krankenpfleger/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+28f95cfb-0818-4cfa-8ab1-5a597b04764c,64,female,Haupt- (Volks-)schulabschluss,Sekretär/in,married,with_migration,Marokko,Muslims,heterosexual
+d35498bf-9184-4bb9-9094-51e2aa4aa7c8,72,female,Realschule oder gleichwertiger Abschluss,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+2890deb8-ec0a-442d-9dcb-6b625b89fa70,61,male,Haupt- (Volks-)schulabschluss,Sozialarbeiter/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+9661978b-9782-4521-8d68-5b9785862f8c,77,female,Abschluss der polytechnischen Oberschule,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+2204cab7-816c-45c8-97cd-30e8f578449e,15,male,Fachhochschul- oder Hochschulreife,Schüler/in,single,with_migration,Polen,Christians,heterosexual
+79c26da4-2247-4cc0-bed4-3dd3829b3755,44,female,Fachhochschul- oder Hochschulreife,Mechaniker/in,single,with_migration,Ukraine,Christians,heterosexual
+f281f35c-638b-468d-9f1b-ca47b8b5835d,32,male,Fachhochschul- oder Hochschulreife,Buchhalter/in,single,with_migration,Österreich,Christians,heterosexual
+d743b1bb-454a-4030-b588-59817f68fc84,36,male,Realschule oder gleichwertiger Abschluss,Elektriker/in,single,with_migration,China,Religiously_unaffiliated,heterosexual
+206b0366-16a0-4e48-8dfc-acac173a2e41,45,male,Haupt- (Volks-)schulabschluss,Bauarbeiter/in,married,with_migration,Indien,Hindus,heterosexual
+2f2d1de4-2f03-4e2d-bc72-f6b9d4f6d193,66,male,Fachhochschul- oder Hochschulreife,Sekretär/in,married,without_migration,Deutschland,Religiously_unaffiliated,bisexual
+3604f790-602e-4d3f-beb0-644e4508b645,8,male,Unknown,Schüler/in,single,without_migration,Deutschland,Christians,heterosexual
+7e315336-696b-4a17-a981-9bb64f6f1f4b,80,female,Abschluss der polytechnischen Oberschule,Rentner/in,widowed,without_migration,Deutschland,Christians,heterosexual
+6d01ee4f-3169-43ef-9fd5-bfc6c30617d1,23,female,Noch in schulischer Ausbildung,Ingenieur/in,single,without_migration,Deutschland,Christians,heterosexual
+31f41d2e-7260-4d26-a91b-4225a14deb7c,82,female,Haupt- (Volks-)schulabschluss,Rentner/in,widowed,without_migration,Deutschland,Christians,heterosexual
+17939f01-3058-4215-877d-665268246c9c,73,female,Fachhochschul- oder Hochschulreife,Rentner/in,married,with_migration,Türkei,Muslims,heterosexual
+aef93b2b-5e29-4dab-a1da-2357518e7030,16,female,Realschule oder gleichwertiger Abschluss,Verkäufer/in,single,with_migration,Marokko,Muslims,heterosexual
+58aa83c5-0654-499a-bda6-e0b8bb69cffc,76,male,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+21ebee70-de66-414d-a083-478b9704a1cd,72,female,Haupt- (Volks-)schulabschluss,Rentner/in,divorced,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+64b6b850-6444-4d6e-a429-17db0aa0b032,83,female,Realschule oder gleichwertiger Abschluss,Rentner/in,married,with_migration,Syrien,Muslims,heterosexual
+d94053fa-b0d2-4c9a-b7d2-b12c938d4d5c,10,female,Unknown,Schüler/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+868e0677-bb36-4eba-9b8d-04079364b8ec,57,female,Realschule oder gleichwertiger Abschluss,Buchhalter/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+47f15db6-a176-475c-82d1-4cb7b55b64e8,68,female,Fachhochschul- oder Hochschulreife,Rentner/in,married,with_migration,Ukraine,Religiously_unaffiliated,heterosexual
+00243746-0013-4043-ad2c-149181bbefe4,46,female,Realschule oder gleichwertiger Abschluss,Verkäufer/in,married,without_migration,Deutschland,Christians,heterosexual
+5cf21459-a4ca-441a-8a69-345b995bd49c,71,male,Haupt- (Volks-)schulabschluss,Rentner/in,widowed,without_migration,Deutschland,Muslims,heterosexual
+876a071b-49eb-4fad-8994-64cf3a203549,22,female,Fachhochschul- oder Hochschulreife,Journalist/in,single,without_migration,Deutschland,Christians,heterosexual
+a27ba597-1f35-4628-9af0-2ccfcc4f5a90,26,female,Haupt- (Volks-)schulabschluss,Polizist/in,married,without_migration,Deutschland,Christians,heterosexual
+6c6454b7-2c3f-48f9-8c87-419be1e41b3c,63,male,Ohne allgemeinen Schulabschluss,Ingenieur/in,married,without_migration,Deutschland,Christians,heterosexual
+256befa3-cb8d-4b99-9db7-620d369bbbd7,86,male,Realschule oder gleichwertiger Abschluss,Rentner/in,widowed,without_migration,Deutschland,Muslims,heterosexual
+930021a2-55cc-4933-9ef4-9969fb8612eb,24,female,Realschule oder gleichwertiger Abschluss,Lehrer/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+28b53724-a66b-4bac-a373-a7419060003e,41,male,Fachhochschul- oder Hochschulreife,Elektriker/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+993b72dd-900c-44e0-9340-eec02bd86e48,6,male,Unknown,Schüler/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+42a5776e-4b6c-43eb-b807-1b68bc023b25,15,female,Haupt- (Volks-)schulabschluss,Schüler/in,single,without_migration,Deutschland,Christians,heterosexual
+4f1b1081-d88c-452f-beee-4cbac2384c17,25,female,Fachhochschul- oder Hochschulreife,Bauarbeiter/in,married,without_migration,Deutschland,Christians,heterosexual
+dda55491-0385-42d3-8b54-6913c8cb2249,72,female,Fachhochschul- oder Hochschulreife,Rentner/in,married,with_migration,Türkei,Muslims,heterosexual
+a016a8d9-d10b-421e-b5a3-78f4cafd560e,87,female,Fachhochschul- oder Hochschulreife,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+64970f6f-e4be-42d7-a9e5-b0043ba19e89,3,male,Unknown,Unemployed,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+f4e9be5c-554a-4c0c-a7e6-75ab6a91f6ad,79,male,Fachhochschul- oder Hochschulreife,Rentner/in,married,with_migration,Nordmazedonien,Christians,heterosexual
+0a5e7102-3f39-4cf9-8161-2dbfe3f2ab4c,52,male,Fachhochschul- oder Hochschulreife,Verkäufer/in,married,with_migration,Brasilien,Christians,heterosexual
+462c4619-ff8e-48ea-b989-40882825c6a1,49,male,Fachhochschul- oder Hochschulreife,Wissenschaftler/in,single,without_migration,Deutschland,Christians,heterosexual
+afe2cd78-3d69-4972-a5c0-f55e9e2623e5,14,female,Unknown,Schüler/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+e62e2d67-5d64-4032-b401-cbc94263e342,45,male,Haupt- (Volks-)schulabschluss,Erzieher/in,single,with_migration,Togo,Christians,heterosexual
+3cfc8299-2188-4c22-82ce-7040cdbdd8bb,6,female,Unknown,Schüler/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+22a1ab2e-c26e-4bc5-85c1-b795311c29d8,30,male,Fachhochschul- oder Hochschulreife,Friseur/in,married,with_migration,Türkei,Muslims,heterosexual
+c6018d4b-fb65-465d-a8c7-8cc45dd099fc,3,male,Unknown,Unemployed,single,with_migration,Kroatien,Christians,heterosexual
+433a016b-cfcb-40fb-8a10-c956ace6e8e1,26,female,Ohne allgemeinen Schulabschluss,Künstler/in,single,with_migration,Rumänien,Christians,heterosexual
+4164b061-d645-45fb-b4e9-5e6ebce3f6e3,40,male,Haupt- (Volks-)schulabschluss,Informatiker/in,single,with_migration,Ukraine,Religiously_unaffiliated,heterosexual
+925e239a-b8ad-4bfe-af4f-28d8b7f6fe15,29,female,Fachhochschul- oder Hochschulreife,Soldat/in,single,without_migration,Deutschland,Christians,heterosexual
+e7c2fca8-4149-43a9-baa9-ae965ccaaf7b,11,male,Unknown,Schüler/in,single,with_migration,El Salvador,Christians,heterosexual
+65cadb45-6040-49f6-98fb-851a1d8c1610,4,male,Unknown,Unemployed,single,without_migration,Deutschland,Christians,heterosexual
+3064d0e8-9387-4d11-969f-026d3f000a2e,52,male,Haupt- (Volks-)schulabschluss,Krankenpfleger/in,single,with_migration,Italien,Christians,heterosexual
+dbb5adbb-9164-4e6a-9d0b-86da844ec7c6,55,male,Fachhochschul- oder Hochschulreife,Reinigungskraft,divorced,without_migration,Deutschland,Christians,heterosexual
+96a9675b-1ece-4770-ba2b-6a200d574b38,31,male,Fachhochschul- oder Hochschulreife,Soldat/in,divorced,without_migration,Deutschland,Christians,heterosexual
+08eaaf83-a081-4097-8b82-2e1777225d7e,92,female,Haupt- (Volks-)schulabschluss,Rentner/in,widowed,with_migration,Türkei,Muslims,heterosexual
+bc9a28a2-8125-4043-9596-68eed79cd645,46,male,Realschule oder gleichwertiger Abschluss,Ingenieur/in,married,without_migration,Deutschland,Christians,bisexual
+bc6453a4-1380-42d8-bcf6-12de73696531,47,male,Ohne allgemeinen Schulabschluss,Koch/Köchin,married,with_migration,Kroatien,Christians,homosexual
+12fec2bf-69c6-441e-aa07-6ec93a6a534b,21,female,Fachhochschul- oder Hochschulreife,Sekretär/in,single,with_migration,Russland,Christians,heterosexual
+620d6098-8736-4670-8099-e8a0f79c879c,75,female,Realschule oder gleichwertiger Abschluss,Rentner/in,widowed,with_migration,Syrien,Muslims,heterosexual
+a1abbf39-8bc8-47db-9988-8d3b6d1d1d74,36,female,Fachhochschul- oder Hochschulreife,Ingenieur/in,single,with_migration,Rumänien,Christians,heterosexual
+da574d92-c0d5-457f-b2c5-bcc66d8cf469,14,male,Unknown,Schüler/in,single,without_migration,Deutschland,Christians,heterosexual
+aa242fe5-f6c0-4434-b756-1a66adf5099a,34,female,Fachhochschul- oder Hochschulreife,Wissenschaftler/in,married,without_migration,Deutschland,Christians,heterosexual
+52c891e3-3663-4d96-89ec-95b052b26195,70,female,Abschluss der polytechnischen Oberschule,Rentner/in,married,without_migration,Deutschland,Muslims,heterosexual
+cf1a84ec-219e-4743-bf79-b4ffe28f0aad,37,male,Fachhochschul- oder Hochschulreife,Friseur/in,single,with_migration,Polen,Religiously_unaffiliated,heterosexual
+a455d7ff-c540-482d-85dd-224a90eabf5e,71,male,Fachhochschul- oder Hochschulreife,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+7eefd8c2-d4ee-4081-b342-77d8bf7b1e84,76,female,Haupt- (Volks-)schulabschluss,Rentner/in,married,with_migration,Rumänien,Christians,heterosexual
+fd8b2697-1e7a-40e7-a94b-ddc7d222bdf4,7,male,Unknown,Schüler/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+e3ab1e60-e15e-48c5-8429-7b8a06e35c34,68,female,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+dbfebaf4-3883-4237-aacb-70b5bc7bb6ba,71,female,Haupt- (Volks-)schulabschluss,Rentner/in,single,with_migration,Irak,Muslims,heterosexual
+186054fb-300a-4317-958a-4eb46310175b,53,female,Fachhochschul- oder Hochschulreife,Bauarbeiter/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+18435202-ad01-497f-a77d-e42ee433faf9,57,male,Realschule oder gleichwertiger Abschluss,Journalist/in,single,without_migration,Deutschland,Christians,heterosexual
+b806afc1-e4fa-43b7-b5cf-1d8a102f95c2,18,female,Fachhochschul- oder Hochschulreife,Verkäufer/in,single,without_migration,Deutschland,Christians,heterosexual
+2802cf9f-4427-4533-a31d-4ce6f06107f8,4,male,Unknown,Unemployed,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+2c273b30-354a-4575-8e23-f6d692f3e255,78,male,Fachhochschul- oder Hochschulreife,Rentner/in,widowed,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+c6a83f23-9a09-41be-be2a-d9f1a959d289,52,female,Fachhochschul- oder Hochschulreife,Elektriker/in,single,with_migration,Bosnien und Herzegowina,Christians,heterosexual
+9c92ffbf-9769-40bc-b250-078d11564325,26,female,Fachhochschul- oder Hochschulreife,Krankenpfleger/in,single,with_migration,Polen,Christians,heterosexual
+8ca8525e-3baa-402d-9bf6-2ed52e9ecea0,91,female,Ohne allgemeinen Schulabschluss,Rentner/in,widowed,with_migration,Nordmazedonien,Christians,heterosexual
+0fdea73e-ad58-401f-ba6a-0773320d0d3e,12,male,Unknown,Schüler/in,single,with_migration,Rumänien,Christians,heterosexual
+e88e56db-65c9-4ec2-bb73-64b78b3adf03,39,male,Fachhochschul- oder Hochschulreife,Reinigungskraft,married,with_migration,Italien,Christians,heterosexual
+64bf8ea9-22ca-4a54-a9ae-0abe4811d3a5,83,male,Fachhochschul- oder Hochschulreife,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+833827ea-dd80-4c4f-b916-c663f1be0e55,56,male,Ohne allgemeinen Schulabschluss,Krankenpfleger/in,divorced,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+9987d285-176a-45f7-893e-f34fb72d631e,56,male,Haupt- (Volks-)schulabschluss,Krankenpfleger/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+d17dc598-a200-4e56-abbe-f8e112113faf,86,male,Fachhochschul- oder Hochschulreife,Rentner/in,widowed,with_migration,Australien,Christians,heterosexual
+887bff10-acb2-41e8-83f8-a3dd2d01502e,71,female,Fachhochschul- oder Hochschulreife,Rentner/in,divorced,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+3a90b848-e6bf-4118-bcf6-e8ec87595224,67,female,Haupt- (Volks-)schulabschluss,Friseur/in,married,with_migration,Italien,Christians,heterosexual
+474f06dc-e4e5-492c-8b19-03185d6ca782,16,male,Noch in schulischer Ausbildung,Schüler/in,single,with_migration,Kroatien,Christians,heterosexual
+243d1a57-b4c0-4b9b-b69f-2edb770a8f32,6,female,Unknown,Schüler/in,single,without_migration,Deutschland,Christians,heterosexual
+de1d8b10-638c-44eb-8404-694495538fb3,67,female,Realschule oder gleichwertiger Abschluss,Reinigungskraft,married,with_migration,Ukraine,Christians,heterosexual
+13b71af9-70f7-4d03-92c8-762d23f6a086,44,male,Fachhochschul- oder Hochschulreife,Bauarbeiter/in,married,without_migration,Deutschland,Christians,heterosexual
+c191e4bf-8ca0-436e-aa84-6c1f8db61f78,24,male,Fachhochschul- oder Hochschulreife,Mechaniker/in,single,without_migration,Deutschland,Buddhists,heterosexual
+809605b8-bb5a-4c37-ad2a-c51afd6c12f3,10,male,Unknown,Schüler/in,single,without_migration,Deutschland,Christians,heterosexual
+acb7d61b-1866-4700-87f3-7afa75fb192b,39,male,Ohne allgemeinen Schulabschluss,Friseur/in,single,with_migration,Italien,Christians,heterosexual
+0f462bc6-578b-4a6e-a37c-4431161875e1,46,male,Realschule oder gleichwertiger Abschluss,Lehrer/in,married,with_migration,Indien,Muslims,heterosexual
+9c3f327f-c425-4772-9fc9-28bf77bc5dc5,54,male,Fachhochschul- oder Hochschulreife,Arzt/Ärztin,married,with_migration,Polen,Christians,heterosexual
+870f9173-6cf1-4fa2-b9ed-9c2222786fc6,38,male,Realschule oder gleichwertiger Abschluss,Wissenschaftler/in,single,without_migration,Deutschland,Christians,heterosexual
+e7cb1fd4-3a63-4d7f-8654-9dc8e3f5b99a,18,female,Fachhochschul- oder Hochschulreife,Soldat/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+a53964bb-31ba-4928-b657-daa9c992ffee,63,female,Fachhochschul- oder Hochschulreife,Sozialarbeiter/in,married,with_migration,Libyen,Muslims,heterosexual
+a04bc0b0-42c2-4150-822b-c17b219b31e7,67,male,Fachhochschul- oder Hochschulreife,Lkw-Fahrer/in,married,without_migration,Deutschland,Christians,heterosexual
+4b8d7211-67ac-4c9b-ac84-8e7d6a82f3bc,51,female,Haupt- (Volks-)schulabschluss,Buchhalter/in,single,with_migration,Ukraine,Christians,heterosexual
+5d855e07-371b-48d5-bff5-f64d228b4221,43,male,Fachhochschul- oder Hochschulreife,Sozialarbeiter/in,married,without_migration,Deutschland,Christians,heterosexual
+c87bf07f-39ef-4324-ad02-e8cf20aa5806,21,male,Realschule oder gleichwertiger Abschluss,Koch/Köchin,single,without_migration,Deutschland,Religiously_unaffiliated,homosexual
+841a89ff-5418-45af-9127-9cecdfd2c0e6,58,male,Fachhochschul- oder Hochschulreife,Richter/in,divorced,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+98442426-ade5-490a-b10e-15cfe7a5396e,39,male,Haupt- (Volks-)schulabschluss,Sekretär/in,married,without_migration,Deutschland,Christians,heterosexual
+07a6a3ee-dbef-47a9-b60b-1fe6b814ee65,21,female,Realschule oder gleichwertiger Abschluss,Informatiker/in,single,with_migration,Iran,Muslims,heterosexual
+4307f4bc-2e30-439c-92bc-9a47c97a38f1,17,male,Fachhochschul- oder Hochschulreife,Schüler/in,single,with_migration,Pakistan,Muslims,heterosexual
+883070d6-6a73-4afc-9e05-87240f5c500f,31,male,Fachhochschul- oder Hochschulreife,Elektriker/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+187e3e0d-beb7-4ca1-8ef8-ba9e3fee267b,55,female,Realschule oder gleichwertiger Abschluss,Reinigungskraft,divorced,without_migration,Deutschland,Christians,heterosexual
+e9f943a4-1d0d-4594-a519-600f776b1d78,52,female,Realschule oder gleichwertiger Abschluss,Manager/in,married,without_migration,Deutschland,Christians,heterosexual
+92ff29d8-8b70-406c-b477-4572fcc49b37,44,male,Realschule oder gleichwertiger Abschluss,Manager/in,married,with_migration,Afghanistan,Muslims,heterosexual
+69d11d3b-fa46-45e1-9b21-43ec4e7a745f,63,female,Abschluss der polytechnischen Oberschule,Bauarbeiter/in,married,with_migration,Schweiz,Religiously_unaffiliated,heterosexual
+5e12f9ff-7d02-4939-8b81-958fc88b21ce,39,male,Haupt- (Volks-)schulabschluss,Ingenieur/in,single,with_migration,Türkei,Muslims,heterosexual
+542f47d4-2dd5-44b0-8f68-74ca9c9a9ba4,1,male,Unknown,Unemployed,single,with_migration,Ukraine,Religiously_unaffiliated,heterosexual
+3d828834-de17-42c9-8bb1-ccb5184c1134,25,female,Fachhochschul- oder Hochschulreife,Künstler/in,single,with_migration,China,Other_religions,heterosexual
+b580875a-7500-41e5-85f4-4b9c13ff3ead,28,male,Realschule oder gleichwertiger Abschluss,Wissenschaftler/in,single,without_migration,Deutschland,Christians,heterosexual
+2bd34ee1-6bac-4625-a0f6-23c5ebd1bbe8,39,female,Realschule oder gleichwertiger Abschluss,Elektriker/in,married,with_migration,Türkei,Muslims,heterosexual
+3b014a66-b286-4d45-85a4-eeca10e48d08,33,male,Fachhochschul- oder Hochschulreife,Lkw-Fahrer/in,single,with_migration,Bulgarien,Muslims,heterosexual
+b4f5414c-8ed6-431d-bdb9-f426792912f0,41,female,Fachhochschul- oder Hochschulreife,Richter/in,divorced,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+60305323-d7f4-4477-97cd-eed0f4e55edf,30,female,Haupt- (Volks-)schulabschluss,Buchhalter/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+bc5ca319-30e0-45e1-a38a-f1e65c6f3f2f,77,female,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+eb575ebc-7224-47c2-90d1-1576b889c8ed,60,female,Fachhochschul- oder Hochschulreife,Verkäufer/in,married,without_migration,Deutschland,Christians,heterosexual
+6e81252b-c892-4e53-83c8-e58fd6383d49,71,female,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+625ae566-3927-4c5e-9acc-d78d3de3fe3b,35,male,Ohne allgemeinen Schulabschluss,Bauarbeiter/in,married,with_migration,Georgien,Christians,heterosexual
+79216112-99f7-49a9-b6e4-23ce2dca4268,56,female,Haupt- (Volks-)schulabschluss,Mechaniker/in,divorced,without_migration,Deutschland,Christians,heterosexual
+b6a40a2a-6b02-4712-8875-f40f89ef1af3,6,female,Unknown,Schüler/in,single,without_migration,Deutschland,Christians,heterosexual
+d96704d8-8d2f-4cd7-9c43-73ff34e2d26c,50,male,Haupt- (Volks-)schulabschluss,Lehrer/in,married,with_migration,Türkei,Muslims,heterosexual
+108c7f56-950d-42f0-aa9c-23a156114aff,37,male,Realschule oder gleichwertiger Abschluss,Sozialarbeiter/in,single,with_migration,Italien,Muslims,heterosexual
+1245a74e-832f-4fcd-996b-3c1b4533767e,68,male,Fachhochschul- oder Hochschulreife,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+085cb5eb-07ee-4074-91ba-d9938807768f,63,male,Abschluss der polytechnischen Oberschule,Wissenschaftler/in,married,with_migration,Türkei,Muslims,heterosexual
+2ab10f7e-db21-4ac6-917c-dbefe8675bfa,82,male,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+a467ef0e-9a26-4c85-b9f1-b6c8f23852d6,57,female,Fachhochschul- oder Hochschulreife,Manager/in,single,with_migration,Polen,Christians,heterosexual
+c8f6a644-5201-49cc-871f-a51adfd76182,66,female,Haupt- (Volks-)schulabschluss,Informatiker/in,single,with_migration,Indien,Hindus,heterosexual
+e4527deb-81ca-4b8d-b034-863fb38513cd,30,female,Fachhochschul- oder Hochschulreife,Soldat/in,married,with_migration,Rumänien,Christians,heterosexual
+f2a38087-de5b-4512-ad88-1656413f8c13,53,female,Haupt- (Volks-)schulabschluss,Sekretär/in,married,without_migration,Deutschland,Christians,heterosexual
+9f259128-a3e7-495d-a0d0-beca544ba44b,17,male,Haupt- (Volks-)schulabschluss,Verkäufer/in,single,without_migration,Deutschland,Christians,heterosexual
+0a6ea463-ec3f-4193-afdd-3e91062c65e5,14,female,Unknown,Schüler/in,single,with_migration,Afghanistan,Muslims,heterosexual
+0ce111c6-df11-47d5-9e6f-13c9ede372fc,35,male,Haupt- (Volks-)schulabschluss,Wissenschaftler/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+8b7f3e93-b10d-434e-a2f1-540707844700,27,male,Fachhochschul- oder Hochschulreife,Friseur/in,single,with_migration,Eritrea,Christians,heterosexual
+9d69d0b2-cfd1-4340-8f0b-7e7f84a0d761,80,male,Fachhochschul- oder Hochschulreife,Rentner/in,married,with_migration,Ukraine,Christians,heterosexual
+e785263e-72bc-48a5-9e2d-9e9e440a8475,83,male,Fachhochschul- oder Hochschulreife,Rentner/in,widowed,with_migration,Niederlande,Religiously_unaffiliated,heterosexual
+e6646a94-0765-4440-a7d3-3a8000c7a80b,80,female,Haupt- (Volks-)schulabschluss,Rentner/in,married,with_migration,Spanien,Christians,heterosexual
+2ea40bae-bbdb-4bf3-884a-ef18824d4a30,53,male,Haupt- (Volks-)schulabschluss,Buchhalter/in,married,with_migration,Dänemark,Christians,heterosexual
+58be8f27-a48d-4c7a-a9ba-8bf2d7c5fac6,39,female,Haupt- (Volks-)schulabschluss,Verkäufer/in,single,with_migration,Syrien,Muslims,heterosexual
+d4f0937d-0fda-4891-be60-97abf8075cc4,42,female,Fachhochschul- oder Hochschulreife,Sozialarbeiter/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+8f34f3bf-772e-474a-b193-fc0dfcbe2a97,39,male,Fachhochschul- oder Hochschulreife,Sozialarbeiter/in,married,without_migration,Deutschland,Christians,heterosexual
+13bef759-39d4-4fa1-834e-9efdfc30ef43,75,female,Haupt- (Volks-)schulabschluss,Rentner/in,widowed,with_migration,Afghanistan,Muslims,heterosexual
+b51bc291-e2a0-46fd-9198-42a64d0185ec,19,male,Noch in schulischer Ausbildung,Erzieher/in,single,with_migration,Moldau,Christians,heterosexual
+0a16c1c3-ad61-421b-8050-795dd19eb6c3,2,male,Unknown,Unemployed,single,without_migration,Deutschland,Christians,heterosexual
+c67b910d-7c01-4129-9988-f31f8f1c6ffa,52,female,Realschule oder gleichwertiger Abschluss,Reinigungskraft,married,with_migration,Bulgarien,Christians,heterosexual
+c16653a5-54b1-43b5-a99b-04bd32c5880c,70,male,Abschluss der polytechnischen Oberschule,Rentner/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+3c73c928-f8d4-43f9-b570-a6fce8457a5b,42,male,Fachhochschul- oder Hochschulreife,Anwalt/Anwältin,married,with_migration,Polen,Christians,heterosexual
+b0523298-28b1-4483-b228-d0c6874cc40b,33,female,Realschule oder gleichwertiger Abschluss,Lkw-Fahrer/in,married,without_migration,Deutschland,Christians,heterosexual
+8724425b-9130-4fda-a1dd-20f0b52a513b,11,female,Unknown,Schüler/in,single,without_migration,Deutschland,Christians,heterosexual
+0904c3d5-1b71-4d68-acf4-4de2c6f38fe6,54,female,Ohne allgemeinen Schulabschluss,Informatiker/in,single,without_migration,Deutschland,Christians,heterosexual
+9b76269c-ad5f-45e2-a492-a92cfd32d67f,3,male,Unknown,Unemployed,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+61dfb3d0-9519-4922-aba5-6004b75411ce,64,male,Haupt- (Volks-)schulabschluss,Polizist/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+7c8c504f-427c-425b-9b80-5ef616644a4a,63,male,Haupt- (Volks-)schulabschluss,Buchhalter/in,married,with_migration,Türkei,Muslims,heterosexual
+75e7dc6d-756d-4b1a-922a-0663ddda8ff8,56,female,Realschule oder gleichwertiger Abschluss,Lkw-Fahrer/in,single,without_migration,Deutschland,Christians,heterosexual
+bee235ff-5d7c-4fa5-9e7e-636662727733,37,male,Haupt- (Volks-)schulabschluss,Lehrer/in,single,with_migration,Türkei,Muslims,heterosexual
+6cccc09d-dea5-42b0-822e-e42aa603174a,3,male,Unknown,Unemployed,single,with_migration,Russland,Christians,heterosexual
+5b4584b9-ae08-4067-a5f6-156228561709,36,male,Fachhochschul- oder Hochschulreife,Lehrer/in,single,with_migration,Ukraine,Christians,heterosexual
+d1680518-2365-42b2-b7bd-8566e70845ea,53,female,Realschule oder gleichwertiger Abschluss,Friseur/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+2b116dc8-0a6f-45cf-a6c7-9e6fc5ac9700,13,male,Unknown,Schüler/in,single,without_migration,Deutschland,Christians,heterosexual
+d50c1e22-f148-46a0-9962-3aa3df2c9a7b,58,male,Fachhochschul- oder Hochschulreife,Lkw-Fahrer/in,divorced,with_migration,Portugal,Hindus,heterosexual
+86b00284-59c3-4cae-97da-51a245a0ac45,52,female,Fachhochschul- oder Hochschulreife,Sekretär/in,married,with_migration,Ukraine,Christians,heterosexual
+0cfd492d-8c9e-4cc1-a11b-b8bcc41b3926,31,male,Realschule oder gleichwertiger Abschluss,Informatiker/in,single,without_migration,Deutschland,Christians,heterosexual
+309ed4aa-a00e-4622-a295-d82b900b8c11,39,female,Fachhochschul- oder Hochschulreife,Wissenschaftler/in,married,with_migration,Brasilien,Christians,heterosexual
+02680c1e-a927-41d4-bc72-f51334faf057,85,female,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+8366be47-7be6-4319-ba6d-30e007fb42b3,32,male,Haupt- (Volks-)schulabschluss,Krankenpfleger/in,single,without_migration,Deutschland,Christians,heterosexual
+acea8935-bf9c-4092-be84-5cef1ba11888,66,male,Fachhochschul- oder Hochschulreife,Friseur/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+baeefbe8-7cef-453e-bd4a-08373b6a1271,68,female,Haupt- (Volks-)schulabschluss,Rentner/in,widowed,without_migration,Deutschland,Muslims,heterosexual
+fea09f8d-0ba9-4212-8499-5472df02edfc,21,female,Noch in schulischer Ausbildung,Mechaniker/in,single,with_migration,Kroatien,Christians,heterosexual
+edc68ff6-c49f-404c-a62f-b5e572bdd2f4,61,female,Haupt- (Volks-)schulabschluss,Manager/in,divorced,with_migration,Slowakei,Religiously_unaffiliated,heterosexual
+6c672fce-d008-4bee-b7f6-6630de1d0298,9,female,Unknown,Schüler/in,single,with_migration,Polen,Christians,heterosexual
+2a6592bd-c01d-4cd2-a88c-1b32a38b4d45,22,female,Noch in schulischer Ausbildung,Polizist/in,single,without_migration,Deutschland,Christians,heterosexual
+2974f1d9-b643-4f73-b555-110932faf18d,46,female,Fachhochschul- oder Hochschulreife,Ingenieur/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+2b8a022c-dc84-4de5-913b-16e78c54a6b4,58,female,Fachhochschul- oder Hochschulreife,Wissenschaftler/in,divorced,without_migration,Deutschland,Muslims,heterosexual
+99307755-3bc2-41e8-bf27-015d7c1dad05,65,male,Haupt- (Volks-)schulabschluss,Soldat/in,divorced,without_migration,Deutschland,Christians,heterosexual
+8b1fba7d-e7f8-4252-b506-22d6879cf604,72,male,Ohne allgemeinen Schulabschluss,Rentner/in,married,with_migration,Rumänien,Christians,heterosexual
+ec1ec8c8-d985-4ccf-b5ef-35b3e16beb42,2,female,Unknown,Unemployed,single,with_migration,Österreich,Christians,heterosexual
+0e52855f-6e42-4d8e-bab4-830285f980ae,39,female,Fachhochschul- oder Hochschulreife,Erzieher/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+1b3c1322-98f9-4f0f-a2cb-71d3a0f5ec5a,60,male,Haupt- (Volks-)schulabschluss,Koch/Köchin,married,without_migration,Deutschland,Christians,heterosexual
+d76fa7c7-baef-46de-bb56-c2d36fb97783,83,female,Abschluss der polytechnischen Oberschule,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+b94a1f01-87d1-451d-906c-4379d1db1b3d,15,male,Noch in schulischer Ausbildung,Schüler/in,single,without_migration,Deutschland,Christians,heterosexual
+ae66512c-7f67-4340-a247-a010b8093d1a,3,male,Unknown,Unemployed,single,with_migration,Griechenland,Christians,heterosexual
+637f16a7-a1cc-4c70-9f03-a5950e8c6a75,19,male,Fachhochschul- oder Hochschulreife,Sekretär/in,single,with_migration,Taiwan,Buddhists,heterosexual
+66d20bb1-b4c2-4cee-91cc-dd860740445e,57,female,Fachhochschul- oder Hochschulreife,Mechaniker/in,married,with_migration,Italien,Christians,bisexual
+9886840f-7b75-4a1b-ada0-96f9c716811a,53,female,Ohne allgemeinen Schulabschluss,Sozialarbeiter/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+19e6f5e0-678b-4149-87de-97ac7ed819df,42,male,Fachhochschul- oder Hochschulreife,Krankenpfleger/in,married,with_migration,Russland,Christians,heterosexual
+79a10928-e54c-48a6-a374-f0eaf52064d7,88,female,Fachhochschul- oder Hochschulreife,Rentner/in,widowed,with_migration,Syrien,Muslims,heterosexual
+93588edb-e961-4a81-a33e-ae59b316925d,13,female,Unknown,Schüler/in,single,without_migration,Deutschland,Muslims,heterosexual
+1d0b9e9d-5755-46c1-a5ca-bb66fb760358,1,male,Unknown,Unemployed,single,without_migration,Deutschland,Christians,heterosexual
+ecb9fefc-82f6-4429-bf66-c62b7086fdde,12,male,Unknown,Schüler/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+ca8c8c2f-b4d6-4186-b0d2-b7c392d6957b,26,male,Realschule oder gleichwertiger Abschluss,Wissenschaftler/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+63e1c1af-9cfa-486d-a9d7-00cde92844dc,64,female,Realschule oder gleichwertiger Abschluss,Journalist/in,divorced,with_migration,Mexiko,Christians,heterosexual
+98548007-92ea-452e-abab-fac7c843a84f,67,female,Haupt- (Volks-)schulabschluss,Künstler/in,married,without_migration,Deutschland,Christians,heterosexual
+692f0a66-9529-4f73-b241-26f30e617604,21,male,Fachhochschul- oder Hochschulreife,Erzieher/in,single,with_migration,Kroatien,Christians,heterosexual
+a130c22b-a795-4bc0-aabe-e419625f759c,29,female,Realschule oder gleichwertiger Abschluss,Bauarbeiter/in,married,without_migration,Deutschland,Christians,heterosexual
+db127114-74f7-42e9-a56f-f342739c00a6,67,female,Realschule oder gleichwertiger Abschluss,Reinigungskraft,married,with_migration,Kroatien,Christians,heterosexual
+eab13f06-b25e-445e-845a-c209dc90ca14,17,female,Noch in schulischer Ausbildung,Reinigungskraft,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+03ad64e7-fb6c-427d-9019-b9930d58b8e4,57,female,Fachhochschul- oder Hochschulreife,Wissenschaftler/in,single,with_migration,Mali,Muslims,heterosexual
+b13cedcb-579e-4a9b-9224-cc91cd20fb11,58,male,Realschule oder gleichwertiger Abschluss,Arzt/Ärztin,divorced,without_migration,Deutschland,Christians,heterosexual
+4d406e67-6d8e-45b0-a7ad-0146eda129a5,66,female,Realschule oder gleichwertiger Abschluss,Sekretär/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+29d8c168-2887-46d0-a5b9-86cccf7a8c31,75,female,Haupt- (Volks-)schulabschluss,Rentner/in,widowed,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+a64845a6-50c7-4f34-843f-32bd65b784be,57,female,Haupt- (Volks-)schulabschluss,Bauarbeiter/in,divorced,with_migration,Kroatien,Christians,heterosexual
+324bd3de-5262-41ac-ab44-1cd6aaac3ec3,76,female,Haupt- (Volks-)schulabschluss,Rentner/in,widowed,without_migration,Deutschland,Christians,heterosexual
+60802ab8-bdc1-4a49-ae04-6c2ba072470d,19,male,Realschule oder gleichwertiger Abschluss,Koch/Köchin,single,with_migration,Vereinigtes Königreich,Religiously_unaffiliated,heterosexual
+a96757ab-3439-4069-9e67-ebd0c4460e0b,73,female,Fachhochschul- oder Hochschulreife,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+d9f62441-eb5a-4a67-aad4-d8bf5833f888,71,female,Fachhochschul- oder Hochschulreife,Rentner/in,married,with_migration,Kroatien,Christians,heterosexual
+4f6ab33d-3899-41d6-92ac-32d6393f85a7,82,female,Realschule oder gleichwertiger Abschluss,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+08e35639-74f2-404e-977c-05fc8a0563e0,47,male,Fachhochschul- oder Hochschulreife,Buchhalter/in,married,without_migration,Deutschland,Christians,heterosexual
+81eb74c4-277b-401b-8862-77769f722db4,86,female,Realschule oder gleichwertiger Abschluss,Rentner/in,widowed,with_migration,Ukraine,Christians,heterosexual
+dac9df46-5d28-4eaf-b6fe-3b8fd65a5557,54,male,Abschluss der polytechnischen Oberschule,Arzt/Ärztin,married,without_migration,Deutschland,Christians,heterosexual
+43721918-f3c9-496f-b7fd-ccc38e342e4d,23,female,Fachhochschul- oder Hochschulreife,Ingenieur/in,single,with_migration,Ukraine,Christians,heterosexual
+64052880-26d0-4b1b-8e89-b7ee20e99019,20,female,Noch in schulischer Ausbildung,Verkäufer/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+6c39ca49-1cab-4ef6-8894-9b61e716deb2,45,female,Haupt- (Volks-)schulabschluss,Anwalt/Anwältin,married,without_migration,Deutschland,Muslims,heterosexual
+4527f67b-a040-454c-b2bb-98b7d703a9ce,33,male,Realschule oder gleichwertiger Abschluss,Soldat/in,married,with_migration,Afghanistan,Muslims,heterosexual
+274181b2-f057-4f12-987c-6d23fc0d2863,39,female,Fachhochschul- oder Hochschulreife,Richter/in,single,with_migration,Türkei,Muslims,heterosexual
+74e48f71-aa85-40ff-ad7c-03be250bfcbc,45,female,Fachhochschul- oder Hochschulreife,Erzieher/in,married,with_migration,Russland,Christians,heterosexual
+a27264c5-1716-475e-b5ed-e46147bb1d1f,58,female,Ohne allgemeinen Schulabschluss,Sozialarbeiter/in,married,with_migration,Ukraine,Christians,heterosexual
+aca7de86-bc6a-4a92-8b95-21709657835a,32,male,Ohne allgemeinen Schulabschluss,Ingenieur/in,single,with_migration,Ukraine,Christians,heterosexual
+885f6c16-b7ca-472b-859d-9ddb6f0a8243,37,female,Haupt- (Volks-)schulabschluss,Sozialarbeiter/in,married,without_migration,Deutschland,Christians,heterosexual
+72c45131-1e67-4f21-aa1b-c8e61ad657dc,44,male,Realschule oder gleichwertiger Abschluss,Krankenpfleger/in,single,with_migration,Syrien,Muslims,heterosexual
+7e3b51d0-d21b-45f6-8374-a697c107cdd2,60,female,Realschule oder gleichwertiger Abschluss,Friseur/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+8bcd0f5e-1ead-417e-a700-56c34ffd80dc,83,female,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+29ea9fcd-cb01-4f3e-95de-7af7adb1bf2c,17,male,Realschule oder gleichwertiger Abschluss,Friseur/in,single,with_migration,Pakistan,Muslims,heterosexual
+4ed2dbd4-c9fd-4920-9b6f-d772028118cf,31,male,Fachhochschul- oder Hochschulreife,Sozialarbeiter/in,married,with_migration,Syrien,Muslims,heterosexual
+03845fbc-9967-4883-8e42-f83f4c34d844,56,female,Realschule oder gleichwertiger Abschluss,Informatiker/in,married,without_migration,Deutschland,Christians,heterosexual
+459d18bc-0bbc-4478-b402-7ea3ef251489,56,male,Fachhochschul- oder Hochschulreife,Koch/Köchin,married,without_migration,Deutschland,Christians,heterosexual
+b89d068e-d28a-4ecf-a09b-a0a1ebbbf1f0,83,female,Realschule oder gleichwertiger Abschluss,Rentner/in,widowed,with_migration,Bulgarien,Christians,heterosexual
+cf75a9e9-d5e0-4f20-8c6f-8d78e2e99b46,3,male,Unknown,Unemployed,single,with_migration,Türkei,Muslims,heterosexual
+9c8f31a9-9ce7-4d94-96d9-5ccf5839af27,65,male,Haupt- (Volks-)schulabschluss,Mechaniker/in,widowed,without_migration,Deutschland,Muslims,heterosexual
+03e9b1eb-44fb-4b13-8441-5461e58722d5,5,male,Unknown,Unemployed,single,with_migration,Japan,Buddhists,heterosexual
+3f81b99f-3cfa-4e84-a544-81f51109ed72,62,male,Fachhochschul- oder Hochschulreife,Arzt/Ärztin,single,with_migration,Syrien,Muslims,heterosexual
+ed3125d1-714a-4035-8481-b8946201e7bf,58,female,Abschluss der polytechnischen Oberschule,Lehrer/in,married,without_migration,Deutschland,Christians,heterosexual
+ab79fbbf-5515-40f3-a991-ed67a4c75ddf,50,male,Fachhochschul- oder Hochschulreife,Richter/in,divorced,without_migration,Deutschland,Christians,heterosexual
+e3d68133-13b4-4c39-b60a-4ad147d5bd22,62,female,Fachhochschul- oder Hochschulreife,Anwalt/Anwältin,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+e624cd96-ab82-4c18-b86a-e17515c0de57,56,male,Fachhochschul- oder Hochschulreife,Anwalt/Anwältin,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+9d88fc75-2124-4dcd-93ef-90c8efd8de8a,28,male,Fachhochschul- oder Hochschulreife,Sozialarbeiter/in,single,without_migration,Deutschland,Christians,heterosexual
+41fdec43-9bc4-443a-91b1-a66c6d759c06,46,male,Fachhochschul- oder Hochschulreife,Erzieher/in,married,with_migration,Rumänien,Christians,heterosexual
+8049ae9c-13a6-4e14-8211-c766a084216b,45,female,Abschluss der polytechnischen Oberschule,Krankenpfleger/in,married,without_migration,Deutschland,Christians,heterosexual
+54852706-e44e-4211-a494-ba3d4afe7210,22,male,Fachhochschul- oder Hochschulreife,Friseur/in,single,with_migration,Syrien,Muslims,heterosexual
+a29af3ce-b7e6-418a-bb75-c4661104867a,60,male,Realschule oder gleichwertiger Abschluss,Buchhalter/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+f4501e80-a9d7-4b52-8f8c-b0b5cd0347a4,74,female,Realschule oder gleichwertiger Abschluss,Rentner/in,married,without_migration,Deutschland,Christians,heterosexual
+eba0b063-e48b-4249-80a8-797e116baad3,67,female,Realschule oder gleichwertiger Abschluss,Lehrer/in,widowed,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+80d74bf8-7860-4148-912a-8d251ef83f46,88,male,Haupt- (Volks-)schulabschluss,Rentner/in,single,with_migration,Türkei,Muslims,heterosexual
+a4a0f674-a8ff-4aa2-8133-336345e5ad3e,10,male,Unknown,Schüler/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+fbec2d5e-6aa0-4587-8fc0-73aefec9b7b4,63,male,Realschule oder gleichwertiger Abschluss,Richter/in,married,with_migration,Serbien,Christians,heterosexual
+7c9a3e1d-13be-4d0e-a0d1-b5c8324bd25d,25,male,Realschule oder gleichwertiger Abschluss,Ingenieur/in,single,without_migration,Deutschland,Muslims,homosexual
+c12de5a1-ccd6-49e8-8d54-65c83baf9b1d,10,female,Unknown,Schüler/in,single,without_migration,Deutschland,Christians,heterosexual
+4ebff3cd-6d3c-4556-a627-0da24ce2ca86,74,female,Fachhochschul- oder Hochschulreife,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+2d6e8515-873c-4524-9d31-6d80b205a38a,28,male,Fachhochschul- oder Hochschulreife,Friseur/in,single,without_migration,Deutschland,Christians,heterosexual
+217d9061-86f0-4205-9cbc-654a3abf2d9a,20,male,Fachhochschul- oder Hochschulreife,Buchhalter/in,single,with_migration,Afghanistan,Muslims,heterosexual
+95487f2d-474e-4f93-97f7-d5c3f12289f2,5,male,Unknown,Unemployed,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+f15bf167-1f72-42a5-abbe-ed09c7c0ec03,62,female,Abschluss der polytechnischen Oberschule,Künstler/in,married,without_migration,Deutschland,Christians,heterosexual
+59bae9c1-8d07-478e-9fff-8253df69b349,3,male,Unknown,Unemployed,single,without_migration,Deutschland,Christians,heterosexual
+9d84ce5a-55d4-44d2-8fb6-2f5b9cccf8c0,4,female,Unknown,Unemployed,single,without_migration,Deutschland,Jews,heterosexual
+117fc595-1ea0-4665-b6f3-9e0f264158bb,44,male,Fachhochschul- oder Hochschulreife,Friseur/in,married,without_migration,Deutschland,Christians,heterosexual
+263aa8c0-91f0-4f9d-94f2-8496d36c01d8,66,female,Haupt- (Volks-)schulabschluss,Reinigungskraft,married,with_migration,Japan,Buddhists,heterosexual
+b6efd26f-e11f-422e-af59-7be25060ef57,20,male,Realschule oder gleichwertiger Abschluss,Erzieher/in,single,without_migration,Deutschland,Christians,heterosexual
+412197c8-af4f-46a0-84c3-9de34d34211b,6,female,Unknown,Schüler/in,single,with_migration,Syrien,Christians,heterosexual
+dfc327ba-d287-4368-bae8-3b43c766026d,85,female,Realschule oder gleichwertiger Abschluss,Rentner/in,widowed,without_migration,Deutschland,Christians,heterosexual
+cc21cd03-1ae9-47b4-b92c-0d29a34a3080,77,female,Realschule oder gleichwertiger Abschluss,Rentner/in,widowed,with_migration,Griechenland,Christians,heterosexual
+68cc7e51-dd99-45bd-a84b-634b2c7b0d58,0,male,Unknown,Unemployed,single,without_migration,Deutschland,Jews,heterosexual
+1aa2f6a9-bde9-478f-8b28-1a6137e5d8c2,22,male,Haupt- (Volks-)schulabschluss,Soldat/in,single,without_migration,Deutschland,Christians,heterosexual
+5c4b5a2d-086d-4153-ac2e-adb468d7202f,62,male,Realschule oder gleichwertiger Abschluss,Erzieher/in,single,with_migration,Türkei,Muslims,heterosexual
+53948508-aa04-4f95-ae10-9528de4fca74,44,male,Realschule oder gleichwertiger Abschluss,Koch/Köchin,married,with_migration,Polen,Christians,heterosexual
+6eb07794-537c-427c-9691-53d6d859aa45,57,female,Realschule oder gleichwertiger Abschluss,Mechaniker/in,married,without_migration,Deutschland,Christians,heterosexual
+ebe4eef6-5141-473f-b6c0-54c1fdbe7026,79,male,Fachhochschul- oder Hochschulreife,Rentner/in,married,with_migration,Serbien,Christians,heterosexual
+bdfad6fe-8f20-4fa3-a798-198fd9717da8,39,male,Realschule oder gleichwertiger Abschluss,Krankenpfleger/in,single,with_migration,Polen,Christians,heterosexual
+39b43d64-8459-4c81-8afd-6e64675e8e11,37,male,Fachhochschul- oder Hochschulreife,Polizist/in,married,without_migration,Deutschland,Muslims,heterosexual
+18005665-6512-4000-b765-d3e32abe6c9d,53,female,Fachhochschul- oder Hochschulreife,Wissenschaftler/in,married,with_migration,Brasilien,Christians,heterosexual
+fba3a66d-2ade-48ea-af24-6d7a8ba3c563,56,female,Abschluss der polytechnischen Oberschule,Ingenieur/in,divorced,with_migration,Spanien,Religiously_unaffiliated,heterosexual
+27b82371-6f4d-4143-bbc4-de83f26c5276,55,female,Fachhochschul- oder Hochschulreife,Sozialarbeiter/in,single,without_migration,Deutschland,Christians,heterosexual
+1606697a-e508-4cb6-b9e9-92004718f65d,40,male,Fachhochschul- oder Hochschulreife,Erzieher/in,single,with_migration,Ukraine,Religiously_unaffiliated,heterosexual
+0c52d984-192b-40ac-9550-dd5792f1bdc0,43,male,Fachhochschul- oder Hochschulreife,Bauarbeiter/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+f0bcd380-5f82-4485-86b5-d14347f393aa,58,female,Haupt- (Volks-)schulabschluss,Bauarbeiter/in,married,with_migration,Kosovo,Muslims,heterosexual
+f88741b7-4d1c-41ec-9fe1-a4a5ea013115,42,female,Realschule oder gleichwertiger Abschluss,Informatiker/in,married,with_migration,Spanien,Religiously_unaffiliated,heterosexual
+fb9f7177-89ff-4384-a966-aae075d9abee,65,male,Fachhochschul- oder Hochschulreife,Informatiker/in,single,without_migration,Deutschland,Christians,heterosexual
+e2ec6d6a-3ebb-426e-8ff5-80dfeb68be5f,45,male,Haupt- (Volks-)schulabschluss,Elektriker/in,married,with_migration,Kasachstan,Muslims,heterosexual
+300a2175-0d8f-42c2-8e00-9aecebacaa3c,42,male,Fachhochschul- oder Hochschulreife,Sozialarbeiter/in,married,with_migration,Polen,Christians,heterosexual
+028da4ac-a426-418b-ad02-3d5a3aa0aaab,72,female,Abschluss der polytechnischen Oberschule,Rentner/in,single,with_migration,Türkei,Religiously_unaffiliated,heterosexual
+890ac1e4-2cdb-4bc2-b677-e24806075db5,48,female,Realschule oder gleichwertiger Abschluss,Erzieher/in,single,without_migration,Deutschland,Christians,heterosexual
+cab4baeb-8459-4896-a608-ed41e7c13d3d,34,male,Fachhochschul- oder Hochschulreife,Lehrer/in,single,with_migration,Türkei,Muslims,heterosexual
+12f8b752-183e-447c-8a1a-436fade2d0eb,52,female,Realschule oder gleichwertiger Abschluss,Elektriker/in,married,without_migration,Deutschland,Christians,heterosexual
+d06820c0-f40b-435a-ae4a-ee066174bbab,48,female,Haupt- (Volks-)schulabschluss,Sozialarbeiter/in,married,without_migration,Deutschland,Christians,heterosexual
+69796d86-8f92-4d2b-8e79-67dff7d1be58,24,female,Realschule oder gleichwertiger Abschluss,Informatiker/in,single,with_migration,Ukraine,Christians,heterosexual
+1cf2d013-b021-4acf-95f4-c5278ccfaca2,59,male,Fachhochschul- oder Hochschulreife,Buchhalter/in,single,without_migration,Deutschland,Christians,heterosexual
+1e2e0829-f1a8-4e7a-a750-3c65007a4e55,54,male,Fachhochschul- oder Hochschulreife,Wissenschaftler/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+6e12468b-dbc7-4bf2-9ac8-e8fcfbfabd8e,58,male,Abschluss der polytechnischen Oberschule,Erzieher/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+5e90ff68-6b49-43d9-85df-d3e265db4f49,49,male,Haupt- (Volks-)schulabschluss,Arzt/Ärztin,single,without_migration,Deutschland,Christians,heterosexual
+30c3ac39-a9ad-4807-8b98-91073ef1bf6a,34,female,Haupt- (Volks-)schulabschluss,Manager/in,single,without_migration,Deutschland,Christians,heterosexual
+bc5373e6-fd67-4fb6-8687-3d909b95eb9c,36,male,Realschule oder gleichwertiger Abschluss,Lehrer/in,single,with_migration,Türkei,Muslims,heterosexual
+1c11249f-331f-4e56-b662-afa94bd1c8f0,59,male,Fachhochschul- oder Hochschulreife,Elektriker/in,divorced,with_migration,Serbien,Christians,heterosexual
+25b79ec4-a327-4712-ae26-fd0d06f5df05,1,female,Unknown,Unemployed,single,with_migration,Polen,Christians,heterosexual
+42408858-8980-4530-9573-3f9b182bb482,66,male,Fachhochschul- oder Hochschulreife,Sozialarbeiter/in,married,with_migration,Syrien,Muslims,heterosexual
+c5b79978-d9bb-4664-9f79-75f222d6a16a,3,female,Unknown,Unemployed,single,without_migration,Deutschland,Christians,heterosexual
+d12bc2a1-6059-454c-9512-ce41ff20d222,21,male,Fachhochschul- oder Hochschulreife,Mechaniker/in,single,without_migration,Deutschland,Christians,heterosexual
+e5b69cf7-7685-4fd2-8013-ab895a4313d0,70,male,Fachhochschul- oder Hochschulreife,Rentner/in,married,with_migration,Afghanistan,Muslims,heterosexual
+9b3f4bd0-6bcd-44e6-a1bb-182553948679,54,female,Fachhochschul- oder Hochschulreife,Bauarbeiter/in,married,without_migration,Deutschland,Christians,heterosexual
+5f15ada9-d578-41be-b7de-80e81aba84b0,55,male,Fachhochschul- oder Hochschulreife,Ingenieur/in,married,with_migration,Bulgarien,Muslims,heterosexual
+a236c0ac-921d-4a6c-a04e-c2f990367577,74,male,Haupt- (Volks-)schulabschluss,Rentner/in,divorced,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+518953ed-bc97-4df9-b0a4-e30020ddaf59,86,female,Realschule oder gleichwertiger Abschluss,Rentner/in,widowed,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+fad0dfd8-66a1-4f20-b041-fba79b6ae527,41,female,Ohne allgemeinen Schulabschluss,Mechaniker/in,married,without_migration,Deutschland,Christians,heterosexual
+a2d6cf1a-c0a9-48d9-9fbc-856179b5c4b7,81,female,Fachhochschul- oder Hochschulreife,Rentner/in,divorced,with_migration,Syrien,Christians,heterosexual
+de87003d-67cc-49ab-984d-ea4f1e858da9,55,female,Fachhochschul- oder Hochschulreife,Lehrer/in,single,without_migration,Deutschland,Christians,heterosexual
+ec94a1a7-b570-47e9-b0b2-7c927e2811c7,69,male,Realschule oder gleichwertiger Abschluss,Rentner/in,married,with_migration,Afghanistan,Muslims,heterosexual
+baf0b330-903f-47fa-a797-8260cce666b6,45,male,Ohne allgemeinen Schulabschluss,Reinigungskraft,married,with_migration,Ukraine,Christians,heterosexual
+f65a131d-937c-4d4f-b075-e552a97b1d7e,35,male,Haupt- (Volks-)schulabschluss,Mechaniker/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+bb76aeaa-4a51-4a17-ac9b-ce01dc4788f1,55,male,Fachhochschul- oder Hochschulreife,Sozialarbeiter/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+8d03534e-ceb0-4343-b28d-1f77491cb175,23,male,Noch in schulischer Ausbildung,Lkw-Fahrer/in,single,with_migration,Bosnien und Herzegowina,Muslims,heterosexual
+2637cb24-faf3-4909-9a1b-303d0c1a25e8,59,male,Haupt- (Volks-)schulabschluss,Friseur/in,married,without_migration,Deutschland,Christians,heterosexual
+4e21dd5b-6e0b-412a-9342-94eee2b0dbf2,59,male,Fachhochschul- oder Hochschulreife,Arzt/Ärztin,married,with_migration,Schweden,Christians,heterosexual
+49d9f538-4130-4e73-a7d0-20332455677f,54,female,Fachhochschul- oder Hochschulreife,Erzieher/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+743ec532-8789-40d9-a9fc-e78b79d022cc,58,male,Fachhochschul- oder Hochschulreife,Krankenpfleger/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+dff4dd9e-e278-4b14-9529-5230a34c9b9b,80,male,Haupt- (Volks-)schulabschluss,Rentner/in,divorced,without_migration,Deutschland,Christians,heterosexual
+ef2f9718-9e3c-419c-bd24-fe4a0cf60d1a,28,female,Realschule oder gleichwertiger Abschluss,Friseur/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+b438b2c2-6458-4a1b-986b-ad251c7fb43f,71,male,Haupt- (Volks-)schulabschluss,Rentner/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+7f11d4c9-04cc-4407-a951-f4f98096f8b3,18,male,Fachhochschul- oder Hochschulreife,Krankenpfleger/in,single,with_migration,Polen,Christians,heterosexual
+e5c2aac5-9455-4b43-92f4-c7e10bec0785,59,female,Haupt- (Volks-)schulabschluss,Sozialarbeiter/in,married,with_migration,Pakistan,Muslims,heterosexual
+f6446a90-416a-4788-970f-0726afb9ce63,47,male,Realschule oder gleichwertiger Abschluss,Krankenpfleger/in,single,with_migration,China,Religiously_unaffiliated,heterosexual
+63bcbb2f-93ed-4285-9f58-1b1195094ac9,19,male,Noch in schulischer Ausbildung,Bauarbeiter/in,single,without_migration,Deutschland,Christians,heterosexual
+66531045-edb3-4531-bc61-9662c5f2c9e0,31,female,Fachhochschul- oder Hochschulreife,Friseur/in,single,without_migration,Deutschland,Christians,heterosexual
+56f249bf-a648-44f8-bc60-69a45d28ba08,47,female,Ohne allgemeinen Schulabschluss,Manager/in,single,with_migration,Vietnam,Buddhists,heterosexual
+845ee88f-ef93-46ab-9432-3e4f30426965,6,diverse,Unknown,Schüler/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+c0d4e0ff-1a7a-428c-a8f8-f64923cb4ffc,34,male,Fachhochschul- oder Hochschulreife,Buchhalter/in,single,without_migration,Deutschland,Christians,heterosexual
+d7f73f6c-0017-494d-86f4-554901e02dc6,63,female,Fachhochschul- oder Hochschulreife,Verkäufer/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+03748a0a-0601-4ccf-8b02-756d692d4217,63,male,Abschluss der polytechnischen Oberschule,Informatiker/in,married,without_migration,Deutschland,Christians,heterosexual
+df1bcef0-b109-415d-8421-917e07839900,8,female,Unknown,Schüler/in,single,without_migration,Deutschland,Religiously_unaffiliated,heterosexual
+d4ceecc4-397b-43c5-8b61-a02cef086bff,33,female,Fachhochschul- oder Hochschulreife,Bauarbeiter/in,married,without_migration,Deutschland,Religiously_unaffiliated,heterosexual

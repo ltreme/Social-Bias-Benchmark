@@ -1,0 +1,12 @@
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+dependencies = [
+    "numpy",
+    "requests",
+    "python-dotenv",
+    "huggingface_hub",
+    "transformers",
+    "torch",
+    "pandas",
+]
