@@ -1,4 +1,4 @@
-from benchmark.domain.persona import RawPersonaDto
+from benchmark.domain.persona import EnrichedPersonaDto, RawPersonaDto
 from shared.core_types import GenderEnum
 
 
@@ -30,6 +30,7 @@ def get_object_pronoun(persona: RawPersonaDto) -> str:
 
 
 def persona_to_dict(persona: RawPersonaDto) -> dict:
+    """Converts a persona object to a dictionary."""
     attributes = {
         "age": persona.age,
         "gender": persona.gender,
@@ -40,13 +41,13 @@ def persona_to_dict(persona: RawPersonaDto) -> dict:
         "origin": persona.origin,
         "religion": persona.religion,
         "sexuality": persona.sexuality,
-        "appearance": persona.appearance,
-        "biography": persona.biography,
     }
-    if persona.name is not None:
-        attributes["name"] = persona.name
-    if persona.appearance is not None:
-        attributes["appearance"] = persona.appearance
-    if persona.biography is not None:
-        attributes["biography"] = persona.biography
+    if isinstance(persona, EnrichedPersonaDto):
+        attributes.update(
+            {
+                "name": persona.name,
+                "appearance": persona.appearance,
+                "biography": persona.biography,
+            }
+        )
     return attributes
