@@ -12,8 +12,8 @@ source venv/bin/activate
 # Set the project root directory
 PROJECT_ROOT=$(pwd)
 
-# Add the src directory to the PYTHONPATH
-export PYTHONPATH=$PROJECT_ROOT/apps/benchmark/src:$PYTHONPATH
+# Add ALL src directories to the PYTHONPATH to ensure correct module resolution
+export PYTHONPATH=$PROJECT_ROOT/apps/shared/src:$PROJECT_ROOT/apps/persona_generator/src:$PROJECT_ROOT/apps/benchmark/src:$PYTHONPATH
 
 # Run the preprocessing script as a module
 echo "Running benchmark preprocessing script..."
