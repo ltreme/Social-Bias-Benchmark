@@ -9,6 +9,10 @@ dependencies = [
     "transformers",
     "torch",
     "pandas",
+    "bitsandbytes",
+    "accelerate",
+    "sentencepiece",
+    "protobuf",
 ]
 
 [tool.pytest.ini_options]

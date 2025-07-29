@@ -15,7 +15,7 @@ def generate_personas(model_name: str, mixed_precision: str = "fp16") -> int:
     """
     llm = LLMModel(model_identifier=model_name, mixed_precision=mixed_precision)
     reader = PersonaReader()
-    writer = PersonaWriter(model_name=llm.model_identifier)
+    writer = PersonaWriter(model_name=model_name)
     attribute_filler = AttributeFiller(llm=llm)
     personas = reader.find_all()
     count = 0
