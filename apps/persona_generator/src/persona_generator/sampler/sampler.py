@@ -12,6 +12,7 @@ class Sampler(ABC):
     @abstractmethod
     def _prepare(self):
         """Subclasses prepare data (called in __init__)."""
+        pass
 
     @abstractmethod
     def sample(self, *args, **kwargs):

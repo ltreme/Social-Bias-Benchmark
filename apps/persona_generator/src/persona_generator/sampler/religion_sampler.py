@@ -1,5 +1,6 @@
 import numpy as np
-from models.db import Country, ReligionPerCountry
+
+from persona_generator.models.db import Country, ReligionPerCountry
 
 from .sampler import Sampler
 

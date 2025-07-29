@@ -22,7 +22,7 @@ def generate_personas(model_name: str, mixed_precision: str = "fp16") -> int:
     for persona in tqdm(personas, desc="Generating personas"):
         try:
             enriched_persona = attribute_filler.fill_attributes(persona)
-            writer.write(enriched_persona)
+            writer.savePersona(enriched_persona)
             count += 1
         except Exception as e:
             print(

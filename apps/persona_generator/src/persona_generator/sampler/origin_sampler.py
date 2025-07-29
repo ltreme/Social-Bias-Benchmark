@@ -1,5 +1,6 @@
 import numpy as np
-from models.db import Country, ForeignersPerCountry
+
+from persona_generator.models.db import Country, ForeignersPerCountry
 
 from .sampler import Sampler
 

@@ -2,16 +2,15 @@ import argparse
 import csv
 import uuid
 
-from sampler.age_sampler import AgeSampler
-from sampler.education_sampler import EducationSampler
-from sampler.gender_sampler import GenderSampler
-from sampler.marriage_status_sampler import MarriageStatusSampler
-from sampler.migration_status_sampler import MigrationStatusSampler
-from sampler.occupation_sampler import OccupationSampler
-from sampler.origin_sampler import OriginSampler
-from sampler.religion_sampler import ReligionSampler
-from sampler.sexuality_sampler import SexualitySampler
-
+from persona_generator.sampler.age_sampler import AgeSampler
+from persona_generator.sampler.education_sampler import EducationSampler
+from persona_generator.sampler.gender_sampler import GenderSampler
+from persona_generator.sampler.marriage_status_sampler import MarriageStatusSampler
+from persona_generator.sampler.migration_status_sampler import MigrationStatusSampler
+from persona_generator.sampler.occupation_sampler import OccupationSampler
+from persona_generator.sampler.origin_sampler import OriginSampler
+from persona_generator.sampler.religion_sampler import ReligionSampler
+from persona_generator.sampler.sexuality_sampler import SexualitySampler
 from shared.core_types import MigrationStatusEnum
 from shared.paths import PATH_PERSONAS_CSV
 

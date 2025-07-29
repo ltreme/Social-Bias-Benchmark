@@ -20,15 +20,6 @@ def get_subject_pronoun(persona: RawPersonaDto) -> str:
     return mapping.get(persona.gender, "sie")
 
 
-def get_subject_pronoun(persona: RawPersonaDto) -> str:
-    mapping = {
-        GenderEnum.MALE.value: "er",
-        GenderEnum.FEMALE.value: "sie",
-        GenderEnum.DIVERSE.value: "sie",
-    }
-    return mapping.get(persona.gender, "sie")
-
-
 def get_object_pronoun(persona: RawPersonaDto) -> str:
     mapping = {
         GenderEnum.MALE.value: "ihn",

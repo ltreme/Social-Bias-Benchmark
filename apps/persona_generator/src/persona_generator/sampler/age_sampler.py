@@ -1,6 +1,8 @@
 import numpy as np
-from models.db import Age
-from sampler.sampler import Sampler
+
+from persona_generator.models.db import Age
+
+from .sampler import Sampler
 
 
 class AgeSampler(Sampler):

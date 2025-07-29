@@ -1,7 +1,8 @@
 import enum
 
 import numpy as np
-from sampler.sampler import Sampler
+
+from persona_generator.sampler.sampler import Sampler
 
 # Prozentuale Verteilung laut Studie (Summe = 100%)
 HETEROSEXUAL = 98.1

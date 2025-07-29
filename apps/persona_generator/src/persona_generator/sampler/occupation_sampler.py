@@ -1,6 +1,7 @@
 import numpy as np
-from models.db import Occupation
-from sampler.sampler import Sampler
+
+from persona_generator.models.db import Occupation
+from persona_generator.sampler.sampler import Sampler
 
 
 class OccupationSampler(Sampler):
@@ -22,7 +23,7 @@ class OccupationSampler(Sampler):
             return "Rentner/in"
         jobs = self.occupation_by_age.get(age, [])
         if not jobs:
-            return "Unemployed"
+            return "Arbeitslos"
         occ = np.random.choice(jobs)
         return occ.job_de
 
