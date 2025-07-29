@@ -1,6 +1,6 @@
-[tool.pytest.ini_options]
-pythonpath = ["src"]
-testpaths = ["tests"]
+[project]
+name = "benchmark"
+version = "0.1"
 dependencies = [
     "numpy",
     "requests",
@@ -10,3 +10,7 @@ dependencies = [
     "torch",
     "pandas",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
