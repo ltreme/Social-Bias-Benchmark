@@ -1,6 +1,7 @@
 from benchmark.domain.persona import EnrichedPersonaDto, RawPersonaDto
 from benchmark.llm.model import LLMModel
-from benchmark.services.llm_attribute_generator import LLMAttributeGenerator
+
+from .llm_attribute_generator import LLMAttributeGenerator
 
 
 class AttributeFiller:
