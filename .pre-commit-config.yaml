@@ -12,3 +12,12 @@ repos:
     hooks:
       - id: autoflake
         args: ["--remove-all-unused-imports", "--remove-unused-variables"]
+
+  - repo: local
+    hooks:
+      - id: run-tests
+        name: Run all unittests
+        entry: ./scripts/test_all.sh
+        language: system
+        pass_filenames: false
+        always_run: true 

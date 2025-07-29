@@ -7,8 +7,7 @@ import numpy as np
 # Add the app directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from models.db import Age, db
-
+from persona_generator.models.db import Age, db
 from persona_generator.sampler.age_sampler import AgeSampler
 from tests.test_sampler_base import TestSamplerBase
 
