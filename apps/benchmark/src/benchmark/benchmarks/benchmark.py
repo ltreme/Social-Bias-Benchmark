@@ -4,14 +4,14 @@ from datetime import datetime
 
 import pandas as pd
 
+from benchmark.domain.prompt import PromptDto
 from benchmark.llm.model import LLMModel
-from benchmark.utils.prompt_loader import LikertPrompt
 
 
 class Benchmark(ABC):
     def __init__(self, model: LLMModel, **kwargs):
         self.model = model
-        self.benchmark_name = kwargs.get("benchmark_name", "Unknown")
+        self.benchmark_name = model.model_name
         snake_case_name = self.benchmark_name.lower().replace(" ", "_")
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.results_output_file = kwargs.get(
@@ -40,11 +40,11 @@ class Benchmark(ABC):
             self.step(prompt)
 
     @abstractmethod
-    def step(self, prompt: LikertPrompt):
+    def step(self, prompt: PromptDto):
         """
         Process a single prompt in the benchmark.
         This method should be overridden in subclasses to implement specific processing logic.
-        :param prompt: The LikertPrompt to process.
+        :param prompt: The PromptDto to process.
         """
         pass
 
@@ -53,7 +53,7 @@ class Benchmark(ABC):
         pass
 
     @abstractmethod
-    def load_prompts(self) -> list:
+    def load_prompts(self) -> list[PromptDto]:
         """
         Load prompts for the benchmark.
         This method should be overridden in subclasses to provide specific prompts.

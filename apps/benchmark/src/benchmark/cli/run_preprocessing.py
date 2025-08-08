@@ -3,8 +3,8 @@ import argparse
 from tqdm import tqdm
 
 from benchmark.llm.model import LLMModel
-from benchmark.repository.persona_reader import PersonaReader
-from benchmark.repository.persona_writer import PersonaWriter
+from benchmark.repository.enriched_persona import EnrichedPersonaRepository
+from benchmark.repository.raw_persona import RawPersonaRepository
 from benchmark.services.llm_attribute_filler import AttributeFiller
 
 
@@ -14,15 +14,15 @@ def generate_personas(model_name: str, mixed_precision: str = "fp16") -> int:
     Returns the number of processed personas.
     """
     llm = LLMModel(model_identifier=model_name, mixed_precision=mixed_precision)
-    reader = PersonaReader()
-    writer = PersonaWriter(model_name=model_name)
+    raw_persona_repo = RawPersonaRepository()
+    enriched_persona_repo = EnrichedPersonaRepository(model_name=model_name)
     attribute_filler = AttributeFiller(llm=llm)
-    personas = reader.find_all()
+    personas = raw_persona_repo.find_all()
     count = 0
     for persona in tqdm(personas, desc="Generating personas"):
         try:
             enriched_persona = attribute_filler.fill_attributes(persona)
-            writer.savePersona(enriched_persona)
+            enriched_persona_repo.save(enriched_persona)
             count += 1
         except Exception as e:
             print(

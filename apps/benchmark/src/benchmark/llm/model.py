@@ -13,6 +13,8 @@ from transformers import (
     BitsAndBytesConfig,
 )
 
+from benchmark.llm.abstract_llm import AbstractLLM
+
 # Configure basic logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -22,7 +24,7 @@ logging.basicConfig(
 warnings.filterwarnings("ignore", category=UserWarning, module="transformers")
 
 
-class LLMModel:
+class LLMModel(AbstractLLM):
     def __init__(self, model_identifier: str, mixed_precision: str = "fp16"):
         """
         Initialize the LLM model.
@@ -45,10 +47,15 @@ class LLMModel:
             )
 
         self.mixed_precision = mixed_precision
-        self.model_name = model_identifier
+        self._model_name = model_identifier
         self.tokenizer = None
         self.model = None
         self._load_model()
+
+    @property
+    def model_name(self) -> str:
+        # concrete implementation of the abstract property
+        return self._model_name
 
     def _load_model(self):
         """
