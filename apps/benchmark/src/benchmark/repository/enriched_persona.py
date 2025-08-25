@@ -24,7 +24,8 @@ class EnrichedPersonaRepository(AbstractPersonaRepository):
             "appearance",
             "biography",
         ]
-        file_path = get_enriched_personas_path(model_name)
+        run_id = os.getenv("RUN_ID") or os.getenv("SLURM_JOB_ID")
+        file_path = get_enriched_personas_path(model_name, run_id=run_id)
         # Falls Datei/Verzeichnis noch nicht existiert: automatisch anlegen + Header schreiben
         dir_path = os.path.dirname(file_path)
         if dir_path and not os.path.isdir(dir_path):

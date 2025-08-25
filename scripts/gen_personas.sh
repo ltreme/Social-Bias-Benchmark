@@ -5,6 +5,14 @@ set -euo pipefail
 MODEL_NAME=${MODEL_NAME:-openai/gpt-oss-20b}
 MIXED_PRECISION=${MIXED_PRECISION:-bf16}   # fp16 | bf16 | no
 QUANT_MODE=${QUANT_MODE:-4bit}             # 4bit | 8bit | none
+RUN_ID=${RUN_ID:-}
+
+if [ -z "$RUN_ID" ]; then
+	TS=$(date -u +%Y%m%dT%H%M%SZ)
+	RAND=$(head -c4 /dev/urandom | LC_ALL=C tr -dc 'a-z0-9' | head -c4 || echo rnd)
+	RUN_ID="local_${TS}_${RAND}"
+	export RUN_ID
+fi
 
 usage() {
 	cat <<EOF
@@ -50,7 +58,7 @@ case "${QUANT_MODE}" in
 	*) echo "Unbekannter QUANT_MODE: ${QUANT_MODE}" >&2; exit 1 ;;
 esac
 
-echo "[gen_personas] Modell: ${MODEL_NAME} | Precision: ${MIXED_PRECISION} | Quantisierung: ${QUANT_MODE}" >&2
+echo "[gen_personas] RUN_ID: ${RUN_ID} | Modell: ${MODEL_NAME} | Precision: ${MIXED_PRECISION} | Quantisierung: ${QUANT_MODE}" >&2
 
 python apps/benchmark/src/benchmark/cli/run_preprocessing.py \
 	--model_name "${MODEL_NAME}" \

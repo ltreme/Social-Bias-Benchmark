@@ -175,6 +175,31 @@ class LLMModel(AbstractLLM):
                 **common_kwargs,
             )
 
+        # Performance Einstellungen
+        try:
+            self.model.eval()  # sicherstellen Inferenzmodus
+        except Exception:
+            pass
+
+        # TF32 für Ampere+ aktivieren (schneller, minimaler Genauigkeitsverlust)
+        if torch.cuda.is_available():
+            try:
+                torch.backends.cuda.matmul.allow_tf32 = True
+                torch.backends.cudnn.allow_tf32 = True
+            except Exception:
+                pass
+
+        # Optionales torch.compile (PyTorch 2, kann mit manchen Quantisierungen inkompatibel sein)
+        if os.getenv("LLM_COMPILE", "0").lower() in {"1", "true", "yes"}:
+            try:
+                compile_mode = os.getenv("LLM_COMPILE_MODE", "reduce-overhead")
+                self.model = torch.compile(
+                    self.model, mode=compile_mode, fullgraph=False
+                )
+                logging.info(f"torch.compile aktiviert (mode={compile_mode}).")
+            except Exception as e:
+                logging.warning(f"torch.compile nicht möglich: {e}")
+
         end_time = time.time()
         logging.info(
             f"Model {self.model_name} loaded in {end_time - start_time:.2f} seconds."
@@ -190,69 +215,38 @@ class LLMModel(AbstractLLM):
         system_prompt: Optional[str] = None,
         max_new_tokens: int = 150,
     ) -> str:
-        """
-        Calls the model with a given prompt.
-
-        Args:
-            prompt: The main prompt for the model.
-            system_prompt: An optional system prompt prepended to the main prompt.
-            max_new_tokens: The maximum number of new tokens to generate.
-
-        Returns:
-            The model's response as a string.
-        """
         logging.info("Starting model call.")
         start_time = time.time()
 
-        # Clear CUDA cache to prevent memory issues
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-
+        # Nachrichtenstruktur (Chat Template fähig)
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
 
-        input_ids = None
-        attention_mask = None
-
         try:
-            # Use apply_chat_template to format the input according to the model's training
             tokenized_inputs = self.tokenizer.apply_chat_template(
                 messages,
-                add_generation_prompt=True,  # Ensures the prompt ends correctly for generation
+                add_generation_prompt=True,
                 return_tensors="pt",
-                # truncation and padding are generally not applied by apply_chat_template directly for single sequences
-                # but it respects tokenizer.model_max_length for truncation if the template is too long.
             )
             input_ids = tokenized_inputs
-
             if self.tokenizer.pad_token_id is not None:
                 attention_mask = (input_ids != self.tokenizer.pad_token_id).long()
             else:
-                # If there's no pad_token_id, assume no padding in the input_ids from chat_template for a single sequence
                 attention_mask = torch.ones_like(input_ids)
-
-        except Exception as e:
-            # print(f"Could not apply chat template: {e}. Using simple concatenation fallback.")
-            full_prompt_str = ""
-            if system_prompt:
-                full_prompt_str += system_prompt + "\\n\\n"
-            full_prompt_str += prompt
-
-            encoding = self.tokenizer(
-                full_prompt_str,
+        except Exception:
+            # Fallback: simpler Prompt concat
+            full_prompt = (system_prompt + "\n\n" if system_prompt else "") + prompt
+            enc = self.tokenizer(
+                full_prompt,
                 return_tensors="pt",
-                padding="max_length",  # Pad to max_length to ensure consistent input shape
                 truncation=True,
                 max_length=self.tokenizer.model_max_length,
             )
-            input_ids = encoding["input_ids"]
-            attention_mask = encoding[
-                "attention_mask"
-            ]  # Use attention_mask from tokenizer
+            input_ids = enc["input_ids"]
+            attention_mask = enc.get("attention_mask")
 
-        # Move tensors to appropriate device
         device = (
             next(self.model.parameters()).device
             if hasattr(self.model, "parameters")
@@ -263,74 +257,62 @@ class LLMModel(AbstractLLM):
             attention_mask = attention_mask.to(device)
 
         logging.info("Generating response...")
-        generation_start_time = time.time()
+        gen_start = time.time()
+        prompt_tokens = input_ids.shape[1]
 
         try:
-            with torch.no_grad():
-                # Ensure input_ids are valid (no negative values or out-of-vocab tokens)
-                vocab_size = self.model.config.vocab_size
-                input_ids = torch.clamp(input_ids, 0, vocab_size - 1)
-
-                # Validate that input_ids don't contain NaN or inf
-                if torch.isnan(input_ids).any() or torch.isinf(input_ids).any():
-                    raise ValueError("Input contains NaN or inf values")
-
+            with torch.inference_mode():
                 outputs = self.model.generate(
                     input_ids=input_ids,
                     attention_mask=attention_mask,
                     max_new_tokens=max_new_tokens,
                     pad_token_id=self.tokenizer.pad_token_id,
                     eos_token_id=self.tokenizer.eos_token_id,
-                    do_sample=True,  # Enable sampling to avoid deterministic issues
-                    temperature=0.7,  # Add temperature for stability
-                    top_p=0.9,  # Add nucleus sampling
-                    repetition_penalty=1.1,  # Prevent repetition loops
+                    do_sample=True,
+                    temperature=0.7,
+                    top_p=0.9,
+                    repetition_penalty=1.05,
                     num_return_sequences=1,
                     use_cache=True,
                     output_attentions=False,
                     output_hidden_states=False,
                     return_dict_in_generate=False,
                 )
-
         except RuntimeError as e:
             if "CUDA" in str(e) or "device-side assert" in str(e):
-                logging.error(f"CUDA error during generation: {e}")
-                # Try fallback generation with greedy decoding
-                logging.info("Attempting fallback generation with greedy decoding...")
-                try:
-                    with torch.no_grad():
-                        outputs = self.model.generate(
-                            input_ids=input_ids,
-                            attention_mask=attention_mask,
-                            max_new_tokens=min(
-                                max_new_tokens, 50
-                            ),  # Reduce tokens for stability
-                            pad_token_id=self.tokenizer.pad_token_id,
-                            eos_token_id=self.tokenizer.eos_token_id,
-                            do_sample=False,  # Greedy decoding
-                            use_cache=True,
-                            output_attentions=False,
-                            output_hidden_states=False,
-                            return_dict_in_generate=False,
-                        )
-                except Exception as fallback_e:
-                    logging.error(f"Fallback generation also failed: {fallback_e}")
-                    raise e  # Re-raise original error
+                logging.error(f"CUDA error: {e}")
+                logging.info("Greedy Fallback...")
+                with torch.inference_mode():
+                    outputs = self.model.generate(
+                        input_ids=input_ids,
+                        attention_mask=attention_mask,
+                        max_new_tokens=min(max_new_tokens, 50),
+                        pad_token_id=self.tokenizer.pad_token_id,
+                        eos_token_id=self.tokenizer.eos_token_id,
+                        do_sample=False,
+                        use_cache=True,
+                        output_attentions=False,
+                        output_hidden_states=False,
+                        return_dict_in_generate=False,
+                    )
             else:
                 raise e
-        generation_end_time = time.time()
-        logging.info(
-            f"Response generated in {generation_end_time - generation_start_time:.2f} seconds."
-        )
 
-        decoding_start_time = time.time()
+        gen_end = time.time()
+        logging.info(f"Response generated in {gen_end - gen_start:.2f} seconds.")
+
+        dec_start = time.time()
         generated_ids = outputs[0, input_ids.shape[1] :]
+        gen_tokens = generated_ids.shape[0]
         response = self.tokenizer.decode(generated_ids, skip_special_tokens=True)
-        decoding_end_time = time.time()
-        logging.info(
-            f"Response decoded in {decoding_end_time - decoding_start_time:.2f} seconds."
-        )
+        dec_end = time.time()
+        logging.info(f"Response decoded in {dec_end - dec_start:.2f} seconds.")
 
         end_time = time.time()
-        logging.info(f"Model call finished in {end_time - start_time:.2f} seconds.")
+        total = end_time - start_time
+        gen_time = gen_end - gen_start
+        toks_per_s = gen_tokens / gen_time if gen_time > 0 else float("nan")
+        logging.info(
+            f"Model call finished in {total:.2f}s (gen {gen_time:.2f}s, prompt_tokens={prompt_tokens}, generated_tokens={gen_tokens}, {toks_per_s:.2f} tok/s)."
+        )
         return response.strip()
