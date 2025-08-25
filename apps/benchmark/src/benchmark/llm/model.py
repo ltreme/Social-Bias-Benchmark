@@ -1,17 +1,12 @@
-import logging  # Added for logging
+import logging
 import os
-import time  # Added for timing
+import time
 import warnings
-from typing import Dict, Optional
+from typing import Optional
 
 import torch
 from huggingface_hub import login
-from transformers import (
-    AutoConfig,
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    BitsAndBytesConfig,
-)
+from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 
 from benchmark.llm.abstract_llm import AbstractLLM
 
@@ -25,7 +20,14 @@ warnings.filterwarnings("ignore", category=UserWarning, module="transformers")
 
 
 class LLMModel(AbstractLLM):
-    def __init__(self, model_identifier: str, mixed_precision: str = "fp16"):
+    def __init__(
+        self,
+        model_identifier: str,
+        mixed_precision: str = "fp16",
+        load_in_4bit: bool = False,
+        load_in_8bit: bool = False,
+        no_quantization: bool = False,
+    ):
         """
         Initialize the LLM model.
 
@@ -50,6 +52,22 @@ class LLMModel(AbstractLLM):
         self._model_name = model_identifier
         self.tokenizer = None
         self.model = None
+
+        # Quantisierungs-Präferenzen
+        self.load_in_4bit = load_in_4bit
+        self.load_in_8bit = load_in_8bit
+        # Env override
+        if os.getenv("LLM_DISABLE_QUANTIZATION", "").lower() in {"1", "true", "yes"}:
+            no_quantization = True
+        self.no_quantization = no_quantization
+
+        # Sicherheit: nicht beides gleichzeitig
+        if self.load_in_4bit and self.load_in_8bit:
+            logging.warning(
+                "Beide Flags load_in_4bit und load_in_8bit gesetzt – verwende 4bit und ignoriere 8bit."
+            )
+            self.load_in_8bit = False
+
         self._load_model()
 
     @property
@@ -57,18 +75,51 @@ class LLMModel(AbstractLLM):
         # concrete implementation of the abstract property
         return self._model_name
 
+    def _build_quant_config(self):
+        """Erstellt optional eine BitsAndBytesConfig, falls kompatibel. Gibt None zurück, wenn deaktiviert oder inkompatibel."""
+        if self.no_quantization or not (self.load_in_4bit or self.load_in_8bit):
+            if self.no_quantization:
+                logging.info(
+                    "Quantisierung deaktiviert (Flag oder ENV). Lade in Vollpräzision / gemischter Präzision."
+                )
+            return None
+        try:
+            from transformers import BitsAndBytesConfig  # lokal importieren (optional)
+        except Exception:
+            logging.warning("bitsandbytes nicht installiert – lade ohne Quantisierung.")
+            return None
+        # API-Kompatibilität prüfen
+        if not hasattr(BitsAndBytesConfig, "get_loading_attributes"):
+            logging.warning(
+                "BitsAndBytesConfig veraltet (kein get_loading_attributes). Aktualisiere mit: pip install -U bitsandbytes accelerate. Lade ohne Quantisierung."
+            )
+            return None
+        if self.load_in_4bit:
+            logging.info(
+                "Aktiviere 4-bit Quantisierung (nf4, double quant, bfloat16 compute)."
+            )
+            return BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_compute_dtype=torch.bfloat16,
+                bnb_4bit_use_double_quant=True,
+                bnb_4bit_quant_type="nf4",
+            )
+        if self.load_in_8bit:
+            logging.info("Aktiviere 8-bit Quantisierung.")
+            return BitsAndBytesConfig(load_in_8bit=True)
+        return None
+
     def _load_model(self):
-        """
-        Loads the tokenizer and the model.
-        """
         logging.info(f"Starting to load model: {self.model_name}")
         logging.info(f"Available GPUs: {torch.cuda.device_count()}")
         for i in range(torch.cuda.device_count()):
             logging.info(f"GPU {i}: {torch.cuda.get_device_name(i)}")
 
         start_time = time.time()
-        config = AutoConfig.from_pretrained(self.model_name)
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+        config = AutoConfig.from_pretrained(self.model_name, trust_remote_code=True)
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            self.model_name, trust_remote_code=True
+        )
 
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
@@ -76,53 +127,62 @@ class LLMModel(AbstractLLM):
         self.tokenizer.model_max_length = getattr(
             config, "max_position_embeddings", 4096
         )
-        self.tokenizer.padding_side = "left"  # Important for generation
+        self.tokenizer.padding_side = "left"
 
-        # Configure device map for multi-GPU setup
-        device_map = "auto" if torch.cuda.device_count() > 1 else None
+        # device_map immer auto (auch single GPU – spart Code für spätere Multi-GPU)
+        device_map = "auto"
 
-        # Configure proper 4-bit quantization with enhanced stability for large models
-        quantization_config = BitsAndBytesConfig(
-            load_in_4bit=True,
-            bnb_4bit_compute_dtype=torch.bfloat16,  # Use bfloat16 for better numerical stability
-            bnb_4bit_use_double_quant=True,
-            bnb_4bit_quant_type="nf4",
-            bnb_4bit_quant_storage=torch.uint8,
+        quantization_config = self._build_quant_config()
+
+        common_kwargs = dict(
+            config=config,
+            torch_dtype=(
+                torch.bfloat16
+                if self.mixed_precision in {"bf16", "bfloat16", "fp16", "float16"}
+                else None
+            ),
+            device_map=device_map,
+            trust_remote_code=True,
         )
+        if quantization_config is not None:
+            common_kwargs["quantization_config"] = quantization_config
 
-        # Try to use Flash Attention 2 if available for better memory efficiency
+        # Versuche Flash Attention 2 zuerst
         try:
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.model_name,
-                config=config,
-                torch_dtype=torch.bfloat16,  # Use bfloat16 for better numerical stability with large models
-                device_map=device_map,
-                quantization_config=quantization_config,
-                trust_remote_code=True,  # Für einige Modelle erforderlich
                 attn_implementation="flash_attention_2",
+                **common_kwargs,
             )
-            logging.info("Using Flash Attention 2 for improved memory efficiency")
+            logging.info("Flash Attention 2 aktiv.")
         except Exception as e:
             logging.warning(
-                f"Flash Attention 2 not available, falling back to standard attention: {e}"
+                f"Flash Attention 2 nicht verfügbar – Standard Attention wird genutzt: {e}"
             )
+            # Entferne evtl. attn_implementation falls inkompatibel
+            common_kwargs.pop("attn_implementation", None)
+            # Falls Fehler durch Quantisierung ausgelöst wurden -> Retry ohne Quantisierung
+            if (
+                "get_loading_attributes" in str(e)
+                and "quantization_config" in common_kwargs
+            ):
+                logging.warning(
+                    "Fehler durch veraltete bitsandbytes Quantisierungs-API. Lade erneut ohne Quantisierung."
+                )
+                common_kwargs.pop("quantization_config", None)
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.model_name,
-                config=config,
-                torch_dtype=torch.bfloat16,  # Use bfloat16 for better numerical stability with large models
-                device_map=device_map,
-                quantization_config=quantization_config,
-                trust_remote_code=True,  # Für einige Modelle erforderlich
+                **common_kwargs,
             )
-
-        # Model is automatically distributed with device_map="auto"
-        # No need for accelerator.prepare when using device_map
 
         end_time = time.time()
         logging.info(
             f"Model {self.model_name} loaded in {end_time - start_time:.2f} seconds."
         )
-        logging.info(f"Model device: {next(self.model.parameters()).device}")
+        try:
+            logging.info(f"Model device: {next(self.model.parameters()).device}")
+        except StopIteration:
+            pass
 
     def call(
         self,

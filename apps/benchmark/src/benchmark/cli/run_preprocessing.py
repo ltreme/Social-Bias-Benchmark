@@ -8,12 +8,24 @@ from benchmark.repository.raw_persona import RawPersonaRepository
 from benchmark.services.llm_attribute_filler import AttributeFiller
 
 
-def generate_personas(model_name: str, mixed_precision: str = "fp16") -> int:
+def generate_personas(
+    model_name: str,
+    mixed_precision: str = "fp16",
+    load_in_4bit: bool = False,
+    load_in_8bit: bool = False,
+    no_quantization: bool = False,
+) -> int:
     """
     Generates enriched personas using the LLM and saves them via PersonaWriter.
     Returns the number of processed personas.
     """
-    llm = LLMModel(model_identifier=model_name, mixed_precision=mixed_precision)
+    llm = LLMModel(
+        model_identifier=model_name,
+        mixed_precision=mixed_precision,
+        load_in_4bit=load_in_4bit,
+        load_in_8bit=load_in_8bit,
+        no_quantization=no_quantization,
+    )
     raw_persona_repo = RawPersonaRepository()
     enriched_persona_repo = EnrichedPersonaRepository(model_name=model_name)
     attribute_filler = AttributeFiller(llm=llm)
@@ -43,11 +55,30 @@ def main():
         "--mixed_precision",
         type=str,
         default="fp16",
-        help="Mixed precision to use for the LLM model (e.g. 'fp16', 'bf16', 'no')",
+        help="Mixed precision (fp16, bf16, no).",
+    )
+    parser.add_argument(
+        "--load_in_4bit",
+        action="store_true",
+        help="Aktiviere 4-bit Quantisierung (nf4).",
+    )
+    parser.add_argument(
+        "--load_in_8bit",
+        action="store_true",
+        help="Aktiviere 8-bit Quantisierung.",
+    )
+    parser.add_argument(
+        "--no_quantization",
+        action="store_true",
+        help="Erzwinge Laden ohne Quantisierung (überschreibt andere Quantisierungs-Flags).",
     )
     args = parser.parse_args()
     n = generate_personas(
-        model_name=args.model_name, mixed_precision=args.mixed_precision
+        model_name=args.model_name,
+        mixed_precision=args.mixed_precision,
+        load_in_4bit=args.load_in_4bit,
+        load_in_8bit=args.load_in_8bit,
+        no_quantization=args.no_quantization,
     )
     print(f"{n} personas generated successfully.")
 
