@@ -102,10 +102,24 @@ echo "TORCH_USE_CUDA_DSA in bash is set to: $TORCH_USE_CUDA_DSA" | tee -a "$LOGF
 echo "🐍 Python GPU Detection:" | tee -a "$LOGFILE" | send_to_telemetry
 python scripts/gpu_diag.py 2>&1 | tee -a "$LOGFILE" | send_to_telemetry
 
+if [ $# -lt 1 ]; then
+    echo "❌ Kein Zielskript übergeben. Aufruf: scripts/run_slurm.sh <script> [args...]" | tee -a "$LOGFILE" | send_to_telemetry
+    exit 2
+fi
+
+TARGET_SCRIPT="$1"; shift
+if [ ! -f "$TARGET_SCRIPT" ]; then
+    echo "❌ Zielskript nicht gefunden: $TARGET_SCRIPT" | tee -a "$LOGFILE" | send_to_telemetry
+    exit 3
+fi
+if [ ! -x "$TARGET_SCRIPT" ]; then
+    # Versuchen ausführbar zu machen
+    chmod +x "$TARGET_SCRIPT" 2>/dev/null || true
+fi
+
 {
-   echo "🚀 Launching benchmark command: $*" | tee -a "$LOGFILE" | send_to_telemetry
-   # Call benchmark script (e.g. accelerate launch ...) directly
-   bash "$@"
+   echo "🚀 Launching benchmark command: $TARGET_SCRIPT $*" | tee -a "$LOGFILE" | send_to_telemetry
+   bash "$TARGET_SCRIPT" "$@"
 } 2>&1 | tee -a "$LOGFILE" | send_to_telemetry # Diesen Block für den Diagnoselauf auskommentieren
 
 exit_code=${PIPESTATUS[0]} # Nimmt den Exit-Code des Python-Skripts

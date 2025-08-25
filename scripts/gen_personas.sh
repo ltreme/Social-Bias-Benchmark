@@ -1,10 +1,47 @@
 #!/bin/bash
 set -euo pipefail
 
-# Konfigurierbare Umgebungsvariablen (können von außen überschrieben werden)
+# Standardwerte, können per Env oder CLI überschrieben werden
 MODEL_NAME=${MODEL_NAME:-openai/gpt-oss-20b}
-MIXED_PRECISION=${MIXED_PRECISION:-bf16}  # Optionen: fp16, bf16, no
-QUANT_MODE=${QUANT_MODE:-4bit}            # Optionen: 4bit, 8bit, none
+MIXED_PRECISION=${MIXED_PRECISION:-bf16}   # fp16 | bf16 | no
+QUANT_MODE=${QUANT_MODE:-4bit}             # 4bit | 8bit | none
+
+usage() {
+	cat <<EOF
+Usage: $0 [OPTIONS]
+
+Options:
+	-m, --model NAME           HuggingFace Model (default: $MODEL_NAME)
+	-p, --precision MODE       Mixed precision: bf16|fp16|no (default: $MIXED_PRECISION)
+	-q, --quant MODE           Quantization: 4bit|8bit|none (default: $QUANT_MODE)
+	-h, --help                 Show this help
+
+Environment overrides (same precedence as CLI if not set via CLI):
+	MODEL_NAME, MIXED_PRECISION, QUANT_MODE
+EOF
+}
+
+# CLI Argumente parsen
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+		-m|--model)
+			[[ $# -ge 2 ]] || { echo "Missing value for $1" >&2; exit 1; }
+			MODEL_NAME="$2"; shift 2 ;;
+		-p|--precision)
+			[[ $# -ge 2 ]] || { echo "Missing value for $1" >&2; exit 1; }
+			MIXED_PRECISION="$2"; shift 2 ;;
+		-q|--quant)
+			[[ $# -ge 2 ]] || { echo "Missing value for $1" >&2; exit 1; }
+			QUANT_MODE="$2"; shift 2 ;;
+		-h|--help)
+			usage; exit 0 ;;
+		--) shift; break ;;
+		*)
+			echo "Unknown argument: $1" >&2
+			usage
+			exit 1 ;;
+	esac
+done
 
 case "${QUANT_MODE}" in
 	4bit) QUANT_FLAGS=(--load_in_4bit) ;;
