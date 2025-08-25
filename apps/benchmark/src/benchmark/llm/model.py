@@ -6,7 +6,12 @@ from typing import Optional
 
 import torch
 from huggingface_hub import login
-from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
+from transformers import (
+    AutoConfig,
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    PreTrainedTokenizerFast,
+)
 
 from benchmark.llm.abstract_llm import AbstractLLM
 
@@ -126,42 +131,102 @@ class LLMModel(AbstractLLM):
         tok_kwargs = dict(trust_remote_code=True)
         if self.hf_token:
             tok_kwargs["token"] = self.hf_token
-        # Versuch 1: fast tokenizer
-        try:
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                self.model_name,
-                use_fast=True,
-                **tok_kwargs,
-            )
-        except KeyError as e:
-            logging.warning(
-                f"Tokenizer mapping KeyError ({e}). Retry with use_fast=False (Fallback für unbekannte Config)."
-            )
+
+        tokenizer_loaded = False
+        last_tokenizer_error: Optional[Exception] = None
+
+        # Schritt 1: AutoTokenizer (fast)
+        if not tokenizer_loaded:
+            try:
+                self.tokenizer = AutoTokenizer.from_pretrained(
+                    self.model_name,
+                    use_fast=True,
+                    **tok_kwargs,
+                )
+                tokenizer_loaded = True
+            except KeyError as e:
+                last_tokenizer_error = e
+                logging.warning(
+                    f"Tokenizer mapping KeyError ({e}). Versuche use_fast=False (Fallback für unbekannte Config)."
+                )
+            except Exception as e:
+                last_tokenizer_error = e
+                logging.warning(f"Tokenizer fast fehlgeschlagen: {e}")
+
+        # Schritt 2: AutoTokenizer (slow)
+        if not tokenizer_loaded:
             try:
                 self.tokenizer = AutoTokenizer.from_pretrained(
                     self.model_name,
                     use_fast=False,
                     **tok_kwargs,
                 )
-            except Exception as e2:
+                tokenizer_loaded = True
+            except KeyError as e:
+                last_tokenizer_error = e
                 logging.warning(
-                    f"Tokenizer Fallback ohne fast fehlgeschlagen: {e2}. Versuche erneut mit trust_remote_code explizit."
+                    f"Tokenizer mapping KeyError (slow) ({e}). Prüfe generischen PreTrainedTokenizerFast Fallback."
                 )
-                tok_kwargs["trust_remote_code"] = True
-                self.tokenizer = AutoTokenizer.from_pretrained(
+            except Exception as e:
+                last_tokenizer_error = e
+                logging.warning(f"Tokenizer slow fehlgeschlagen: {e}")
+
+        # Schritt 3: PreTrainedTokenizerFast direkt (umgeht TOKENIZER_MAPPING)
+        if not tokenizer_loaded:
+            try:
+                self.tokenizer = PreTrainedTokenizerFast.from_pretrained(
                     self.model_name,
-                    use_fast=False,
                     **tok_kwargs,
                 )
-        except Exception as e:
-            # Generischer Fallback
-            logging.warning(
-                f"Tokenizer Ladefehler: {e}. Letzter Versuch mit use_fast=False & trust_remote_code."
-            )
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                self.model_name,
-                use_fast=False,
-                **tok_kwargs,
+                tokenizer_loaded = True
+                logging.info(
+                    "PreTrainedTokenizerFast Fallback erfolgreich (umging AutoTokenizer Mapping)."
+                )
+            except Exception as e:
+                last_tokenizer_error = e
+                logging.warning(
+                    f"PreTrainedTokenizerFast Fallback fehlgeschlagen: {e}. Versuche manuellen JSON-Load."
+                )
+
+        # Schritt 4: manueller JSON Fallback (nur falls lokaler Cache vorhanden)
+        if not tokenizer_loaded:
+            try:
+                import json
+
+                from huggingface_hub import snapshot_download
+
+                cache_dir = snapshot_download(
+                    self.model_name,
+                    token=self.hf_token,
+                    allow_patterns=[
+                        "tokenizer.json",
+                        "tokenizer_config.json",
+                        "special_tokens_map.json",
+                        "vocab.json",
+                        "merges.txt",
+                    ],
+                )
+                # Letzter Versuch: PreTrainedTokenizerFast direkt aus tokenizer.json
+                tok_json_path = os.path.join(cache_dir, "tokenizer.json")
+                if os.path.exists(tok_json_path):
+                    self.tokenizer = PreTrainedTokenizerFast(
+                        tokenizer_file=tok_json_path
+                    )
+                    logging.info(
+                        "Manueller tokenizer.json Fallback erfolgreich geladen."
+                    )
+                    tokenizer_loaded = True
+                else:
+                    raise FileNotFoundError(
+                        "tokenizer.json nicht gefunden im heruntergeladenen Snapshot"
+                    )
+            except Exception as e:
+                last_tokenizer_error = e
+
+        if not tokenizer_loaded:
+            raise RuntimeError(
+                "Tokenizer konnte nicht geladen werden – erwäge Upgrade von transformers (z.B. pip install -U 'transformers>=4.44.0').\n"
+                f"Letzter Fehler: {last_tokenizer_error}"
             )
 
         if self.tokenizer.pad_token is None:
