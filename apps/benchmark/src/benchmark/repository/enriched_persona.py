@@ -25,10 +25,14 @@ class EnrichedPersonaRepository(AbstractPersonaRepository):
             "biography",
         ]
         file_path = get_enriched_personas_path(model_name)
+        # Falls Datei/Verzeichnis noch nicht existiert: automatisch anlegen + Header schreiben
+        dir_path = os.path.dirname(file_path)
+        if dir_path and not os.path.isdir(dir_path):
+            os.makedirs(dir_path, exist_ok=True)
         if not os.path.exists(file_path):
-            raise FileNotFoundError(
-                f"Enriched personas file not found at {file_path}. Please run preprocessing first."
-            )
+            with open(file_path, mode="w", encoding="utf-8", newline="") as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
 
         super().__init__(file_path, EnrichedPersonaDto, fieldnames)
 
@@ -47,10 +51,30 @@ class EnrichedPersonaRepository(AbstractPersonaRepository):
         return None
 
     def iter_all(self):
+        """Iterator über alle gespeicherten Personas.
+
+        Robust gegen fehlende oder leere Datei: liefert dann einfach nichts.
+        """
+        if not os.path.exists(self._file_path):
+            return
+        # Leere Datei (nur Header oder komplett leer) -> nichts yielden
+        try:
+            size = os.path.getsize(self._file_path)
+            if size == 0:
+                return
+        except OSError:
+            return
         with open(self._file_path, mode="r", encoding="utf-8") as file:
             reader = csv.DictReader(file)
             for row in reader:
-                row["age"] = int(row["age"])
+                if not row:  # leere Zeile
+                    continue
+                if row.get("age"):
+                    try:
+                        row["age"] = int(row["age"])
+                    except ValueError:
+                        # Falls korrupt -> überspringen oder default
+                        continue
                 yield self._dto_class(**row)
 
     def find_all(self) -> list[EnrichedPersonaDto]:
