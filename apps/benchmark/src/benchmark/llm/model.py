@@ -50,18 +50,17 @@ class LLMModel(AbstractLLM):
 
         self.mixed_precision = mixed_precision
         self._model_name = model_identifier
-        self.tokenizer = None
-        self.model = None
+        self.tokenizer: Optional[AutoTokenizer] = None
+        self.model: Optional[AutoModelForCausalLM] = None
+        self.hf_token = hf_token  # für spätere Fallback-Ladevorgänge
 
         # Quantisierungs-Präferenzen
         self.load_in_4bit = load_in_4bit
         self.load_in_8bit = load_in_8bit
-        # Env override
         if os.getenv("LLM_DISABLE_QUANTIZATION", "").lower() in {"1", "true", "yes"}:
             no_quantization = True
         self.no_quantization = no_quantization
 
-        # Sicherheit: nicht beides gleichzeitig
         if self.load_in_4bit and self.load_in_8bit:
             logging.warning(
                 "Beide Flags load_in_4bit und load_in_8bit gesetzt – verwende 4bit und ignoriere 8bit."
@@ -116,10 +115,54 @@ class LLMModel(AbstractLLM):
             logging.info(f"GPU {i}: {torch.cuda.get_device_name(i)}")
 
         start_time = time.time()
-        config = AutoConfig.from_pretrained(self.model_name, trust_remote_code=True)
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            self.model_name, trust_remote_code=True
+        # Config laden (immer mit trust_remote_code True für neue Modellfamilien wie Mistral 3.x)
+        config = AutoConfig.from_pretrained(
+            self.model_name,
+            trust_remote_code=True,
+            token=self.hf_token,
         )
+
+        # Tokenizer robust laden – ältere transformers-Versionen kennen evtl. Mistral3Config nicht im Mapping
+        tok_kwargs = dict(trust_remote_code=True)
+        if self.hf_token:
+            tok_kwargs["token"] = self.hf_token
+        # Versuch 1: fast tokenizer
+        try:
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                self.model_name,
+                use_fast=True,
+                **tok_kwargs,
+            )
+        except KeyError as e:
+            logging.warning(
+                f"Tokenizer mapping KeyError ({e}). Retry with use_fast=False (Fallback für unbekannte Config)."
+            )
+            try:
+                self.tokenizer = AutoTokenizer.from_pretrained(
+                    self.model_name,
+                    use_fast=False,
+                    **tok_kwargs,
+                )
+            except Exception as e2:
+                logging.warning(
+                    f"Tokenizer Fallback ohne fast fehlgeschlagen: {e2}. Versuche erneut mit trust_remote_code explizit."
+                )
+                tok_kwargs["trust_remote_code"] = True
+                self.tokenizer = AutoTokenizer.from_pretrained(
+                    self.model_name,
+                    use_fast=False,
+                    **tok_kwargs,
+                )
+        except Exception as e:
+            # Generischer Fallback
+            logging.warning(
+                f"Tokenizer Ladefehler: {e}. Letzter Versuch mit use_fast=False & trust_remote_code."
+            )
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                self.model_name,
+                use_fast=False,
+                **tok_kwargs,
+            )
 
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
@@ -157,7 +200,7 @@ class LLMModel(AbstractLLM):
             logging.info("Flash Attention 2 aktiv.")
         except Exception as e:
             logging.warning(
-                f"Flash Attention 2 nicht verfügbar – Standard Attention wird genutzt: {e}"
+                f"Flash Attention 2 nicht verfügbar – Standard Attention wird genutzt / oder Fehler: {e}"
             )
             # Entferne evtl. attn_implementation falls inkompatibel
             common_kwargs.pop("attn_implementation", None)
@@ -170,10 +213,36 @@ class LLMModel(AbstractLLM):
                     "Fehler durch veraltete bitsandbytes Quantisierungs-API. Lade erneut ohne Quantisierung."
                 )
                 common_kwargs.pop("quantization_config", None)
-            self.model = AutoModelForCausalLM.from_pretrained(
-                self.model_name,
-                **common_kwargs,
-            )
+            try:
+                self.model = AutoModelForCausalLM.from_pretrained(
+                    self.model_name,
+                    **common_kwargs,
+                )
+            except KeyError as ke:  # typ. Mapping-Problem (z.B. Mistral3Config)
+                logging.warning(
+                    f"KeyError beim Modell-Mapping: {ke}. Versuche Remote-Code-Fallback erneut."
+                )
+                # Erzwinge trust_remote_code=True (sicherheitshalber) und entferne evtl. Quantisierung für maximale Kompatibilität
+                common_kwargs["trust_remote_code"] = True
+                if "quantization_config" in common_kwargs:
+                    logging.warning(
+                        "Entferne Quantisierung für Kompatibilitäts-Fallback (Mapping KeyError)."
+                    )
+                    common_kwargs.pop("quantization_config")
+                try:
+                    self.model = AutoModelForCausalLM.from_pretrained(
+                        self.model_name,
+                        **common_kwargs,
+                    )
+                except Exception as ke2:
+                    logging.error(
+                        "Modell konnte nach KeyError nicht geladen werden. Prüfe transformers Version (pip show transformers) und erwäge ein Upgrade (z.B. pip install -U 'transformers>=4.44.0'). \n"
+                        f"Letzter Fehler: {ke2}"
+                    )
+                    raise
+            except Exception as e2:
+                logging.error(f"Modell-Ladevorgang fehlgeschlagen: {e2}")
+                raise
 
         # Performance Einstellungen
         try:
