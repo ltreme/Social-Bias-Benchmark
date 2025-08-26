@@ -5,6 +5,7 @@ import warnings
 from typing import Optional
 
 import torch
+import transformers
 from huggingface_hub import login
 from transformers import (
     AutoConfig,
@@ -126,6 +127,29 @@ class LLMModel(AbstractLLM):
             trust_remote_code=True,
             token=self.hf_token,
         )
+
+        # Diagnose: Log relevante Versionen einmalig
+        try:
+            logging.info(
+                f"transformers=={getattr(transformers, '__version__', 'unknown')} | bitsandbytes=="
+                f"{__import__('importlib').import_module('bitsandbytes').__version__ if __import__('importlib').util.find_spec('bitsandbytes') else 'n/a'}"
+            )
+        except Exception:
+            pass
+
+        # Manche Configs enthalten bereits quantization_config (z.B. aus Hub), die ggf. mit neuer API kollidiert.
+        existing_qc = getattr(config, "quantization_config", None)
+        if existing_qc is not None and not hasattr(
+            existing_qc, "get_loading_attributes"
+        ):
+            logging.warning(
+                "Entferne veraltete config.quantization_config (fehlende get_loading_attributes). "
+                "Upgrade von transformers oder erneutes Speichern des Modells empfohlen."
+            )
+            try:
+                config.quantization_config = None
+            except Exception:
+                pass
 
         # Tokenizer robust laden – ältere transformers-Versionen kennen evtl. Mistral3Config nicht im Mapping
         tok_kwargs = dict(trust_remote_code=True)
