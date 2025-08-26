@@ -150,6 +150,28 @@ class LLMModel(AbstractLLM):
                 config.quantization_config = None
             except Exception:
                 pass
+            # Hard removal fallback
+            try:
+                if "quantization_config" in config.__dict__:
+                    del config.__dict__["quantization_config"]
+            except Exception:
+                pass
+
+        # Monkey-Patch BitsAndBytesConfig falls die neue API fehlt (verhindert Crash im merge_quantization_configs)
+        try:
+            from transformers import BitsAndBytesConfig as _BB
+
+            if not hasattr(_BB, "get_loading_attributes"):
+                logging.warning(
+                    "Patche BitsAndBytesConfig mit Dummy get_loading_attributes(), da Version inkonsistent ist."
+                )
+
+                def _dummy_get_loading_attributes(self):  # type: ignore
+                    return {}
+
+                _BB.get_loading_attributes = _dummy_get_loading_attributes  # type: ignore
+        except Exception:
+            pass
 
         # Tokenizer robust laden – ältere transformers-Versionen kennen evtl. Mistral3Config nicht im Mapping
         tok_kwargs = dict(trust_remote_code=True)
