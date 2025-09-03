@@ -1,6 +1,6 @@
 import numpy as np
 
-from persona_generator.models.db import Age
+from shared.storage.models import Age
 
 from .sampler import Sampler
 

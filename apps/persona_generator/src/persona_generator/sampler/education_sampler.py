@@ -1,6 +1,6 @@
 import numpy as np
 
-from persona_generator.models.db import Education
+from shared.storage.models import Education
 
 from .sampler import Sampler
 

@@ -3,7 +3,7 @@ from datetime import datetime
 import pandas as pd
 
 from benchmark.evaluation.likert_eval import benchmark_summary_from_file
-from benchmark.llm.model import LLMModel
+from benchmark.llm.abstract_llm import AbstractLLM
 from benchmark.utils.prompt_loader import LikertPrompt  # Added LikertPrompt
 from benchmark.utils.prompt_loader import load_prompts_from_file
 
@@ -11,7 +11,7 @@ from .benchmark import Benchmark  # Import Benchmark base class
 
 
 class LikertBenchmark(Benchmark):
-    def __init__(self, model: LLMModel, **kwargs):
+    def __init__(self, model: AbstractLLM, **kwargs):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         # Specific output file for Likert Benchmark
         results_output_file = kwargs.get(

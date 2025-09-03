@@ -13,5 +13,7 @@ setup(
         "transformers",
         "torch",
         "pandas",
+        "langchain-community",
+        "ollama"
     ],
 )

@@ -3,7 +3,7 @@ import os
 import re
 
 from benchmark.domain.persona import RawPersonaDto
-from benchmark.llm.model import LLMModel
+from benchmark.llm.abstract_llm import AbstractLLM
 from benchmark.services.language_service import persona_to_dict
 
 
@@ -16,7 +16,7 @@ class LLMAttributeGenerator:
     "Thinking"-Modelle mehr Raum erhalten können.
     """
 
-    def __init__(self, llm: LLMModel):
+    def __init__(self, llm: AbstractLLM):
         self.llm = llm
 
         def _int_env(name: str, default: int) -> int:
@@ -89,7 +89,7 @@ class LLMAttributeGenerator:
     # -------------------- Public API --------------------
     def gen_name(self, persona: RawPersonaDto) -> str:
         prompt = (
-            "Generiere einen Namen für die folgenden Attribute:\n"
+            "Wie könnte die folgende Person heißen? Antwort nur mit dem vollen Namen in der Form '<Vorname> <Nachname>':\n"
             + json.dumps(persona_to_dict(persona))
             + "\n"
         )

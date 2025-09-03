@@ -18,3 +18,12 @@ class AbstractLLM(ABC):
         max_new_tokens: int = 150,
     ) -> str:
         pass
+
+    @abstractmethod
+    def batch_call(
+        self,
+        prompts: list[str],
+        system_message: Optional[str] = None,
+        max_new_tokens: int = 2048,
+    ) -> list[str]:
+        pass

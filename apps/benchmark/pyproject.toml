@@ -13,6 +13,8 @@ dependencies = [
     "accelerate",
     "sentencepiece",
     "protobuf",
+    "langchain-community",
+    "ollama",
 ]
 
 [tool.pytest.ini_options]
