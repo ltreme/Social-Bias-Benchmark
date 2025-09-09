@@ -1,8 +1,8 @@
 from __future__ import annotations
 import argparse, sys
 
-from benchmark.pipeline.preprocess import run_preprocess_pipeline
-from benchmark.pipeline.adapters.prompting.attr_factory import AttributePromptFactory
+from benchmark.pipeline.attr_gen import run_attr_gen_pipeline
+from benchmark.pipeline.adapters.prompting import AttributePromptFactory
 from benchmark.pipeline.adapters.postprocess.postprocessor_attr import AttributePostProcessor
 from benchmark.pipeline.adapters.persister_sqlite import PersisterPrint, PersisterPeewee
 from benchmark.pipeline.adapters.llm import LlmClientFake, LlmClientHF
@@ -44,7 +44,7 @@ def main(argv: list[str] | None = None) -> int:
 
     persist = PersisterPrint() if args.persist == "print" else PersisterPeewee()
 
-    run_preprocess_pipeline(
+    run_attr_gen_pipeline(
         gen_id=args.gen_id,
         persona_repo=persona_repo,
         prompt_factory=prompt_factory,

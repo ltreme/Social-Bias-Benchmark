@@ -1,4 +1,3 @@
-# apps/benchmark/src/benchmark/pipeline/preprocess.py
 from __future__ import annotations
 from typing import Iterable, List, Optional
 from .ports import (
@@ -22,7 +21,7 @@ def _persist_fail(persist: Persister, spec: PromptSpec, kind: str, raw: str, rea
         prompt_snippet=_snippet(spec.prompt_text),
     ))
 
-def run_preprocess_pipeline(
+def run_attr_gen_pipeline(
     *,
     gen_id: int,
     persona_repo: PersonaRepo,

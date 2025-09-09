@@ -5,7 +5,7 @@ from ...ports_bench import BenchPromptSpec, LLMResult as BenchLLMResult, LLMClie
 from .base_hf import BaseHFClient
 
 
-# --- Preprocessing HF client --------------------------------------------------
+# --- Attr-Gen HF client --------------------------------------------------
 
 class LlmClientHF(BaseHFClient[PromptSpec, LLMResult], LLMClient):
     def __init__(

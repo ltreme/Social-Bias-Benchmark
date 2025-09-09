@@ -78,15 +78,15 @@ class TestEndToEndPipeline(unittest.TestCase):
         self._gen_id = gen_id
 
         # 2) Preprocessing stage
-        from benchmark.cli.run_preprocessing import main as preprocess_main
+        from benchmark.cli.run_attr_generation import main as attr_gen_main
         pre_args = [f"--gen-id={gen_id}", "--persist=peewee", "--llm=fake"]
         if llm_kind == "hf":
             pre_args = [f"--gen-id={gen_id}", "--persist=peewee", "--llm=hf", f"--hf-model={hf_model}"]
-        rc = preprocess_main(pre_args)
-        self.assertEqual(rc, 0, "Preprocessing pipeline failed")
+        rc = attr_gen_main(pre_args)
+        self.assertEqual(rc, 0, "Attribute generation pipeline failed")
 
-        # 3) Primary benchmark stage
-        from benchmark.cli.run_primary_benchmark import main as bench_main
+        # 3) Core benchmark stage
+        from benchmark.cli.run_core_benchmark import main as bench_main
         # Use a small questions file for faster runs
         small_q_path = os.path.join(REPO_ROOT, "out", "questions", "smoke-uuid.csv")
         # Enable benchmark debug to see OK/Retry/Fail counts in logs
