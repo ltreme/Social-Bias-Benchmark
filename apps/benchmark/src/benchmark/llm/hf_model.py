@@ -14,7 +14,7 @@ class HuggingFaceLLM(AbstractLLM):
         self._model = AutoModelForCausalLM.from_pretrained(
             self._model_name,
             device_map="auto",
-            torch_dtype=torch.bfloat16,
+            dtype=torch.bfloat16,
         )
         self._pipeline = pipeline(
             "text-generation",

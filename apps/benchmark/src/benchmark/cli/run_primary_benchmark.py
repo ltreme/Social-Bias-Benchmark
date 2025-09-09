@@ -2,10 +2,11 @@ from __future__ import annotations
 import argparse, sys
 
 from benchmark.pipeline.benchmark import run_benchmark_pipeline
-from benchmark.pipeline.adapters.prompt_factory_likert import LikertPromptFactory
-from benchmark.pipeline.adapters.postprocessor_likert import LikertPostProcessor
+from benchmark.pipeline.adapters.prompting import LikertPromptFactory
+from benchmark.pipeline.adapters.postprocess.postprocessor_likert import LikertPostProcessor
 from benchmark.pipeline.adapters.persister_bench_sqlite import BenchPersisterPrint, BenchPersisterPeewee
-from benchmark.pipeline.adapters.llm_hf_bench import LlmClientFakeBench, LlmClientHFBench
+from benchmark.pipeline.adapters.llm import LlmClientFakeBench, LlmClientHFBench
+import os
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -17,7 +18,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--hf-model", type=str, help="HF model name/path (when --llm=hf)")
     p.add_argument("--batch-size", type=int, default=8)
     p.add_argument("--persist", choices=["print", "peewee"], default="print")
-    p.add_argument("--max-new-tokens", type=int, default=160)
+    p.add_argument("--max-new-tokens", type=int, default=256)
+    p.add_argument("--question-file", type=str, help="Path to question file (csv)")
     args = p.parse_args(argv)
 
     # Init DB (SQLite by default or DB_URL)
@@ -30,7 +32,13 @@ def main(argv: list[str] | None = None) -> int:
     from benchmark.repository.question import QuestionRepository
 
     persona_repo = FullPersonaRepository()
-    question_repo = QuestionRepository()
+    if args.question_file:
+        if not args.question_file.endswith(".csv") or not os.path.isfile(args.question_file):
+            print("[fatal] --question-file must be a CSV file", file=sys.stderr)
+            return 2
+        question_repo = QuestionRepository(path=args.question_file)
+    else:
+        question_repo = QuestionRepository()
 
     prompt_factory = LikertPromptFactory(max_new_tokens=args.max_new_tokens)
     post = LikertPostProcessor()

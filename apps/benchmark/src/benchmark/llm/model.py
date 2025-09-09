@@ -117,7 +117,7 @@ class LLMModel(AbstractLLM):
             model = AutoModelForCausalLM.from_pretrained(
                 self._model_name,
                 config=config,
-                torch_dtype=self._dtype,
+                dtype=self._dtype,
                 trust_remote_code=True,
                 quantization_config=quantization_config,
                 device_map="auto" if quantization_config else None,

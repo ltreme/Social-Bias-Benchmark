@@ -88,7 +88,7 @@ class Persona(BaseModel):
 class AdditionalPersonaAttributes(BaseModel):
     id = pw.AutoField()
     persona_uuid = pw.ForeignKeyField(
-        Persona, to_field=Persona.uuid, backref="extra_attributes", on_delete="CASCADE"
+        Persona, field=Persona.uuid, backref="extra_attributes", on_delete="CASCADE"
     )
     model_name = pw.CharField(null=False)
 
@@ -109,7 +109,7 @@ class AdditionalPersonaAttributes(BaseModel):
 
 class FailLog(BaseModel):
     id = pw.AutoField()
-    persona_uuid = pw.ForeignKeyField(Persona, to_field=Persona.uuid, on_delete="CASCADE", null=True)
+    persona_uuid = pw.ForeignKeyField(Persona, field=Persona.uuid, on_delete="CASCADE", null=True)
     model_name = pw.CharField(null=True)
     attempt = pw.IntegerField(null=True)
     error_kind = pw.CharField(null=False)
@@ -119,7 +119,7 @@ class FailLog(BaseModel):
 
 class BenchmarkResult(BaseModel):
     id = pw.AutoField()
-    persona_uuid = pw.ForeignKeyField(Persona, to_field=Persona.uuid, backref="benchmark_results", on_delete="CASCADE")
+    persona_uuid = pw.ForeignKeyField(Persona, field=Persona.uuid, backref="benchmark_results", on_delete="CASCADE")
     question_uuid = pw.CharField(null=False)
     model_name = pw.CharField(null=False)
     template_version = pw.CharField(null=False)
