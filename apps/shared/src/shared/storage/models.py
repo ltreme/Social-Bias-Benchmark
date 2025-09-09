@@ -117,6 +117,22 @@ class FailLog(BaseModel):
     prompt_snippet = pw.TextField(null=True)
     created_at = pw.DateTimeField(default=utcnow, null=False)
 
+class BenchmarkResult(BaseModel):
+    id = pw.AutoField()
+    persona_uuid = pw.ForeignKeyField(Persona, to_field=Persona.uuid, backref="benchmark_results", on_delete="CASCADE")
+    question_uuid = pw.CharField(null=False)
+    model_name = pw.CharField(null=False)
+    template_version = pw.CharField(null=False)
+    gen_time_ms = pw.IntegerField(null=False)
+    attempt = pw.IntegerField(null=False, default=1)
+    answer_raw = pw.TextField(null=False)
+    rating = pw.IntegerField(null=True)  # Likert 1-7 when parsed
+    created_at = pw.DateTimeField(default=utcnow, null=False)
+
+    class Meta:
+        indexes = (
+            (("persona_uuid", "question_uuid", "model_name", "template_version"), True),
+        )
 
 # ================================
 # == Lookup / statistics tables ==
@@ -211,6 +227,7 @@ ALL_MODELS = [
     Country,
     Persona,
     AdditionalPersonaAttributes,
+    BenchmarkResult,
     ForeignersPerCountry,
     ReligionPerCountry,
     Age,

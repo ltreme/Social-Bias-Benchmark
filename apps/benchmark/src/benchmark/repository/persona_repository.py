@@ -2,6 +2,7 @@
 from __future__ import annotations
 from typing import Iterable, Iterator
 from benchmark.pipeline.ports import WorkItem, PersonaRepo, PersonaUUID
+from benchmark.pipeline.ports_bench import BenchPersonaRepo, BenchWorkItem
 from benchmark.services.translator import TranslatorService
 
 # Peewee-Modelle & DB-Init
@@ -54,3 +55,59 @@ class PersonaRepository(PersonaRepo):
                 persona_minimal=persona_minimal,
             )
 
+
+class FullPersonaRepository(BenchPersonaRepo):
+    """
+    Streams full personas including enriched attributes (name, appearance, biography)
+    for the benchmark prompts. Avoids materialization via iterator().
+    """
+
+    def iter_personas(self, gen_id: int):
+        _ = get_db()
+        query = (
+            Persona
+            .select(
+                Persona.uuid, Persona.gen_id, Persona.age, Persona.gender,
+                Persona.education, Persona.occupation, Persona.marriage_status,
+                Persona.religion, Persona.sexuality,
+                Country.country_de.alias("origin_name"),
+            )
+            .join(Country, JOIN.LEFT_OUTER, on=(Persona.origin == Country.id))
+            .where(Persona.gen_id == gen_id)
+        )
+
+        from shared.storage.models import AdditionalPersonaAttributes as Attr
+        translator = TranslatorService()
+
+        for row in query.iterator():
+            origin_name = getattr(row, "origin_name", None)
+
+            # fetch enriched attributes for this persona
+            attrs = (
+                Attr.select(Attr.attribute_key, Attr.value)
+                .where(Attr.persona_uuid == row.uuid)
+            )
+            attr_map = {a.attribute_key: a.value for a in attrs}
+
+            persona_ctx = {
+                "name": attr_map.get("name"),
+                "appearance": attr_map.get("appearance"),
+                "biography": attr_map.get("biography"),
+                "Alter": row.age,
+                "Geschlecht": translator.translate(row.gender),
+                "Herkunft": origin_name,
+                "Bildung": row.education,
+                "Beruf": row.occupation,
+                "Familienstand": translator.translate(row.marriage_status),
+                "Religion": translator.translate(row.religion),
+                "Sexualität": translator.translate(row.sexuality),
+            }
+
+            yield BenchWorkItem(
+                gen_id=row.gen_id,
+                persona_uuid=PersonaUUID(str(row.uuid)),
+                persona_context=persona_ctx,
+                question_uuid="",  # gets filled by pipeline, not used here
+                adjective="",
+                question_template="",
+            )
