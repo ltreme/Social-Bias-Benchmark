@@ -47,6 +47,7 @@ def run_benchmark_pipeline(
     persist: BenchPersister,
     model_name: str,
     template_version: str = "v1",
+    benchmark_run_id: int,
     max_attempts: int = 3,
     persist_buffer_size: int = 512,
 ) -> None:
@@ -114,7 +115,11 @@ def run_benchmark_pipeline(
     attempt = 1
     base_items: Iterable[BenchWorkItem] = iter_items()
     pending_specs: Iterable[BenchPromptSpec] = prompt_factory.prompts(
-        base_items, model_name=model_name, template_version=template_version, attempt=attempt
+        base_items,
+        model_name=model_name,
+        template_version=template_version,
+        attempt=attempt,
+        benchmark_run_id=benchmark_run_id,
     )
 
     # Note: We intentionally do NOT buffer persistence anymore. LLM batching remains.

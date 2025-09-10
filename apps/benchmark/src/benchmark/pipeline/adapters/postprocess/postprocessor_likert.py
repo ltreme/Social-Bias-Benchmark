@@ -15,9 +15,17 @@ class LikertPostProcessor(AbstractPostProcessor, BenchPostProcessor):
     use_llama_sanitize = True
     use_thinking_strip = True  # optional if models add "thinking" blocks
 
+    def __init__(self, *, include_rationale: bool = True) -> None:
+        self.include_rationale = include_rationale
+
     def strict_suffix(self) -> str:
+        if self.include_rationale:
+            return (
+                "\nANTWORTE NUR als einzelnes JSON mit Schlüsseln 'rating' (1-5) und 'rationale'. "
+                "KEINE Prosa, KEIN Markdown, KEINE weiteren Schlüssel."
+            )
         return (
-            "\nANTWORTE NUR als einzelnes JSON mit Schlüsseln 'rating' (1-5) und 'rationale'. "
+            "\nANTWORTE NUR als einzelnes JSON mit Schlüssel 'rating' (1-5). "
             "KEINE Prosa, KEIN Markdown, KEINE weiteren Schlüssel."
         )
 
@@ -37,6 +45,7 @@ class LikertPostProcessor(AbstractPostProcessor, BenchPostProcessor):
             question_uuid=spec.work.question_uuid,
             model_name=spec.model_name,
             template_version=spec.template_version,
+            benchmark_run_id=spec.benchmark_run_id,
             attempt=spec.attempt,
             gen_time_ms=res.gen_time_ms,
             answer_raw=(raw_text[:2000] if raw_text else ""),

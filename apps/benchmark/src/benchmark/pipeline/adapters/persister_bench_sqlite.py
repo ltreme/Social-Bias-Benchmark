@@ -9,7 +9,7 @@ class BenchPersisterPrint(BenchPersister):
         if not rows:
             return
         print("RESULTS", [
-            (r.persona_uuid, r.question_uuid, r.rating, r.model_name, r.template_version)
+            (r.persona_uuid, r.question_uuid, r.rating, r.model_name, r.template_version, r.benchmark_run_id)
             for r in rows
         ])
 
@@ -40,6 +40,7 @@ class BenchPersisterPeewee(BenchPersister):
             question_uuid=r.question_uuid,
             model_name=r.model_name,
             template_version=r.template_version,
+            benchmark_run=r.benchmark_run_id,
             gen_time_ms=r.gen_time_ms,
             attempt=r.attempt,
             answer_raw=r.answer_raw,
@@ -50,7 +51,7 @@ class BenchPersisterPeewee(BenchPersister):
             (self._Res
              .insert_many(payload)
              .on_conflict(
-                 conflict_target=[self._Res.persona_uuid, self._Res.question_uuid, self._Res.model_name, self._Res.template_version],
+                 conflict_target=[self._Res.persona_uuid, self._Res.question_uuid, self._Res.benchmark_run],
                  update={
                     self._Res.answer_raw: self._Res.answer_raw,
                     self._Res.rating: self._Res.rating,

@@ -24,6 +24,7 @@ class BenchPromptSpec:
     attempt: int
     model_name: str
     template_version: str
+    benchmark_run_id: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,6 +40,7 @@ class BenchAnswerDto:
     question_uuid: str
     model_name: str
     template_version: str
+    benchmark_run_id: int
     attempt: int
     gen_time_ms: int
     answer_raw: str
@@ -76,7 +78,7 @@ class BenchPersonaRepo(Protocol):
 
 class BenchPromptFactory(Protocol):
     def prompts(self, items: Iterable[BenchWorkItem], *, model_name: str,
-                template_version: str, attempt: int) -> Iterable[BenchPromptSpec]: ...
+                template_version: str, attempt: int, benchmark_run_id: int) -> Iterable[BenchPromptSpec]: ...
 
 
 class LLMClient(Protocol):
@@ -91,4 +93,3 @@ class BenchPersister(Protocol):
     def persist_results(self, rows: List[BenchAnswerDto]) -> None: ...
     # Reuse FailureDto from preprocess.ports in pipeline where needed.
     def persist_failure(self, fail) -> None: ...
-

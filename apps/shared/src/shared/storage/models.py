@@ -117,12 +117,60 @@ class FailLog(BaseModel):
     prompt_snippet = pw.TextField(null=True)
     created_at = pw.DateTimeField(default=utcnow, null=False)
 
+# ==============================
+# == Run tracking (new)       ==
+# ==============================
+
+class BenchmarkRun(BaseModel):
+    id = pw.AutoField()
+    created_at = pw.DateTimeField(default=utcnow, null=False)
+
+    # Link to the persona generation batch the run used
+    gen_id = pw.ForeignKeyField(PersonaGeneratorRun, field=PersonaGeneratorRun.gen_id, backref="benchmark_runs", on_delete="CASCADE")
+
+    # Core parameters captured from CLI
+    llm_kind = pw.CharField(null=False)              # e.g., 'hf' | 'fake'
+    model_name = pw.CharField(null=False)            # HF model or identifier
+    batch_size = pw.IntegerField(null=True)
+    max_new_tokens = pw.IntegerField(null=True)
+    max_attempts = pw.IntegerField(null=True)
+    template_version = pw.CharField(null=False, default="v1")
+    include_rationale = pw.BooleanField(null=False, default=True)
+    system_prompt = pw.TextField(null=True)
+    question_file = pw.TextField(null=True)
+    persist_kind = pw.CharField(null=True)           # 'print' | 'peewee'
+
+    class Meta:
+        indexes = (
+            (("gen_id", "created_at"), False),
+        )
+
+
+class AttrGenerationRun(BaseModel):
+    id = pw.AutoField()
+    created_at = pw.DateTimeField(default=utcnow, null=False)
+
+    gen_id = pw.ForeignKeyField(PersonaGeneratorRun, field=PersonaGeneratorRun.gen_id, backref="attrgen_runs", on_delete="CASCADE")
+
+    # Parameters for attribute generation CLI
+    llm_kind = pw.CharField(null=False)
+    model_name = pw.CharField(null=False)
+    batch_size = pw.IntegerField(null=True)
+    max_new_tokens = pw.IntegerField(null=True)
+    max_attempts = pw.IntegerField(null=True)
+    persist_buffer_size = pw.IntegerField(null=True)
+    template_version = pw.CharField(null=False, default="v1")
+    system_prompt = pw.TextField(null=True)
+    persist_kind = pw.CharField(null=True)
+
 class BenchmarkResult(BaseModel):
     id = pw.AutoField()
     persona_uuid = pw.ForeignKeyField(Persona, field=Persona.uuid, backref="benchmark_results", on_delete="CASCADE")
     question_uuid = pw.CharField(null=False)
     model_name = pw.CharField(null=False)
     template_version = pw.CharField(null=False)
+    # Link to a concrete benchmark run/configuration (nullable for backwards-compat)
+    benchmark_run = pw.ForeignKeyField(BenchmarkRun, backref="results", on_delete="CASCADE", null=True)
     gen_time_ms = pw.IntegerField(null=False)
     attempt = pw.IntegerField(null=False, default=1)
     answer_raw = pw.TextField(null=False)
@@ -131,8 +179,11 @@ class BenchmarkResult(BaseModel):
 
     class Meta:
         indexes = (
-            (("persona_uuid", "question_uuid", "model_name", "template_version"), True),
+            # Uniqueness is now per (persona, question, run)
+            (("persona_uuid", "question_uuid", "benchmark_run"), True),
         )
+
+
 
 # ================================
 # == Lookup / statistics tables ==
@@ -227,7 +278,9 @@ ALL_MODELS = [
     Country,
     Persona,
     AdditionalPersonaAttributes,
+    BenchmarkRun,
     BenchmarkResult,
+    AttrGenerationRun,
     ForeignersPerCountry,
     ReligionPerCountry,
     Age,

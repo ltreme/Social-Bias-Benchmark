@@ -12,14 +12,17 @@ import os
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Run primary bias benchmark pipeline.")
     p.add_argument("--gen-id", type=int, required=True)
-    p.add_argument("--template-version", type=str, default="v1")
+    # Optional: override the system prompt preamble
+    p.add_argument("--system-prompt", type=str, help="Override system prompt/preamble")
     p.add_argument("--max-attempts", type=int, default=2)
-    p.add_argument("--llm", choices=["fake", "hf"], default="fake")
+    p.add_argument("--llm", choices=["fake", "hf"], default="hf")
     p.add_argument("--hf-model", type=str, help="HF model name/path (when --llm=hf)")
     p.add_argument("--batch-size", type=int, default=8)
-    p.add_argument("--persist", choices=["print", "peewee"], default="print")
+    p.add_argument("--persist", choices=["print", "peewee"], default="peewee")
     p.add_argument("--max-new-tokens", type=int, default=256)
     p.add_argument("--question-file", type=str, help="Path to question file (csv)")
+    p.add_argument("--with-rational", choices=["on", "off"], default="on",
+                help="Include short rationale in output JSON (default: on)")
     args = p.parse_args(argv)
 
     # Init DB (SQLite by default or DB_URL)
@@ -40,8 +43,14 @@ def main(argv: list[str] | None = None) -> int:
     else:
         question_repo = QuestionRepository()
 
-    prompt_factory = LikertPromptFactory(max_new_tokens=args.max_new_tokens)
-    post = LikertPostProcessor()
+    include_rationale = args.with_rational == "on"
+
+    prompt_factory = LikertPromptFactory(
+        max_new_tokens=args.max_new_tokens,
+        system_preamble=args.system_prompt,
+        include_rationale=include_rationale,
+    )
+    post = LikertPostProcessor(include_rationale=include_rationale)
 
     if args.llm == "fake":
         llm = LlmClientFakeBench(batch_size=args.batch_size)
@@ -55,6 +64,27 @@ def main(argv: list[str] | None = None) -> int:
 
     persist = BenchPersisterPrint() if args.persist == "print" else BenchPersisterPeewee()
 
+    # Create a BenchmarkRun record to capture parameters for traceability
+    from shared.storage import models as dbm
+    try:
+        bench_run = dbm.BenchmarkRun.create(
+            gen_id=args.gen_id,
+            llm_kind=args.llm,
+            model_name=model_name,
+            batch_size=args.batch_size,
+            max_new_tokens=args.max_new_tokens,
+            max_attempts=args.max_attempts,
+            template_version="v1",
+            include_rationale=include_rationale,
+            system_prompt=args.system_prompt,
+            question_file=args.question_file,
+            persist_kind=args.persist,
+        )
+        benchmark_run_id = bench_run.id
+    except Exception as e:
+        print(f"[warn] failed to record BenchmarkRun: {e}", file=sys.stderr)
+        benchmark_run_id = None  # still run pipeline
+
     run_benchmark_pipeline(
         gen_id=args.gen_id,
         question_repo=question_repo,
@@ -64,7 +94,7 @@ def main(argv: list[str] | None = None) -> int:
         post=post,
         persist=persist,
         model_name=model_name,
-        template_version=args.template_version,
+        benchmark_run_id=benchmark_run_id,
         max_attempts=args.max_attempts,
     )
     return 0
