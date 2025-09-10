@@ -1,6 +1,6 @@
 from __future__ import annotations
-from typing import Iterable, List, Optional
-import os
+from typing import Iterable, List, Optional, Tuple
+import os, time
 
 from .ports_bench import (
     BenchPersonaRepo,
@@ -59,6 +59,45 @@ def run_benchmark_pipeline(
 
     # 1) Load questions once (small and stable)
     questions = list(question_repo.iter_all())
+    # Persona count for total work estimation
+    try:
+        from shared.storage.models import Persona
+        persona_count = Persona.select().where(Persona.gen_id == gen_id).count()
+    except Exception:
+        persona_count = 0
+    total_items = persona_count * len(questions) if questions else 0
+    # Determine progress frequency based on batch size with sensible defaults.
+    def _compute_progress_every(batch_size: int | None, env_var: str, baseline: int = 10) -> int:
+        # Allow explicit override via env var
+        env_val = os.getenv(env_var)
+        if env_val is not None:
+            try:
+                return max(1, int(env_val))
+            except Exception:
+                pass
+        # Fallback: derive from batch size
+        if not batch_size or batch_size <= 0:
+            return baseline
+        if batch_size >= baseline:
+            return batch_size
+        # Choose the multiple of batch_size closest to baseline; ties choose smaller
+        # Using bankers rounding achieves the tie-break toward smaller for x.5
+        k = max(1, round(baseline / batch_size))
+        return max(1, batch_size * k)
+
+    progress_every = _compute_progress_every(getattr(llm, "batch_size", None), "BENCH_PROGRESS_EVERY", 10)
+    done_items: set[Tuple[str, str]] = set()  # (persona_uuid, question_uuid)
+    t0 = time.perf_counter()
+
+    def _fmt_dur(seconds: float) -> str:
+        s = int(seconds)
+        m, s = divmod(s, 60)
+        h, m = divmod(m, 60)
+        if h:
+            return f"{h}h{m:02d}m{s:02d}s"
+        if m:
+            return f"{m}m{s:02d}s"
+        return f"{s}s"
 
     def iter_items() -> Iterable[BenchWorkItem]:
         for p in persona_repo.iter_personas(gen_id):
@@ -103,6 +142,20 @@ def run_benchmark_pipeline(
                     except Exception:
                         pass
                 ok_cnt += 1
+                # Mark as finished for progress (first answer defines the (persona,question))
+                try:
+                    a0 = decision.answers[0]
+                    key = (str(a0.persona_uuid), str(a0.question_uuid))
+                    if key not in done_items:
+                        done_items.add(key)
+                        if (len(done_items) % progress_every == 0) or (
+                            total_items and len(done_items) == total_items
+                        ):
+                            pct = 100.0 * len(done_items) / total_items if total_items else 0.0
+                            elapsed = _fmt_dur(time.perf_counter() - t0)
+                            print(f"[Benchmark] progress: {len(done_items)}/{total_items or '?'} items ({pct:.1f}%), elapsed={elapsed}")
+                except Exception:
+                    pass
 
             elif decision.kind == "retry":
                 next_retry_specs.append(decision.retry_spec)
@@ -128,6 +181,14 @@ def run_benchmark_pipeline(
         if attempt > max_attempts:
             for spec in next_retry_specs:
                 _persist_fail(persist, spec, "max_attempts_exceeded", raw="")
+                # Count permanently failed as finished progress items
+                key = (str(spec.work.persona_uuid), str(spec.work.question_uuid))
+                if key not in done_items:
+                    done_items.add(key)
+            if done_items:
+                pct = 100.0 * len(done_items) / total_items if total_items else 0.0
+                elapsed = _fmt_dur(time.perf_counter() - t0)
+                print(f"[Benchmark] progress: {len(done_items)}/{total_items or '?'} items ({pct:.1f}%), elapsed={elapsed}")
             break
 
         pending_specs = iter(next_retry_specs)
