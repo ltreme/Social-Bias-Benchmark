@@ -39,12 +39,12 @@ class PersisterPeewee(Persister):
             attempt=r.attempt,
         ) for r in rows]
 
-        # Upsert auf Unique(persona_uuid, attribute_key)
+        # Upsert auf Unique(persona_uuid, attribute_key, model_name)
         with self.db.atomic():
             (self._Attr
             .insert_many(payload)
             .on_conflict(
-                conflict_target=[self._Attr.persona_uuid, self._Attr.attribute_key],
+                conflict_target=[self._Attr.persona_uuid, self._Attr.attribute_key, self._Attr.model_name],
                 update={
                     self._Attr.value: self._Attr.value,           # oder EXCLUDED.value
                     self._Attr.model_name: self._Attr.model_name,

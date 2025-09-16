@@ -5,7 +5,11 @@ from benchmark.pipeline.benchmark import run_benchmark_pipeline
 from benchmark.pipeline.adapters.prompting import LikertPromptFactory
 from benchmark.pipeline.adapters.postprocess.postprocessor_likert import LikertPostProcessor
 from benchmark.pipeline.adapters.persister_bench_sqlite import BenchPersisterPrint, BenchPersisterPeewee
-from benchmark.pipeline.adapters.llm import LlmClientFakeBench, LlmClientHFBench
+from benchmark.pipeline.adapters.llm import (
+    LlmClientFakeBench,
+    LlmClientHFBench,
+    LlmClientVLLMBench,
+)
 import os
 
 
@@ -15,8 +19,13 @@ def main(argv: list[str] | None = None) -> int:
     # Optional: override the system prompt preamble
     p.add_argument("--system-prompt", type=str, help="Override system prompt/preamble")
     p.add_argument("--max-attempts", type=int, default=2)
-    p.add_argument("--llm", choices=["fake", "hf"], default="hf")
+    p.add_argument("--llm", choices=["fake", "hf", "vllm"], default="hf")
     p.add_argument("--hf-model", type=str, help="HF model name/path (when --llm=hf)")
+    # vLLM OpenAI-compatible server options
+    p.add_argument("--vllm-base-url", type=str, default="http://localhost:8000",
+                help="Base URL of vLLM server root (e.g., http://host:port)")
+    p.add_argument("--vllm-model", type=str, help="Model name served by vLLM (when --llm=vllm)")
+    p.add_argument("--vllm-api-key", type=str, default=None, help="Optional API key for vLLM server")
     p.add_argument("--batch-size", type=int, default=8)
     p.add_argument("--persist", choices=["print", "peewee"], default="peewee")
     p.add_argument("--max-new-tokens", type=int, default=256)
@@ -34,7 +43,6 @@ def main(argv: list[str] | None = None) -> int:
     from benchmark.repository.persona_repository import FullPersonaRepository
     from benchmark.repository.question import QuestionRepository
 
-    persona_repo = FullPersonaRepository()
     if args.question_file:
         if not args.question_file.endswith(".csv") or not os.path.isfile(args.question_file):
             print("[fatal] --question-file must be a CSV file", file=sys.stderr)
@@ -55,12 +63,27 @@ def main(argv: list[str] | None = None) -> int:
     if args.llm == "fake":
         llm = LlmClientFakeBench(batch_size=args.batch_size)
         model_name = "fake"
-    else:
+    elif args.llm == "hf":
         if not args.hf_model:
             print("[fatal] --hf-model is required when --llm=hf", file=sys.stderr)
             return 2
         llm = LlmClientHFBench(model_name_or_path=args.hf_model, batch_size=args.batch_size)
         model_name = args.hf_model
+    else:  # vllm
+        if not args.vllm_model:
+            print("[fatal] --vllm-model is required when --llm=vllm", file=sys.stderr)
+            return 2
+        llm = LlmClientVLLMBench(
+            base_url=args.vllm_base_url,
+            model=args.vllm_model,
+            api_key=args.vllm_api_key,
+            batch_size=args.batch_size,
+            max_new_tokens_cap=args.max_new_tokens,
+        )
+        model_name = args.vllm_model
+
+    # Instantiate persona repo after model_name is known so we can filter attributes by model
+    persona_repo = FullPersonaRepository(model_name=model_name)
 
     persist = BenchPersisterPrint() if args.persist == "print" else BenchPersisterPeewee()
 

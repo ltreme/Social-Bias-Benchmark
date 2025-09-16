@@ -5,7 +5,11 @@ from benchmark.pipeline.attr_gen import run_attr_gen_pipeline
 from benchmark.pipeline.adapters.prompting import AttributePromptFactory
 from benchmark.pipeline.adapters.postprocess.postprocessor_attr import AttributePostProcessor
 from benchmark.pipeline.adapters.persister_sqlite import PersisterPrint, PersisterPeewee
-from benchmark.pipeline.adapters.llm import LlmClientFake, LlmClientHF
+from benchmark.pipeline.adapters.llm import (
+    LlmClientFake,
+    LlmClientHF,
+    LlmClientVLLM,
+)
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Run preprocessing pipeline.")
@@ -15,8 +19,13 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--max-attempts", type=int, default=3)
     p.add_argument("--max-new-tokens", type=int, default=192)
     p.add_argument("--persist-buffer-size", type=int, default=256)
-    p.add_argument("--llm", choices=["fake", "hf"], default="hf")
+    p.add_argument("--llm", choices=["fake", "hf", "vllm"], default="hf")
     p.add_argument("--hf-model", type=str, help="HF model name/path (when --llm=hf)")
+    # vLLM OpenAI-compatible server options
+    p.add_argument("--vllm-base-url", type=str, default="http://localhost:8000",
+                help="Base URL of vLLM server root (e.g., http://host:port)")
+    p.add_argument("--vllm-model", type=str, help="Model name served by vLLM (when --llm=vllm)")
+    p.add_argument("--vllm-api-key", type=str, default=None, help="Optional API key for vLLM server")
     p.add_argument("--batch-size", type=int, default=2)
     p.add_argument("--persist", choices=["print", "peewee"], default="peewee")
     args = p.parse_args(argv)
@@ -39,12 +48,24 @@ def main(argv: list[str] | None = None) -> int:
     if args.llm == "fake":
         llm = LlmClientFake(batch_size=args.batch_size)
         model_name = "fake"
-    else:
+    elif args.llm == "hf":
         if not args.hf_model:
             print("[fatal] --hf-model is required when --llm=hf", file=sys.stderr)
             return 2
         llm = LlmClientHF(model_name_or_path=args.hf_model, batch_size=args.batch_size)
         model_name = args.hf_model
+    else:  # vllm
+        if not args.vllm_model:
+            print("[fatal] --vllm-model is required when --llm=vllm", file=sys.stderr)
+            return 2
+        llm = LlmClientVLLM(
+            base_url=args.vllm_base_url,
+            model=args.vllm_model,
+            api_key=args.vllm_api_key,
+            batch_size=args.batch_size,
+            max_new_tokens_cap=args.max_new_tokens,
+        )
+        model_name = args.vllm_model
 
     persist = PersisterPrint() if args.persist == "print" else PersisterPeewee()
 

@@ -104,7 +104,8 @@ class AdditionalPersonaAttributes(BaseModel):
 
     class Meta:
         indexes = (
-            (("persona_uuid", "attribute_key"), True),  # unique for upsert
+            # Unique per attribute per model to allow multiple model-specific enrichments
+            (("persona_uuid", "attribute_key", "model_name"), True),
         )
 
 class FailLog(BaseModel):

@@ -62,6 +62,10 @@ class FullPersonaRepository(BenchPersonaRepo):
     for the benchmark prompts. Avoids materialization via iterator().
     """
 
+    def __init__(self, *, model_name: str | None = None):
+        # Optional model_name to filter AdditionalPersonaAttributes per model
+        self.model_name = model_name
+
     def iter_personas(self, gen_id: int):
         _ = get_db()
         query = (
@@ -82,11 +86,11 @@ class FullPersonaRepository(BenchPersonaRepo):
         for row in query.iterator():
             origin_name = getattr(row, "origin_name", None)
 
-            # fetch enriched attributes for this persona
-            attrs = (
-                Attr.select(Attr.attribute_key, Attr.value)
-                .where(Attr.persona_uuid == row.uuid)
-            )
+            # fetch enriched attributes for this persona (optionally filter by model)
+            attrs_query = Attr.select(Attr.attribute_key, Attr.value).where(Attr.persona_uuid == row.uuid)
+            if self.model_name:
+                attrs_query = attrs_query.where(Attr.model_name == self.model_name)
+            attrs = attrs_query
             attr_map = {a.attribute_key: a.value for a in attrs}
 
             persona_ctx = {
