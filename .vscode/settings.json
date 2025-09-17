@@ -3,6 +3,7 @@
     "apps/persona_generator/src",
     "apps/benchmark/src",
     "apps/shared/src",
-    "apps/venv/lib/python3.9/site-packages"
-  ]
+    "apps/analysis/src"
+  ],
+  "python.envFile": "${workspaceFolder}/.env"
 }

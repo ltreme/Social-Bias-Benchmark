@@ -1,0 +1,238 @@
+{
+  "gen_id": 14,
+  "n_personas": 1000,
+  "settings": {
+    "created_at": "2025-09-10T17:56:47.866350",
+    "age_min": 0,
+    "age_max": 100,
+    "age_temperature": 0.0,
+    "education_temperature": 0.0,
+    "gender_temperature": 0.0,
+    "marriage_status_temperature": 0.0,
+    "religion_temperature": 0.0,
+    "sexuality_temperature": 0.0
+  },
+  "missing_rate": {
+    "age": 0.0,
+    "gender": 0.0,
+    "origin_region": 0.0,
+    "religion": 0.0,
+    "sexuality": 0.0,
+    "marriage_status": 0.0,
+    "education": 0.0,
+    "occupation": 0.0
+  },
+  "age_stats": {
+    "count": 1000.0,
+    "mean": 45.283,
+    "std": 23.66484599434224,
+    "min": 0.0,
+    "p10": 12.0,
+    "p25": 26.0,
+    "median": 46.0,
+    "p75": 63.0,
+    "p90": 77.0,
+    "max": 99.0
+  },
+  "categories": {
+    "gender": [
+      {
+        "gender": "male",
+        "share": 0.51,
+        "count": 510
+      },
+      {
+        "gender": "female",
+        "share": 0.483,
+        "count": 483
+      },
+      {
+        "gender": "diverse",
+        "share": 0.007,
+        "count": 7
+      }
+    ],
+    "origin_region": [
+      {
+        "origin_region": "Europe",
+        "share": 0.574,
+        "count": 574
+      },
+      {
+        "origin_region": "Asia",
+        "share": 0.341,
+        "count": 341
+      },
+      {
+        "origin_region": "Africa",
+        "share": 0.056,
+        "count": 56
+      },
+      {
+        "origin_region": "Americas",
+        "share": 0.027,
+        "count": 27
+      },
+      {
+        "origin_region": "Oceania",
+        "share": 0.001,
+        "count": 1
+      },
+      {
+        "origin_region": "nan",
+        "share": 0.001,
+        "count": 1
+      }
+    ],
+    "religion": [
+      {
+        "religion": "Christians",
+        "share": 0.497,
+        "count": 497
+      },
+      {
+        "religion": "Muslims",
+        "share": 0.345,
+        "count": 345
+      },
+      {
+        "religion": "Religiously_unaffiliated",
+        "share": 0.107,
+        "count": 107
+      },
+      {
+        "religion": "Hindus",
+        "share": 0.029,
+        "count": 29
+      },
+      {
+        "religion": "Buddhists",
+        "share": 0.012,
+        "count": 12
+      },
+      {
+        "religion": "Other_religions",
+        "share": 0.008,
+        "count": 8
+      },
+      {
+        "religion": "Jews",
+        "share": 0.002,
+        "count": 2
+      }
+    ],
+    "sexuality": [
+      {
+        "sexuality": "heterosexual",
+        "share": 0.983,
+        "count": 983
+      },
+      {
+        "sexuality": "homosexual",
+        "share": 0.009,
+        "count": 9
+      },
+      {
+        "sexuality": "bisexual",
+        "share": 0.008,
+        "count": 8
+      }
+    ],
+    "marriage_status": [
+      {
+        "marriage_status": "married",
+        "share": 0.423,
+        "count": 423
+      },
+      {
+        "marriage_status": "single",
+        "share": 0.422,
+        "count": 422
+      },
+      {
+        "marriage_status": "widowed",
+        "share": 0.08,
+        "count": 80
+      },
+      {
+        "marriage_status": "divorced",
+        "share": 0.075,
+        "count": 75
+      }
+    ],
+    "education": [
+      {
+        "education": "Haupt- (Volks-)schulabschluss",
+        "share": 0.658,
+        "count": 658
+      },
+      {
+        "education": "Noch in schulischer Ausbildung",
+        "share": 0.218,
+        "count": 218
+      },
+      {
+        "education": "Unknown",
+        "share": 0.124,
+        "count": 124
+      }
+    ],
+    "occupation": [
+      {
+        "occupation": "Rentner/in",
+        "share": 0.191,
+        "count": 191
+      },
+      {
+        "occupation": "Other",
+        "share": 0.104,
+        "count": 104
+      },
+      {
+        "occupation": "Soldat/in",
+        "share": 0.103,
+        "count": 103
+      },
+      {
+        "occupation": "Schüler/in",
+        "share": 0.1,
+        "count": 100
+      },
+      {
+        "occupation": "Verkäufer/in",
+        "share": 0.078,
+        "count": 78
+      },
+      {
+        "occupation": "Informatiker/in",
+        "share": 0.076,
+        "count": 76
+      },
+      {
+        "occupation": "Polizist/in",
+        "share": 0.073,
+        "count": 73
+      },
+      {
+        "occupation": "Krankenpfleger/in",
+        "share": 0.072,
+        "count": 72
+      },
+      {
+        "occupation": "Arzt/Ärztin",
+        "share": 0.069,
+        "count": 69
+      },
+      {
+        "occupation": "Lehrer/in",
+        "share": 0.069,
+        "count": 69
+      },
+      {
+        "occupation": "Manager/in",
+        "share": 0.065,
+        "count": 65
+      }
+    ]
+  }
+}
