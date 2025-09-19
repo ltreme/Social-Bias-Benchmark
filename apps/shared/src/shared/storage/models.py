@@ -271,12 +271,67 @@ class Occupation(BaseModel):
             pw.SQL("UNIQUE(age_from, age_to, job_en)")
         ]
 
+# ==============================
+# == Dataset registry         ==
+# ==============================
+
+class Dataset(BaseModel):
+    id = pw.AutoField()
+    name = pw.CharField(unique=True, null=False)
+    kind = pw.CharField(null=False)  # 'pool' | 'balanced' | 'counterfactual' | 'reality'
+    created_at = pw.DateTimeField(default=utcnow, null=False)
+
+    # Optional seed + config json for reproducibility
+    seed = pw.IntegerField(null=True)
+    config_json = pw.TextField(null=True)
+
+    # Optional source linkage (e.g. balanced from pool, cf from balanced)
+    source_dataset = pw.ForeignKeyField('self', null=True, backref='derived', on_delete="SET NULL")
+
+    # Optional linkage to generator run for pools or to synthetic runs
+    gen_id = pw.ForeignKeyField(PersonaGeneratorRun, field=PersonaGeneratorRun.gen_id, null=True, backref='datasets', on_delete="SET NULL")
+
+
+class DatasetPersona(BaseModel):
+    id = pw.AutoField()
+    dataset = pw.ForeignKeyField(Dataset, backref="members", on_delete="CASCADE")
+    persona = pw.ForeignKeyField(Persona, field=Persona.uuid, backref="datasets", on_delete="CASCADE")
+    role = pw.CharField(null=True)  # optional: 'source' | 'counterfactual'
+    created_at = pw.DateTimeField(default=utcnow, null=False)
+
+    class Meta:
+        indexes = (
+            (("dataset", "persona"), True),  # unique membership
+        )
+
+
+class CounterfactualLink(BaseModel):
+    id = pw.AutoField()
+    dataset = pw.ForeignKeyField(Dataset, backref="counterfactual_links", on_delete="CASCADE")
+    source_persona = pw.ForeignKeyField(Persona, field=Persona.uuid, backref="counterfactual_sources", on_delete="CASCADE")
+    cf_persona = pw.ForeignKeyField(Persona, field=Persona.uuid, backref="counterfactuals", on_delete="CASCADE")
+    changed_attribute = pw.CharField(null=False)  # e.g., 'gender' | 'age' | 'origin' | 'religion' | 'sexuality'
+    from_value = pw.CharField(null=True)
+    to_value = pw.CharField(null=True)
+    rule_tag = pw.CharField(null=True)  # e.g., 'far_age_bin', 'different_subregion'
+    created_at = pw.DateTimeField(default=utcnow, null=False)
+
+    class Meta:
+        indexes = (
+            (("dataset", "cf_persona"), True),
+        )
+
 # ---------- Table creation helper ----------
 ALL_MODELS = [
     PersonaGeneratorRun,
     Country,
     Persona,
     AdditionalPersonaAttributes,
+    Dataset,
+    DatasetPersona,
+    CounterfactualLink,
+    # Dataset registry
+    # (added below in file to keep ordering readable)
     BenchmarkRun,
     BenchmarkResult,
     AttrGenerationRun,

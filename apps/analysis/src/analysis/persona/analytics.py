@@ -12,7 +12,7 @@ import peewee as pw
 
 from analysis import get_project_root
 from shared.storage.db import DEFAULT_SQLITE_PATH, init_database, get_db, db_proxy, create_tables
-from shared.storage.models import Country, Persona, PersonaGeneratorRun
+from shared.storage.models import Country, Persona, PersonaGeneratorRun, DatasetPersona
 
 try:
     import seaborn as sns
@@ -115,6 +115,49 @@ def load_persona_dataframe(config: PersonaDataConfig) -> pd.DataFrame:
     return df
 
 
+def load_persona_dataframe_for_datasets(dataset_ids: Sequence[int]) -> pd.DataFrame:
+    """Return persona rows for given dataset_ids (DatasetPersona memberships).
+
+    Columns mirror load_persona_dataframe but replace gen_id with dataset_id.
+    """
+    if not dataset_ids:
+        raise ValueError("Provide at least one dataset_id")
+    _ensure_database()
+    db = get_db()
+    q = (
+        Persona.select(
+            DatasetPersona.dataset.alias("dataset_id"),
+            Persona.uuid.alias("persona_uuid"),
+            Persona.age,
+            Persona.gender,
+            Persona.education,
+            Persona.occupation,
+            Persona.marriage_status,
+            Persona.migration_status,
+            Persona.religion,
+            Persona.sexuality,
+            Persona.created_at,
+            Country.country_en.alias("origin_country_en"),
+            Country.country_de.alias("origin_country_de"),
+            Country.region.alias("origin_region"),
+            Country.subregion.alias("origin_subregion"),
+        )
+        .join(DatasetPersona, on=(DatasetPersona.persona == Persona.uuid))
+        .switch(Persona)
+        .join(Country, pw.JOIN.LEFT_OUTER)
+        .where(DatasetPersona.dataset.in_(list(map(int, dataset_ids))))
+        .order_by(DatasetPersona.dataset, Persona.created_at)
+    )
+    with db.atomic():
+        rows = list(q.dicts())
+    df = pd.DataFrame(rows)
+    if df.empty:
+        return df
+    df["dataset_id"] = pd.to_numeric(df["dataset_id"], errors="coerce").astype(int)
+    df["age"] = pd.to_numeric(df["age"], errors="coerce")
+    return df
+
+
 def summarise_category(df: pd.DataFrame, column: str) -> pd.DataFrame:
     """Aggregate counts and shares for a categorical column per gen_id."""
     if column not in df.columns:
@@ -134,6 +177,66 @@ def summarise_category(df: pd.DataFrame, column: str) -> pd.DataFrame:
     summary["share"] = summary["count"] / summary["total"]
     summary = summary.sort_values(["gen_id", "count"], ascending=[True, False])
     return summary
+
+
+def summarise_category_grouped(df: pd.DataFrame, group_col: str, column: str) -> pd.DataFrame:
+    """Aggregate counts and shares for a categorical column per group_col."""
+    if column not in df.columns:
+        raise KeyError(f"Column '{column}' missing from dataframe")
+    if group_col not in df.columns:
+        raise KeyError(f"Group column '{group_col}' missing from dataframe")
+    work = df[[group_col, column]].copy()
+    work[column] = work[column].fillna("Unknown")
+    counts = work.groupby([group_col, column], dropna=False).size().rename("count").reset_index()
+    totals = counts.groupby(group_col)["count"].sum().rename("total")
+    out = counts.merge(totals, on=group_col)
+    out["share"] = out["count"] / out["total"]
+    return out.sort_values([group_col, "count"], ascending=[True, False])
+
+
+def plot_category_100pct_grouped(
+    df: pd.DataFrame,
+    *,
+    group_col: str,
+    column: str,
+    ax: plt.Axes | None = None,
+    figsize: tuple[float, float] = (8, 4),
+    top_n: int | None = 10,
+) -> plt.Axes:
+    """100%-gestapelte Balken: eine Säule pro group_col (e.g., dataset_id)."""
+    summary = summarise_category_grouped(df, group_col, column)
+    if top_n and top_n > 0:
+        # collapse to top-n globally
+        top_values = summary.groupby(column)["count"].sum().nlargest(top_n).index.astype(str).to_list()
+        s2 = summary.copy()
+        s2[column] = s2[column].astype(str)
+        s2.loc[~s2[column].isin(top_values), column] = "Other"
+        counts = s2.groupby([group_col, column], dropna=False)["count"].sum().reset_index()
+        totals = counts.groupby(group_col)["count"].sum().rename("total")
+        summary = counts.merge(totals, on=group_col)
+        summary["share"] = summary["count"] / summary["total"]
+    wide = summary.pivot(index=group_col, columns=column, values="share").fillna(0)
+    # order columns by total
+    totals = wide.sum(axis=0).sort_values(ascending=False)
+    if "Other" in totals.index:
+        totals = totals.drop("Other")
+        cols = list(totals.index) + ["Other"]
+    else:
+        cols = list(totals.index)
+    wide = wide[cols]
+    if ax is None:
+        _, ax = plt.subplots(figsize=figsize)
+    wide.plot(kind="bar", stacked=True, ax=ax)
+    ax.set_ylim(0, 1)
+    ax.yaxis.set_major_formatter(PercentFormatter(1.0))
+    ax.set_xlabel(group_col)
+    ax.set_ylabel("Anteil")
+    ax.set_title(f"{column.replace('_',' ').title()} – 100% gestapelt")
+    leg = ax.legend(title=column.replace("_", " ").title(), bbox_to_anchor=(1.02, 1), loc="upper left", frameon=False, ncol=1)
+    if leg and leg.get_title():
+        leg.get_title().set_fontsize(10)
+    plt.tight_layout()
+    return ax
 
 
 def _apply_top_n(summary: pd.DataFrame, column: str, top_n: int | None) -> pd.DataFrame:
