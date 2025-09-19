@@ -16,6 +16,9 @@ from analysis.benchmarks.analytics import (
     export_benchmark_report,
     per_question_fixed_effects,
     plot_fixed_effects_forest,
+    compute_poststrat_weights,
+    benjamini_hochberg,
+    mann_whitney_cliffs,
 )
 from analysis.persona.analytics import set_default_theme
 
@@ -39,6 +42,16 @@ def parse_args(argv=None) -> argparse.Namespace:
         help="Optional filters for forest plots as pairs like gender=male religion=Christians; one per column.",
     )
     p.add_argument("--forest-min-n", type=int, default=2, help="Minimum n per category/baseline within a question to include in forest plot")
+    p.add_argument(
+        "--baselines",
+        type=str,
+        nargs="*",
+        default=None,
+        help="Override baseline per attribute as key=value pairs (e.g., gender=male origin_region=Europe religion=Christians)",
+    )
+    p.add_argument("--weight-by", type=str, nargs="*", default=None, help="Columns to post-stratify by (e.g., gender origin_region)")
+    p.add_argument("--weight-ref-gen", type=int, default=None, help="Reference gen_id distribution for weights")
+    p.add_argument("--weight-target-csv", type=Path, default=None, help="CSV with target shares for weight-by columns (must include column 'share')")
     return p.parse_args(argv)
 
 
@@ -92,6 +105,19 @@ def main(argv=None) -> int:
         "permutations": args.permutations,
     }, indent=2))
 
+
+    # Optional: compute post-stratification weights
+    weight_col = None
+    if args.weight_by:
+        target_df = None
+        ref_filter = None
+        if args.weight_target_csv and args.weight_target_csv.exists():
+            import pandas as pd
+            target_df = pd.read_csv(args.weight_target_csv)
+        elif args.weight_ref_gen is not None:
+            ref_filter = (df["gen_id"] == int(args.weight_ref_gen))
+        df = compute_poststrat_weights(df, by=args.weight_by, target=target_df, ref_filter=ref_filter, weight_col="weight")
+        weight_col = "weight"
     # Overall distribution
     ax = plot_rating_distribution(df)
     save(ax, out / "rating_distribution.png")
@@ -117,6 +143,27 @@ def main(argv=None) -> int:
                 k, v = tok.split("=", 1)
                 forest_map[k.strip()] = v.strip()
 
+    # Parse baseline overrides
+    baseline_map: dict[str, str] = {}
+    if args.baselines:
+        for tok in args.baselines:
+            if "=" in tok:
+                k, v = tok.split("=", 1)
+                baseline_map[k.strip()] = v.strip()
+
+    # Baseline resolution helper
+    def _resolve_baseline_value(frame, col: str, desired: str | None) -> str | None:
+        if not desired:
+            return None
+        if col not in frame.columns:
+            return desired
+        vals = frame[col].dropna().astype(str).unique().tolist()
+        d = desired.strip().lower()
+        for v in vals:
+            if str(v).strip().lower() == d:
+                return str(v)
+        return desired
+
     # Load question label mapping if provided
     qlabel_map = None
     if args.question_map and args.question_map.exists():
@@ -134,12 +181,17 @@ def main(argv=None) -> int:
     for col in categories:
         if col not in df.columns:
             continue
-        ax1 = plot_category_means(df, col, top_n=args.top_n)
+        ax1 = plot_category_means(df, col, top_n=args.top_n, weight_col=weight_col)
         save(ax1, out / f"means_{col}.png")
-        ax2 = plot_deltas_with_significance(df, col, baseline=None, n_perm=args.permutations, alpha=args.alpha)
+        # Resolve optional baseline override for this column
+        try:
+            base_override = _resolve_baseline_value(df, col, baseline_map.get(col))
+        except Exception:
+            base_override = None
+        ax2 = plot_deltas_with_significance(df, col, baseline=base_override, n_perm=args.permutations, alpha=args.alpha, weight_col=weight_col)
         save(ax2, out / f"delta_{col}.png")
         # Per-question fixed effects + forest
-        perq = per_question_fixed_effects(df, col)
+        perq = per_question_fixed_effects(df, col, baseline=base_override)
         if not perq.empty:
             if col in forest_map:
                 ax3 = plot_fixed_effects_forest(perq, col, target_category=forest_map[col], min_n=args.forest_min_n, question_labels=qlabel_map)
@@ -167,6 +219,35 @@ def main(argv=None) -> int:
             except Exception as e:
                 print(f"[warn] could not create per-value forests for {col}: {e}")
 
+
+    # Assemble significance tables (p, q, Cliff's delta)
+    sig_tables = {}
+    for col in categories:
+        if col not in df.columns:
+            continue
+        sub = df.copy()
+        sub[col] = sub[col].fillna("Unknown")
+        counts = sub[col].value_counts()
+        if counts.empty:
+            continue
+        base_override = _resolve_baseline_value(sub, col, baseline_map.get(col)) if 'baseline_map' in locals() else None
+        baseline = base_override or counts.index[0]
+        from analysis.benchmarks.analytics import deltas_with_significance
+        t = deltas_with_significance(sub, col, baseline=baseline, n_perm=args.permutations, alpha=args.alpha, weight_col=weight_col)
+        t = t.sort_values("p_value")
+        t["q_value"] = benjamini_hochberg(t["p_value"].tolist())
+        rows = []
+        base_vals = sub.loc[sub[col] == baseline, "rating"]
+        for _, r in t.iterrows():
+            cat = r[col]
+            vals = sub.loc[sub[col] == cat, "rating"]
+            _, _, cd = mann_whitney_cliffs(base_vals, vals)
+            rr = r.to_dict()
+            rr["cliffs_delta"] = cd
+            rows.append(rr)
+        if rows:
+            import pandas as pd
+            sig_tables[col] = pd.DataFrame(rows)
     # Text report
     title_bits = []
     title_bits.append(f"gen_id={','.join(map(str, sorted(set(df['gen_id']))))}")
@@ -175,7 +256,27 @@ def main(argv=None) -> int:
     if args.question_uuids:
         title_bits.append(f"questions={','.join(args.question_uuids)}")
     title = "Benchmark Report – " + " | ".join(title_bits)
-    export_benchmark_report(df, out / "reports", title=title, top_n=args.top_n, images_dir=out)
+    method_meta = {
+        "gen_ids": sorted(set(df["gen_id"])),
+        "models": args.models or "all",
+        "questions": args.question_uuids or "all",
+        "alpha": args.alpha,
+        "permutations": args.permutations,
+        "weight_by": args.weight_by or [],
+        "weight_ref_gen": args.weight_ref_gen,
+        "weight_target_csv": str(args.weight_target_csv) if args.weight_target_csv else None,
+        "forest_min_n": args.forest_min_n,
+        "baselines": baseline_map if 'baseline_map' in locals() else {},
+    }
+    export_benchmark_report(
+        df,
+        out / "reports",
+        title=title,
+        top_n=args.top_n,
+        images_dir=out,
+        significance_tables=sig_tables,
+        method_meta=method_meta,
+    )
 
     print(f"Artifacts in {out.resolve()}")
     return 0

@@ -7,10 +7,11 @@ from pathlib import Path
 import pandas as pd
 import peewee as pw
 import numpy as np
+from math import erf, sqrt
 
 from analysis.persona.analytics import set_default_theme
 from shared.storage.db import init_database, get_db, db_proxy, create_tables
-from shared.storage.models import BenchmarkResult, Persona
+from shared.storage.models import BenchmarkResult, Persona, Country
 
 try:
     import seaborn as sns
@@ -61,8 +62,11 @@ def load_benchmark_dataframe(cfg: BenchQuery) -> pd.DataFrame:
             Persona.religion,
             Persona.sexuality,
             Persona.origin_id,
+            Country.region.alias("origin_region"),
+            Country.subregion.alias("origin_subregion"),
         )
         .join(Persona, on=(BenchmarkResult.persona_uuid == Persona.uuid))
+        .join(Country, pw.JOIN.LEFT_OUTER, on=(Persona.origin_id == Country.id))
         
     )
     if cfg.gen_ids:
@@ -95,18 +99,55 @@ def _ci95(series: pd.Series) -> tuple[float, float]:
     return (mean - half, mean + half)
 
 
-def summarise_rating_by(df: pd.DataFrame, column: str) -> pd.DataFrame:
+def _kish_effective_n(w: pd.Series) -> float:
+    sw = float(w.sum())
+    sw2 = float((w ** 2).sum())
+    return (sw * sw) / sw2 if sw2 > 0 else 0.0
+
+
+def summarise_rating_by(
+    df: pd.DataFrame,
+    column: str,
+    *,
+    weight_col: str | None = None,
+) -> pd.DataFrame:
     """Return mean, count, std, ci95_low/high per category.
     Requires column in df.
     """
     if column not in df.columns:
         raise KeyError(f"Column '{column}' not in dataframe")
-    g = df.groupby(column, dropna=False)["rating"]
-    out = g.agg(["count", "mean", "std"]).reset_index()
-    # CI bounds
-    ci_bounds = g.apply(_ci95)
-    out["ci95_low"] = [b[0] for b in ci_bounds]
-    out["ci95_high"] = [b[1] for b in ci_bounds]
+    if weight_col and weight_col in df.columns:
+        rows: list[dict[str, Any]] = []
+        for cat, sub in df.groupby(column, dropna=False):
+            y = pd.to_numeric(sub["rating"], errors="coerce")
+            w = pd.to_numeric(sub[weight_col], errors="coerce").fillna(0.0)
+            msk = y.notna()
+            y = y[msk]
+            w = w[msk]
+            sw = float(w.sum())
+            if sw <= 0 or y.empty:
+                rows.append({column: cat, "count": 0.0, "mean": float("nan"), "std": float("nan"), "ci95_low": float("nan"), "ci95_high": float("nan")})
+                continue
+            mu = float((w * y).sum() / sw)
+            var = float((w * (y - mu) ** 2).sum() / sw)
+            n_eff = _kish_effective_n(w)
+            se = float(np.sqrt(var / n_eff)) if n_eff > 1 else float("nan")
+            rows.append({
+                column: cat,
+                "count": sw,
+                "mean": mu,
+                "std": float(np.sqrt(var)) if var >= 0 else float("nan"),
+                "ci95_low": mu - 1.96 * se if np.isfinite(se) else float("nan"),
+                "ci95_high": mu + 1.96 * se if np.isfinite(se) else float("nan"),
+            })
+        out = pd.DataFrame(rows)
+    else:
+        g = df.groupby(column, dropna=False)["rating"]
+        out = g.agg(["count", "mean", "std"]).reset_index()
+        # CI bounds
+        ci_bounds = g.apply(_ci95)
+        out["ci95_low"] = [b[0] for b in ci_bounds]
+        out["ci95_high"] = [b[1] for b in ci_bounds]
     out = out.sort_values("mean", ascending=False)
     return out
 
@@ -162,6 +203,7 @@ def plot_category_means(
     ax: plt.Axes | None = None,
     figsize: tuple[float, float] = (7, 4),
     top_n: int | None = 10,
+    weight_col: str | None = None,
 ) -> plt.Axes:
     """Bars mit Mean + 95%-CI je Kategorie. Große Domänen werden via Top-N beschnitten."""
     set_default_theme()
@@ -169,7 +211,7 @@ def plot_category_means(
         _, ax = plt.subplots(figsize=figsize)
     work = df.copy()
     work[column] = work[column].fillna("Unknown")
-    summary = summarise_rating_by(work, column)
+    summary = summarise_rating_by(work, column, weight_col=weight_col)
     if top_n and top_n > 0:
         summary = summary.sort_values("count", ascending=False).head(top_n)
         summary = summary.sort_values("mean", ascending=False)
@@ -201,12 +243,13 @@ def plot_deltas_vs_baseline(
     ax: plt.Axes | None = None,
     figsize: tuple[float, float] = (7, 4),
     top_n: int | None = 10,
+    weight_col: str | None = None,
 ) -> plt.Axes:
     """Delta der Mittelwerte je Kategorie relativ zu einer Baseline."""
     set_default_theme()
     work = df.copy()
     work[column] = work[column].fillna("Unknown")
-    summary = summarise_rating_by(work, column)
+    summary = summarise_rating_by(work, column, weight_col=weight_col)
     # Choose baseline = häufigste Kategorie, falls nicht angegeben
     if baseline is None and not summary.empty:
         baseline = summary.sort_values("count", ascending=False)[column].iloc[0]
@@ -256,10 +299,11 @@ def deltas_with_significance(
     baseline: str | None = None,
     n_perm: int = 2000,
     alpha: float = 0.05,
+    weight_col: str | None = None,
 ) -> pd.DataFrame:
     work = df.copy()
     work[column] = work[column].fillna("Unknown")
-    summary = summarise_rating_by(work, column)
+    summary = summarise_rating_by(work, column, weight_col=weight_col)
     if baseline is None and not summary.empty:
         baseline = summary.sort_values("count", ascending=False)[column].iloc[0]
     base_values = work.loc[work[column] == baseline, "rating"]
@@ -271,7 +315,7 @@ def deltas_with_significance(
         rows.append({
             column: cat,
             "mean": float(r["mean"]),
-            "count": int(r["count"]),
+            "count": float(r["count"]),
             "delta": float(r["mean"] - base_values.mean()),
             "p_value": float(p),
             "significant": bool(p < alpha),
@@ -290,9 +334,10 @@ def plot_deltas_with_significance(
     alpha: float = 0.05,
     ax: plt.Axes | None = None,
     figsize: tuple[float, float] = (7, 4),
+    weight_col: str | None = None,
 ) -> plt.Axes:
     set_default_theme()
-    table = deltas_with_significance(df, column, baseline=baseline, n_perm=n_perm, alpha=alpha)
+    table = deltas_with_significance(df, column, baseline=baseline, n_perm=n_perm, alpha=alpha, weight_col=weight_col)
     if ax is None:
         _, ax = plt.subplots(figsize=figsize)
     sns.barplot(data=table, y=column, x="delta", orient="h", ax=ax, hue="significant", dodge=False, palette={True: sns.color_palette("colorblind")[2], False: sns.color_palette("colorblind")[0]})
@@ -439,12 +484,18 @@ def mann_whitney_cliffs(a: pd.Series, b: pd.Series):
     U1 = R1 - n1*(n1+1)/2
     _, counts = np.unique(xy, return_counts=True)
     tie_term = (counts**3 - counts).sum()
-    mu = n1*n2/2
-    sigma = np.sqrt(n1*n2*(n1+n2+1 - tie_term/(n1+n2))/(12))
-    z = (U1 - mu) / sigma if sigma > 0 else 0.0
-    from math import erf, sqrt
-    p = 2*(1 - 0.5*(1+erf(abs(z)/sqrt(2))))
-    cliffs = 2*U1/(n1*n2) - 1
+    N = n1 + n2
+    if N < 2:
+        return (float(U1), 1.0, 0.0)
+    T = tie_term / (N * (N - 1))
+    varU = n1 * n2 * ((N + 1) - T) / 12.0
+    if not np.isfinite(varU) or varU <= 0:
+        p = 1.0
+        cliffs = 2 * U1 / (n1 * n2) - 1
+        return (float(U1), float(p), float(cliffs))
+    z = (U1 - n1 * n2 / 2.0) / np.sqrt(varU)
+    p = 2.0 * (1.0 - 0.5 * (1.0 + erf(abs(z) / sqrt(2.0))))
+    cliffs = 2 * U1 / (n1 * n2) - 1
     return (float(U1), float(p), float(cliffs))
 
 # ---------- Report helpers ----------
@@ -456,6 +507,8 @@ def export_benchmark_report(
     title: str = "Benchmark Report",
     top_n: int = 10,
     images_dir: Path | None = None,
+    significance_tables: dict[str, pd.DataFrame] | None = None,
+    method_meta: dict[str, Any] | None = None,
 ) -> Path:
     """Write a compact Markdown with overall and per-category stats."""
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -505,13 +558,74 @@ def export_benchmark_report(
         if images_dir is not None:
             means_img = _rel(f"means_{col}.png")
             delta_img = _rel(f"delta_{col}.png")
+            forest_img = _rel(f"forest_{col}.png")
             if means_img:
                 lines.append("")
-                lines.append(f"![Mittelwerte – {col}]({means_img})")
+                lines.append(f"![Mittelwerte - {col}]({means_img})")
             if delta_img:
                 lines.append("")
-                lines.append(f"![Delta vs. Baseline – {col}]({delta_img})")
+                lines.append(f"![Delta vs. Baseline - {col}]({delta_img})")
+            if forest_img:
+                lines.append("")
+                lines.append(f"![Per-Question Forest - {col}]({forest_img})")
         lines.append("")
+    # Optional: append significance tables at the end (grouped by attribute)
+    if significance_tables:
+        lines.append("## Signifikanz-Tabellen (p, q, Cliff_delta)")
+        for col, tbl in significance_tables.items():
+            if col not in df.columns or tbl is None or tbl.empty:
+                continue
+            lines.append(f"### {col.replace('_',' ').title()}")
+            t = tbl.copy()
+            t = t.sort_values(["significant", "count"], ascending=[False, False]).head(top_n)
+            lines.append("| Kategorie | n | Mittel | Delta | p | q | Cliff_delta | Sig |")
+            lines.append("|---|---:|---:|---:|---:|---:|---:|:--:|")
+            for _, r in t.iterrows():
+                qv = r.get("q_value", float("nan"))
+                cd = r.get("cliffs_delta", float("nan"))
+                sigmark = "yes" if bool(r.get("significant", False)) else ""
+                lines.append(f"| {r[col]} | {int(round(r['count']))} | {r['mean']:.2f} | {r['delta']:.2f} | {r['p_value']:.3f} | {qv:.3f} | {cd:.2f} | {sigmark} |")
+            lines.append("")
     path = output_dir / "benchmark_report.md"
     path.write_text("\n".join(lines))
     return path
+
+
+# ---------- Weighting helpers ----------
+
+def compute_poststrat_weights(
+    df: pd.DataFrame,
+    by: Sequence[str],
+    *,
+    target: pd.DataFrame | None = None,
+    ref_filter: pd.Series | None = None,
+    weight_col: str = "weight",
+) -> pd.DataFrame:
+    if not by:
+        out = df.copy()
+        out[weight_col] = 1.0
+        return out
+    work = df.copy()
+    cur = work.groupby(list(by), dropna=False).size().rename("count").reset_index()
+    cur['share'] = cur['count'] / cur['count'].sum()
+    if target is not None:
+        ref = target.copy()
+        if 'share' not in ref.columns:
+            raise ValueError("target must include a 'share' column")
+        ref = ref[list(by)+['share']].rename(columns={'share':'ref_share'})
+    else:
+        ref_df = work if ref_filter is None else work.loc[ref_filter]
+        ref = ref_df.groupby(list(by), dropna=False).size().rename('ref_count').reset_index()
+        ref['ref_share'] = ref['ref_count'] / ref['ref_count'].sum()
+    merged = cur.merge(ref, on=list(by), how='left')
+    merged['ref_share'] = merged['ref_share'].fillna(0.0)
+    merged['share'] = merged['share'].fillna(0.0)
+    def _w(row):
+        return (row['ref_share']/row['share']) if row['share']>0 else 0.0
+    merged['w'] = merged.apply(_w, axis=1)
+    out = work.merge(merged[list(by)+['w']], on=list(by), how='left')
+    out['w'] = out['w'].fillna(0.0)
+    m = float(out['w'].mean()) if out['w'].mean()>0 else 1.0
+    out[weight_col] = out['w']/m
+    out = out.drop(columns=['w'])
+    return out

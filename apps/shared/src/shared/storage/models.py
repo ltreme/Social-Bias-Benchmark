@@ -250,12 +250,10 @@ class Education(BaseModel):
     value = pw.IntegerField(null=True)
     
     class Meta:
+        # One row per (age interval, gender, education level)
         indexes = (
-            (("age_from", "age_to", "gender"), True),
+            (("age_from", "age_to", "gender", "education_level"), True),
         )
-        constraints = [
-            pw.SQL("UNIQUE(age_from, age_to, gender)")
-        ]
 
 class Occupation(BaseModel):
     id = pw.AutoField()

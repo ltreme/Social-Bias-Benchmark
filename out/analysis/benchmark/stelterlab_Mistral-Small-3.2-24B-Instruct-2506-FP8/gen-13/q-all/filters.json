@@ -1,0 +1,11 @@
+{
+  "models": [
+    "stelterlab/Mistral-Small-3.2-24B-Instruct-2506-FP8"
+  ],
+  "gen_ids": [
+    13
+  ],
+  "question_uuids": null,
+  "alpha": 0.05,
+  "permutations": 2000
+}
