@@ -7,3 +7,5 @@ venv_*
 # Python cache files
 __pycache__/
 *.egg-info/
+out/*
+*db
