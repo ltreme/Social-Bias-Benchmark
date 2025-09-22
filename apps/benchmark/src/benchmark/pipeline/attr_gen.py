@@ -34,15 +34,19 @@ def run_attr_gen_pipeline(
     template_version: str = "v1",
     max_attempts: int = 3,
     persist_buffer_size: int = 512,
+    total_personas_override: int | None = None,
 ) -> None:
     # Progress setup
-    try:
-        from shared.storage.models import Persona
-        total_personas = (
-            Persona.select().where(Persona.gen_id == gen_id).count()
-        )
-    except Exception:
-        total_personas = 0
+    if total_personas_override is not None:
+        total_personas = int(total_personas_override)
+    else:
+        try:
+            from shared.storage.models import Persona
+            total_personas = (
+                Persona.select().where(Persona.gen_id == gen_id).count()
+            )
+        except Exception:
+            total_personas = 0
     # Determine progress frequency based on batch size with sensible defaults.
     def _compute_progress_every(batch_size: int | None, env_var: str, baseline: int = 10) -> int:
         # Allow explicit override via env var

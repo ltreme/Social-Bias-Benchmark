@@ -1,26 +1,13 @@
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass(frozen=True)
-class TaskDto:
-    uuid: str
+class CaseDto:
+    """Minimal case in the benchmark: id + adjective.
+
+    case_template is optional and can be used later to add situational context.
+    """
+    id: str
     adjective: str
-
-
-@dataclass(frozen=True)
-class QuestionDto(TaskDto):
-    """
-    Data Transfer Object for a question in the benchmark.
-    Contains the question text and the expected property it addresses.
-    """
-
-    question_template: str
-
-
-@dataclass(frozen=True)
-class QuestionCaseDto(QuestionDto):
-    """
-    Combines question details with the case template for rendering.
-    """
-
-    case_template: str  # Template describing the scenario
+    case_template: Optional[str] = None

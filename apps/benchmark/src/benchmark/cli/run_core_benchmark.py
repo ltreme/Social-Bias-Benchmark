@@ -15,12 +15,14 @@ import os
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Run primary bias benchmark pipeline.")
-    p.add_argument("--gen-id", type=int, required=True)
+    p.add_argument("--gen-id", type=int, required=False, help="Persona generation run id (ignored when --dataset-id is set)")
+    p.add_argument("--dataset-id", type=int, required=False, help="Use personas from a Dataset (DatasetPersona membership)")
     # Optional: override the system prompt preamble
     p.add_argument("--system-prompt", type=str, help="Override system prompt/preamble")
     p.add_argument("--max-attempts", type=int, default=2)
-    p.add_argument("--llm", choices=["fake", "hf", "vllm"], default="hf")
-    p.add_argument("--hf-model", type=str, help="HF model name/path (when --llm=hf)")
+    p.add_argument("--llm", choices=["fake", "hf", "vllm"], default="vllm",
+                help="LLM backend: vllm (preferred), hf (deprecated), or fake (testing)")
+    p.add_argument("--hf-model", type=str, help="[DEPRECATED] HF model name/path (only when --llm=hf)")
     # vLLM OpenAI-compatible server options
     p.add_argument("--vllm-base-url", type=str, default="http://localhost:8000",
                 help="Base URL of vLLM server root (e.g., http://host:port)")
@@ -29,7 +31,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--batch-size", type=int, default=8)
     p.add_argument("--persist", choices=["print", "peewee"], default="peewee")
     p.add_argument("--max-new-tokens", type=int, default=256)
-    p.add_argument("--question-file", type=str, help="Path to question file (csv)")
+    p.add_argument("--case-file", type=str, help="Path to Likert case CSV (headers: id,adjective)")
     p.add_argument("--with-rational", choices=["on", "off"], default="on",
                 help="Include short rationale in output JSON (default: on)")
     args = p.parse_args(argv)
@@ -40,16 +42,16 @@ def main(argv: list[str] | None = None) -> int:
     create_tables()
 
     # Persona + Question repositories
-    from benchmark.repository.persona_repository import FullPersonaRepository
-    from benchmark.repository.question import QuestionRepository
+    from benchmark.repository.persona_repository import FullPersonaRepository, FullPersonaRepositoryByDataset
+    from benchmark.repository.question import CaseRepository
 
-    if args.question_file:
-        if not args.question_file.endswith(".csv") or not os.path.isfile(args.question_file):
-            print("[fatal] --question-file must be a CSV file", file=sys.stderr)
+    if args.case_file:
+        if not args.case_file.endswith(".csv") or not os.path.isfile(args.case_file):
+            print("[fatal] --case-file must be a CSV file", file=sys.stderr)
             return 2
-        question_repo = QuestionRepository(path=args.question_file)
+        case_repo = CaseRepository(path=args.case_file)
     else:
-        question_repo = QuestionRepository()
+        case_repo = CaseRepository()
 
     include_rationale = args.with_rational == "on"
 
@@ -64,6 +66,7 @@ def main(argv: list[str] | None = None) -> int:
         llm = LlmClientFakeBench(batch_size=args.batch_size)
         model_name = "fake"
     elif args.llm == "hf":
+        print("[warn] --llm=hf is deprecated. Prefer --llm=vllm.", file=sys.stderr)
         if not args.hf_model:
             print("[fatal] --hf-model is required when --llm=hf", file=sys.stderr)
             return 2
@@ -84,6 +87,40 @@ def main(argv: list[str] | None = None) -> int:
 
     # Instantiate persona repo after model_name is known so we can filter attributes by model
     persona_repo = FullPersonaRepository(model_name=model_name)
+    persona_count_override = None
+    use_gen_id = args.gen_id
+    if args.dataset_id is not None:
+        # Switch to dataset-backed repo
+        persona_repo = FullPersonaRepositoryByDataset(dataset_id=int(args.dataset_id), model_name=model_name)
+        # Resolve gen_id from Dataset (all members originate from same gen_id in our builders)
+        try:
+            from shared.storage.models import DatasetPersona, Dataset, Persona as _P
+            from shared.storage.db import get_db
+            _ = get_db()
+            ds = Dataset.get_by_id(int(args.dataset_id))
+            use_gen_id = None
+            # Prefer the FK if present
+            if getattr(ds, 'gen_id', None):
+                try:
+                    use_gen_id = int(getattr(ds.gen_id, 'gen_id', ds.gen_id))
+                except Exception:
+                    pass
+            # Fallback: derive from first member persona
+            if use_gen_id is None:
+                use_gen_id = (_P
+                            .select(_P.gen_id)
+                            .join(DatasetPersona, on=(DatasetPersona.persona == _P.uuid))
+                            .where(DatasetPersona.dataset == int(args.dataset_id))
+                            .limit(1)
+                            .scalar())
+                if use_gen_id is not None:
+                    use_gen_id = int(use_gen_id)
+            # Final fallback to provided --gen-id
+            if use_gen_id is None:
+                use_gen_id = args.gen_id
+            persona_count_override = DatasetPersona.select().where(DatasetPersona.dataset == int(args.dataset_id)).count()
+        except Exception as e:
+            print(f"[warn] could not resolve dataset metadata: {e}", file=sys.stderr)
 
     persist = BenchPersisterPrint() if args.persist == "print" else BenchPersisterPeewee()
 
@@ -91,7 +128,7 @@ def main(argv: list[str] | None = None) -> int:
     from shared.storage import models as dbm
     try:
         bench_run = dbm.BenchmarkRun.create(
-            gen_id=args.gen_id,
+            gen_id=use_gen_id,
             llm_kind=args.llm,
             model_name=model_name,
             batch_size=args.batch_size,
@@ -100,7 +137,7 @@ def main(argv: list[str] | None = None) -> int:
             template_version="v1",
             include_rationale=include_rationale,
             system_prompt=args.system_prompt,
-            question_file=args.question_file,
+            case_file=args.case_file,
             persist_kind=args.persist,
         )
         benchmark_run_id = bench_run.id
@@ -109,8 +146,8 @@ def main(argv: list[str] | None = None) -> int:
         benchmark_run_id = None  # still run pipeline
 
     run_benchmark_pipeline(
-        gen_id=args.gen_id,
-        question_repo=question_repo,
+        gen_id=use_gen_id if use_gen_id is not None else 0,
+        question_repo=case_repo,
         persona_repo=persona_repo,
         prompt_factory=prompt_factory,
         llm=llm,
@@ -119,6 +156,7 @@ def main(argv: list[str] | None = None) -> int:
         model_name=model_name,
         benchmark_run_id=benchmark_run_id,
         max_attempts=args.max_attempts,
+        persona_count_override=persona_count_override,
     )
     return 0
 

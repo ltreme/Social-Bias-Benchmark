@@ -11,7 +11,7 @@ from math import erf, sqrt
 
 from analysis.persona.analytics import set_default_theme
 from shared.storage.db import init_database, get_db, db_proxy, create_tables
-from shared.storage.models import BenchmarkResult, Persona, Country
+from shared.storage.models import BenchmarkResult, Persona, Country, DatasetPersona, BenchmarkRun
 
 try:
     import seaborn as sns
@@ -27,8 +27,13 @@ except ImportError as exc:  # pragma: no cover
 class BenchQuery:
     gen_ids: Sequence[int] | None = None
     model_names: Sequence[str] | None = None
-    question_uuids: Sequence[str] | None = None
+    case_ids: Sequence[str] | None = None
+    dataset_ids: Sequence[int] | None = None
+    run_ids: Sequence[int] | None = None
+    include_rationale: bool | None = None
     db_url: str | None = None
+
+
 
 
 def _ensure_db(db_url: str | None) -> None:
@@ -40,8 +45,8 @@ def _ensure_db(db_url: str | None) -> None:
 def load_benchmark_dataframe(cfg: BenchQuery) -> pd.DataFrame:
     """Load benchmark results joined with persona demographics.
 
-    Columns: gen_id, persona_uuid, question_uuid, model_name, rating, age, gender,
-             origin_region, religion, sexuality, marriage_status, education, occupation
+    Columns: gen_id, persona_uuid, case_id, model_name, rating, age, gender,
+            origin_region, religion, sexuality, marriage_status, education, occupation
     """
     _ensure_db(cfg.db_url)
     db = get_db()
@@ -49,7 +54,7 @@ def load_benchmark_dataframe(cfg: BenchQuery) -> pd.DataFrame:
     q = (
         BenchmarkResult.select(
             BenchmarkResult.persona_uuid.alias("persona_uuid"),
-            BenchmarkResult.question_uuid,
+            BenchmarkResult.case_id,
             BenchmarkResult.model_name,
             BenchmarkResult.rating,
             Persona.gen_id.alias("gen_id"),
@@ -67,14 +72,25 @@ def load_benchmark_dataframe(cfg: BenchQuery) -> pd.DataFrame:
         )
         .join(Persona, on=(BenchmarkResult.persona_uuid == Persona.uuid))
         .join(Country, pw.JOIN.LEFT_OUTER, on=(Persona.origin_id == Country.id))
+        .join(BenchmarkRun, pw.JOIN.LEFT_OUTER, on=(BenchmarkResult.benchmark_run == BenchmarkRun.id))
         
     )
     if cfg.gen_ids:
         q = q.where(Persona.gen_id.in_(list(cfg.gen_ids)))
+    if cfg.dataset_ids:
+        # Filter to results where persona is member of given datasets
+        q = (q
+            .join(DatasetPersona, pw.JOIN.INNER, on=(DatasetPersona.persona == Persona.uuid))
+            .where(DatasetPersona.dataset.in_(list(map(int, cfg.dataset_ids)))))
     if cfg.model_names:
         q = q.where(BenchmarkResult.model_name.in_(list(cfg.model_names)))
-    if cfg.question_uuids:
-        q = q.where(BenchmarkResult.question_uuid.in_(list(cfg.question_uuids)))
+    if cfg.case_ids:
+        q = q.where(BenchmarkResult.case_id.in_(list(cfg.case_ids)))
+    if cfg.run_ids:
+        q = q.where(BenchmarkResult.benchmark_run.in_(list(map(int, cfg.run_ids))))
+    if cfg.include_rationale is not None:
+        q = q.where(BenchmarkRun.include_rationale == bool(cfg.include_rationale))
+
 
     with db.atomic():
         rows = list(q.dicts())
@@ -82,6 +98,12 @@ def load_benchmark_dataframe(cfg: BenchQuery) -> pd.DataFrame:
     if df.empty:
         return df
     df["gen_id"] = df["gen_id"].astype(int)
+    
+    if "run_id" in df.columns:
+        try:
+            df["run_id"] = pd.to_numeric(df["run_id"], errors="coerce").astype("Int64")
+        except Exception:
+            pass
     # ensure rating numeric
     df["rating"] = pd.to_numeric(df["rating"], errors="coerce")
     return df
@@ -358,7 +380,7 @@ def per_question_fixed_effects(df: pd.DataFrame, column: str, *, baseline: str |
         s = work.groupby(column)["rating"].size().sort_values(ascending=False)
         baseline = s.index[0]
     rows = []
-    for q, sub in work.groupby("question_uuid"):
+    for q, sub in work.groupby("case_id"):
         g = sub.groupby(column)["rating"].agg(["count","mean","std"]).rename(columns={"count":"n"})
         if baseline not in g.index:
             continue
@@ -376,7 +398,7 @@ def per_question_fixed_effects(df: pd.DataFrame, column: str, *, baseline: str |
             ci_low = delta - 1.96*se if not pd.isna(se) else float('nan')
             ci_high = delta + 1.96*se if not pd.isna(se) else float('nan')
             rows.append({
-                "question_uuid": q,
+                "case_id": q,
                 column: cat,
                 "baseline": baseline,
                 "n_cat": n_c,
@@ -421,18 +443,18 @@ def plot_fixed_effects_forest(
     # colors per question
     colors=None
     if color_by_question:
-        qids = per_q["question_uuid"].astype(str).unique().tolist()
+        qids = per_q["case_id"].astype(str).unique().tolist()
         pal = sns.color_palette("tab20", n_colors=max(3, len(qids)))
         colors = {qid: pal[i % len(pal)] for i, qid in enumerate(qids)}
     for i, r in per_q.iterrows():
-        col = colors.get(str(r["question_uuid"])) if colors else "0.35"
+        col = colors.get(str(r["case_id"])) if colors else "0.35"
         ax.hlines(i, r["ci95_low"], r["ci95_high"], color=col, lw=1.2)
         ax.plot([r["delta"]], [i], "o", color=col, ms=4)
     ax.axvline(0, color="k", lw=1)
     ax.set_yticks(y)
     if target_category is None:
         def _lab(r):
-            q=str(r['question_uuid'])
+            q=str(r['case_id'])
             adj = question_labels.get(q) if question_labels else None
             left = f"{adj}" if adj else q
             return f"{left} · {r[column]}"
@@ -440,9 +462,9 @@ def plot_fixed_effects_forest(
         ax.set_ylabel("Question UUID · Kategorie")
     else:
         if question_labels:
-            labels = per_q["question_uuid"].astype(str).map(lambda q: f"{question_labels.get(q, q)}")
+            labels = per_q["case_id"].astype(str).map(lambda q: f"{question_labels.get(q, q)}")
         else:
-            labels = per_q["question_uuid"].astype(str)
+            labels = per_q["case_id"].astype(str)
         ax.set_ylabel("Question UUID")
     ax.set_yticklabels(labels)
     ax.set_xlabel(f"Delta vs Baseline ({per_q['baseline'].iloc[0]})")
@@ -515,6 +537,22 @@ def export_benchmark_report(
     lines: list[str] = []
     lines.append(f"# {title}")
     lines.append("")
+    # Context block
+    if method_meta:
+        lines.append("## Context")
+        ds = method_meta.get("dataset_ids") or method_meta.get("datasets")
+        rat = method_meta.get("rationale")
+        models = method_meta.get("models")
+        cases = method_meta.get("cases")
+        if ds:
+            lines.append(f"- Datasets: {ds}")
+        if models:
+            lines.append(f"- Models: {models}")
+        if rat is not None:
+            lines.append(f"- Rationale: {rat}")
+        if cases:
+            lines.append(f"- Cases: {cases}")
+        lines.append("")
     total = len(df)
     lines.append(f"N Ergebnisse: **{total}**")
     if "rating" in df:

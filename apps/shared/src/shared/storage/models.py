@@ -138,7 +138,8 @@ class BenchmarkRun(BaseModel):
     template_version = pw.CharField(null=False, default="v1")
     include_rationale = pw.BooleanField(null=False, default=True)
     system_prompt = pw.TextField(null=True)
-    question_file = pw.TextField(null=True)
+    # path to CSV; keep DB column name for compatibility
+    case_file = pw.TextField(null=True, column_name="question_file")
     persist_kind = pw.CharField(null=True)           # 'print' | 'peewee'
 
     class Meta:
@@ -167,7 +168,8 @@ class AttrGenerationRun(BaseModel):
 class BenchmarkResult(BaseModel):
     id = pw.AutoField()
     persona_uuid = pw.ForeignKeyField(Persona, field=Persona.uuid, backref="benchmark_results", on_delete="CASCADE")
-    question_uuid = pw.CharField(null=False)
+    # identifier of the case/adjective row; keep column name for compatibility
+    case_id = pw.CharField(null=False, column_name="question_uuid")
     model_name = pw.CharField(null=False)
     template_version = pw.CharField(null=False)
     # Link to a concrete benchmark run/configuration (nullable for backwards-compat)
@@ -180,8 +182,8 @@ class BenchmarkResult(BaseModel):
 
     class Meta:
         indexes = (
-            # Uniqueness is now per (persona, question, run)
-            (("persona_uuid", "question_uuid", "benchmark_run"), True),
+            # Uniqueness is now per (persona, case, run)
+            (("persona_uuid", "case_id", "benchmark_run"), True),
         )
 
 

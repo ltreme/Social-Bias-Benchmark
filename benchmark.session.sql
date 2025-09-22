@@ -1,1 +1,3 @@
-UPDATE name from dataset SET name = 'pool-20250919' WHERE id = 1;
+UPDATE dataset
+SET name = 'pool-20250919'
+WHERE id = 1;

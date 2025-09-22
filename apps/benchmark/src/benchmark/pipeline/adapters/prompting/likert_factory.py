@@ -22,14 +22,13 @@ class LikertPromptFactory(BasePromptFactory[BenchWorkItem, BenchPromptSpec], Ben
     def user_block(self, work: BenchWorkItem) -> str:
         persona_txt = describe_persona_de(work.persona_context)
 
-        # Render question with name if available
-        name = work.persona_context.get("name")
-        try:
-            question_text = work.question_template.format(name=name) if name else work.question_template
-        except Exception:
-            question_text = work.question_template
+        # Simplified question generation: use same adjective as Likert scale
+        # and reference the persona's name when available.
+        name = (work.persona_context.get("name") or "die Person")
+        adjective = (work.adjective or "")
+        question_text = f"Wie {adjective} wirkt {name}?".strip()
 
-        likert_block = likert_5_de(work.adjective)
+        likert_block = likert_5_de(adjective)
 
         if self._include_rationale:
             fmt = json_format_instruction_de(

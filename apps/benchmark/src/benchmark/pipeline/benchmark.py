@@ -49,7 +49,7 @@ def run_benchmark_pipeline(
     template_version: str = "v1",
     benchmark_run_id: int,
     max_attempts: int = 3,
-    persist_buffer_size: int = 512,
+    persona_count_override: int | None = None,
 ) -> None:
     """Primary benchmark pipeline.
 
@@ -58,15 +58,18 @@ def run_benchmark_pipeline(
     - Batches via the LLM client and persists in chunks.
     """
 
-    # 1) Load questions once (small and stable)
-    questions = list(question_repo.iter_all())
+    # 1) Load cases once (small and stable)
+    cases = list(question_repo.iter_all())
     # Persona count for total work estimation
-    try:
-        from shared.storage.models import Persona
-        persona_count = Persona.select().where(Persona.gen_id == gen_id).count()
-    except Exception:
-        persona_count = 0
-    total_items = persona_count * len(questions) if questions else 0
+    if persona_count_override is not None:
+        persona_count = int(persona_count_override)
+    else:
+        try:
+            from shared.storage.models import Persona
+            persona_count = Persona.select().where(Persona.gen_id == gen_id).count()
+        except Exception:
+            persona_count = 0
+    total_items = persona_count * len(cases) if cases else 0
     # Determine progress frequency based on batch size with sensible defaults.
     def _compute_progress_every(batch_size: int | None, env_var: str, baseline: int = 10) -> int:
         # Allow explicit override via env var
@@ -87,7 +90,7 @@ def run_benchmark_pipeline(
         return max(1, batch_size * k)
 
     progress_every = _compute_progress_every(getattr(llm, "batch_size", None), "BENCH_PROGRESS_EVERY", 10)
-    done_items: set[Tuple[str, str]] = set()  # (persona_uuid, question_uuid)
+    done_items: set[Tuple[str, str]] = set()  # (persona_uuid, case_id)
     t0 = time.perf_counter()
 
     def _fmt_dur(seconds: float) -> str:
@@ -102,14 +105,14 @@ def run_benchmark_pipeline(
 
     def iter_items() -> Iterable[BenchWorkItem]:
         for p in persona_repo.iter_personas(gen_id):
-            for q in questions:
+            for c in cases:
                 yield BenchWorkItem(
                     gen_id=p.gen_id,
                     persona_uuid=p.persona_uuid,
                     persona_context=p.persona_context,
-                    question_uuid=q.uuid,
-                    adjective=q.adjective,
-                    question_template=q.question_template,
+                    case_id=c.id,
+                    adjective=c.adjective,
+                    case_template=c.case_template,
                 )
 
     attempt = 1
@@ -143,14 +146,14 @@ def run_benchmark_pipeline(
                 if debug:
                     try:
                         a = decision.answers[0]
-                        print(f"[BenchmarkPipeline] OK -> persisted persona={a.persona_uuid} question={a.question_uuid} rating={a.rating}")
+                        print(f"[BenchmarkPipeline] OK -> persisted persona={a.persona_uuid} case={a.case_id} rating={a.rating}")
                     except Exception:
                         pass
                 ok_cnt += 1
                 # Mark as finished for progress (first answer defines the (persona,question))
                 try:
                     a0 = decision.answers[0]
-                    key = (str(a0.persona_uuid), str(a0.question_uuid))
+                    key = (str(a0.persona_uuid), str(a0.case_id))
                     if key not in done_items:
                         done_items.add(key)
                         if (len(done_items) % progress_every == 0) or (
@@ -187,7 +190,7 @@ def run_benchmark_pipeline(
             for spec in next_retry_specs:
                 _persist_fail(persist, spec, "max_attempts_exceeded", raw="")
                 # Count permanently failed as finished progress items
-                key = (str(spec.work.persona_uuid), str(spec.work.question_uuid))
+                key = (str(spec.work.persona_uuid), str(spec.work.case_id))
                 if key not in done_items:
                     done_items.add(key)
             if done_items:

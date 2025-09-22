@@ -2,12 +2,13 @@ import csv
 import os
 from typing import Iterator, Optional
 
-from benchmark.domain.case import QuestionDto
+from benchmark.domain.case import CaseDto
 
-QUESTION_PATH = "out/questions/gpt-4.5-07-08-25-uuid.csv"
+# Simple Likert catalog with columns: id,adjective (no question text anymore)
+CASE_PATH = "data/cases/simple_likert.csv"
 
 
-class QuestionRepository:
+class CaseRepository:
     """
     Repository for managing questions in the benchmark.
     Provides methods to create, update, and retrieve questions.
@@ -15,36 +16,42 @@ class QuestionRepository:
 
     def __init__(self, path: str = None):
         if path is None:
-            path = QUESTION_PATH
+            path = CASE_PATH
         self._file_path = path
 
-    def find(self, uuid: str) -> Optional[QuestionDto]:
+    def _row_to_dto(self, row: dict) -> Optional[CaseDto]:
+        """Map CSV row (strict schema) to QuestionDto.
+
+        Required schema: id,adjective. Any extra columns are ignored.
+        """
+        if "id" not in row or "adjective" not in row:
+            raise ValueError("Question CSV must have headers: id,adjective")
+        qid = str(row["id"]).strip()
+        if not qid:
+            return None
+        return CaseDto(id=qid, adjective=row["adjective"], case_template=None)
+
+    def find(self, id_: str) -> Optional[CaseDto]:
         """
         Retrieve a question by its UUID.
         """
         with open(self._file_path, mode="r", encoding="utf-8") as file:
             reader = csv.DictReader(file)
             for row in reader:
-                if row["uuid"] == uuid:
-                    return QuestionDto(
-                        uuid=row["uuid"],
-                        adjective=row["adjective"],
-                        question_template=row["question"],
-                    )
+                if str(row.get("id")) == str(id_):
+                    return self._row_to_dto(row)
         return None
 
-    def iter_all(self) -> Iterator[QuestionDto]:
+    def iter_all(self) -> Iterator[CaseDto]:
         """
         Retrieve all questions as a lazy iterator to avoid loading all into memory.
         """
         with open(self._file_path, mode="r", encoding="utf-8") as file:
             reader = csv.DictReader(file)
             for row in reader:
-                yield QuestionDto(
-                    uuid=row["uuid"],
-                    adjective=row["adjective"],
-                    question_template=row["question"],
-                )
+                dto = self._row_to_dto(row)
+                if dto:
+                    yield dto
 
     def count(self) -> int:
         """

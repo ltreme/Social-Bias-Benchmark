@@ -42,7 +42,7 @@ class LikertPostProcessor(AbstractPostProcessor, BenchPostProcessor):
         spec = res.spec
         ans = BenchAnswerDto(
             persona_uuid=spec.work.persona_uuid,
-            question_uuid=spec.work.question_uuid,
+            case_id=spec.work.case_id,
             model_name=spec.model_name,
             template_version=spec.template_version,
             benchmark_run_id=spec.benchmark_run_id,

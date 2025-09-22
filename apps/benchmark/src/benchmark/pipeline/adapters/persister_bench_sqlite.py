@@ -9,7 +9,7 @@ class BenchPersisterPrint(BenchPersister):
         if not rows:
             return
         print("RESULTS", [
-            (r.persona_uuid, r.question_uuid, r.rating, r.model_name, r.template_version, r.benchmark_run_id)
+            (r.persona_uuid, r.case_id, r.rating, r.model_name, r.template_version, r.benchmark_run_id)
             for r in rows
         ])
 
@@ -37,7 +37,7 @@ class BenchPersisterPeewee(BenchPersister):
             return
         payload = [dict(
             persona_uuid=r.persona_uuid,
-            question_uuid=r.question_uuid,
+            case_id=r.case_id,
             model_name=r.model_name,
             template_version=r.template_version,
             benchmark_run=r.benchmark_run_id,
@@ -49,23 +49,23 @@ class BenchPersisterPeewee(BenchPersister):
 
         with self.db.atomic():
             (self._Res
-             .insert_many(payload)
-             .on_conflict(
-                 conflict_target=[self._Res.persona_uuid, self._Res.question_uuid, self._Res.benchmark_run],
-                 update={
+            .insert_many(payload)
+            .on_conflict(
+                conflict_target=[self._Res.persona_uuid, self._Res.case_id, self._Res.benchmark_run],
+                update={
                     self._Res.answer_raw: self._Res.answer_raw,
                     self._Res.rating: self._Res.rating,
                     self._Res.gen_time_ms: self._Res.gen_time_ms,
                     self._Res.attempt: self._Res.attempt,
                     self._Res.created_at: self._Res.created_at,
-                 }
-             ).execute())
+                }
+            ).execute())
         # optional debug
         import os
         if os.getenv("BENCH_DEBUG", "").lower() in ("1", "true", "yes"):
             try:
                 head = payload[0]
-                print(f"[BenchPersisterPeewee] upserted {len(payload)} rows, sample: (persona={head['persona_uuid']}, question={head['question_uuid']}, rating={head['rating']})")
+                print(f"[BenchPersisterPeewee] upserted {len(payload)} rows, sample: (persona={head['persona_uuid']}, case={head['case_id']}, rating={head['rating']})")
             except Exception:
                 pass
 

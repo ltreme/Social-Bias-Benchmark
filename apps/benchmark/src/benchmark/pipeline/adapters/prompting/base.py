@@ -3,7 +3,7 @@ from typing import Iterable, Callable, TypeVar, Protocol, Generic
 
 # Minimal protocols to decouple from ports modules.
 class _WorkLike(Protocol):
-    # For Attribute: persona_minimal; for Likert: persona_context, question_template, adjective
+    # For Attribute: persona_minimal; for Likert: persona_context, case_template, adjective
     pass
 
 class _SpecCtor(Protocol):

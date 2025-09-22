@@ -1,9 +1,8 @@
 # TODO
 
 ## 1. Persona-Generator
-- [ ] Version im Git-Commit/Tag dokumentiert  
-- [ ] Education-Bug gefixt (keine „Unknown“-Artefakte)  
-- [ ] Migration: beide Status (`with`, `without`) enthalten  
+- [x] Education-Bug gefixt (keine „Unknown“-Artefakte)  
+- [x] Migration: beide Status (`with`, `without`) enthalten  
 - [ ] Religion: alle gewünschten Gruppen ausreichend vertreten  
 - [ ] Regionen: sinnvolle Cluster definiert (z. B. Skandinavien, Südeuropa, MENA, Subsahara …)  
 - [ ] Kreuztabellen geprüft (Zero-/Near-Zero-Cells sichtbar)  
@@ -38,15 +37,6 @@
 - [ ] Items korrekt gefüllt  
 - [ ] Counterfactuals plausibel  
 - [ ] Laufzeit & Tokens/Prompt notiert
-
----
-
-## 5. Parser & Logging
-- [ ] Parser auf JSON-only ausgelegt (Regex/Schema-Validator)  
-- [ ] Stop-Token definiert (`stop=["}"]`)  
-- [ ] `max_tokens` minimal (6–8)  
-- [ ] Logs speichern: `persona_id, item_id, model, run_id, rating, raw_output`  
-- [ ] Fallback bei Fehlern (erneutes Query/Skip)
 
 ---
 

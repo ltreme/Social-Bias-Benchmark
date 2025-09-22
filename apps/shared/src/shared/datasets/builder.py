@@ -163,6 +163,7 @@ def build_balanced_dataset_from_pool(*, pool_gen_id: int, n_target: int, seed: i
                 "n_target": n_target,
                 "method": "greedy_marginal_v1",
             }, ensure_ascii=False),
+            gen_id=pool_gen_id,
         )
         DatasetPersona.insert_many([
             {"dataset": ds.id, "persona": p.uuid, "role": "source"} for p in selected
@@ -185,6 +186,7 @@ def build_random_subset_from_pool(*, pool_gen_id: int, n: int, seed: int = 42, n
             kind="reality",
             seed=seed,
             config_json=json.dumps({"pool_gen_id": pool_gen_id, "n": n}, ensure_ascii=False),
+            gen_id=pool_gen_id,
         )
         DatasetPersona.insert_many([
             {"dataset": ds.id, "persona": p.uuid, "role": "source"} for p in selected

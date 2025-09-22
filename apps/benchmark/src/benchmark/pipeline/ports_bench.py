@@ -11,9 +11,9 @@ class BenchWorkItem:
     gen_id: int
     persona_uuid: PersonaUUID
     persona_context: dict  # enriched fields used for prompting
-    question_uuid: str
+    case_id: str
     adjective: str
-    question_template: str
+    case_template: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,7 +37,7 @@ class LLMResult:
 @dataclass(frozen=True, slots=True)
 class BenchAnswerDto:
     persona_uuid: PersonaUUID
-    question_uuid: str
+    case_id: str
     model_name: str
     template_version: str
     benchmark_run_id: int
