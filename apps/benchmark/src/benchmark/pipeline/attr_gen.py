@@ -24,7 +24,7 @@ def _persist_fail(persist: Persister, spec: PromptSpec, kind: str, raw: str, rea
 
 def run_attr_gen_pipeline(
     *,
-    gen_id: int,
+    dataset_id: int | None,
     persona_repo: PersonaRepo,
     prompt_factory: PromptFactory,
     llm: LLMClient,
@@ -35,16 +35,19 @@ def run_attr_gen_pipeline(
     max_attempts: int = 3,
     persist_buffer_size: int = 512,
     total_personas_override: int | None = None,
+    attr_generation_run_id: int | None = None,
 ) -> None:
     # Progress setup
     if total_personas_override is not None:
         total_personas = int(total_personas_override)
     else:
         try:
-            from shared.storage.models import Persona
-            total_personas = (
-                Persona.select().where(Persona.gen_id == gen_id).count()
-            )
+            if dataset_id is not None:
+                from shared.storage.models import DatasetPersona
+                total_personas = DatasetPersona.select().where(DatasetPersona.dataset_id == dataset_id).count()
+            else:
+                from shared.storage.models import Persona
+                total_personas = Persona.select().count()
         except Exception:
             total_personas = 0
     # Determine progress frequency based on batch size with sensible defaults.
@@ -81,7 +84,7 @@ def run_attr_gen_pipeline(
         return f"{s}s"
 
     attempt = 1
-    base_items: Iterable[WorkItem] = persona_repo.iter_personas(gen_id)
+    base_items: Iterable[WorkItem] = persona_repo.iter_personas(dataset_id)
     pending_specs: Iterable[PromptSpec] = prompt_factory.prompts(
         base_items, model_name=model_name, template_version=template_version, attempt=attempt
     )
@@ -94,7 +97,7 @@ def run_attr_gen_pipeline(
 
         for res in results:
             spec = res.spec
-            decision = post.decide(res)
+            decision = post.decide(res, attr_generation_run_id)
 
             if isinstance(decision, OkDecision):
                 if not decision.attrs:

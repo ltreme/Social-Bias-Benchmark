@@ -29,7 +29,7 @@ class LikertPostProcessor(AbstractPostProcessor, BenchPostProcessor):
             "KEINE Prosa, KEIN Markdown, KEINE weiteren Schlüssel."
         )
 
-    def build_ok(self, res: LLMResult, data, raw_text: str):
+    def build_ok(self, res: LLMResult, data, raw_text: str, attr_generation_run_id: int | None = None):
         if not isinstance(data, dict):
             raise ValueError("not_a_dict")
         rating_val = data.get("rating")

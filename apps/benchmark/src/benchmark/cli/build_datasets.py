@@ -3,7 +3,7 @@ import json
 from typing import Optional
 
 from shared.storage.db import init_database, create_tables
-from shared.storage.models import Dataset, DatasetPersona, PersonaGeneratorRun
+from shared.storage.models import Dataset, DatasetPersona, CounterfactualLink
 from shared.datasets.builder import (
     build_balanced_dataset_from_pool,
     build_counterfactuals_from_dataset,
@@ -40,38 +40,37 @@ def cmd_generate_pool(args: argparse.Namespace) -> None:
     )
 
     sampled = sample_personas(n=args.n, **params)
-    gen_id = persist_run_and_personas(n=args.n, params=params, sampled=sampled, export_csv_path=None)
+    dataset_id = persist_run_and_personas(n=args.n, params=params, sampled=sampled, export_csv_path=None)
 
     # Register dataset
-    ds_name = args.name or f"pool-gen{gen_id}-n{args.n}"
+    ds_name = args.name or f"pool-{dataset_id}-n{args.n}"
     ds = Dataset.create(
         name=ds_name,
         kind="pool",
-        gen_id=gen_id,
         config_json=json.dumps({"n": args.n, "temperature": args.temperature, "age_range": [args.age_from, args.age_to]}, ensure_ascii=False),
     )
-    print(f"OK: generated pool gen_id={gen_id} and registered dataset '{ds.name}' (id={ds.id})")
+    print(f"OK: generated pool and registered dataset '{ds.name}' (id={ds.id})")
 
 
 def cmd_build_balanced(args: argparse.Namespace) -> None:
     init_database()
     create_tables()
-    ds = build_balanced_dataset_from_pool(pool_gen_id=args.pool_gen_id, n_target=args.n, seed=args.seed, name=args.name)
-    print(f"OK: balanced dataset '{ds.name}' (id={ds.id}) with {ds.members.count()} members")
+    ds = build_balanced_dataset_from_pool(dataset_id=args.dataset_id, axes=["gender", "age", "origin"], n_target=args.n, seed=args.seed, name=args.name)
+    print(f"OK: balanced dataset '{ds.name}' (id={ds.id}) with {DatasetPersona.select().where(DatasetPersona.dataset_id == ds.id).count()} members")
 
 
 def cmd_build_counterfactuals(args: argparse.Namespace) -> None:
     init_database()
     create_tables()
     ds = build_counterfactuals_from_dataset(dataset_id=args.dataset_id, seed=args.seed, name=args.name)
-    print(f"OK: counterfactual dataset '{ds.name}' (id={ds.id}); links={ds.counterfactual_links.count()} members={ds.members.count()}")
+    print(f"OK: counterfactual dataset '{ds.name}' (id={ds.id}); links={CounterfactualLink.select().where(CounterfactualLink.dataset_id == ds.id).count()} members={DatasetPersona.select().where(DatasetPersona.dataset_id == ds.id).count()}")
 
 
 def cmd_sample_reality(args: argparse.Namespace) -> None:
     init_database()
     create_tables()
-    ds = build_random_subset_from_pool(pool_gen_id=args.pool_gen_id, n=args.n, seed=args.seed, name=args.name)
-    print(f"OK: reality dataset '{ds.name}' (id={ds.id}) with {ds.members.count()} members")
+    ds = build_random_subset_from_pool(dataset_id=args.dataset_id, n=args.n, seed=args.seed, name=args.name)
+    print(f"OK: reality dataset '{ds.name}' (id={ds.id}) with {DatasetPersona.select().where(DatasetPersona.dataset_id == ds.id).count()} members")
 
 
 def main():
@@ -86,8 +85,8 @@ def main():
     p_pool.add_argument("--name", type=str, default=None)
     p_pool.set_defaults(func=cmd_generate_pool)
 
-    p_bal = sub.add_parser("build-balanced", help="Build balanced dataset from a pool gen_id")
-    p_bal.add_argument("--pool_gen_id", type=int, required=True)
+    p_bal = sub.add_parser("build-balanced", help="Build balanced dataset from a dataset")
+    p_bal.add_argument("--dataset_id", type=int, required=True)
     p_bal.add_argument("--n", type=int, default=2000)
     p_bal.add_argument("--seed", type=int, default=42)
     p_bal.add_argument("--name", type=str, default=None)
@@ -99,8 +98,8 @@ def main():
     p_cf.add_argument("--name", type=str, default=None)
     p_cf.set_defaults(func=cmd_build_counterfactuals)
 
-    p_real = sub.add_parser("sample-reality", help="Sample random subset from a pool gen_id")
-    p_real.add_argument("--pool_gen_id", type=int, required=True)
+    p_real = sub.add_parser("sample-reality", help="Sample random subset from a dataset")
+    p_real.add_argument("--dataset_id", type=int, required=True)
     p_real.add_argument("--n", type=int, default=500)
     p_real.add_argument("--seed", type=int, default=42)
     p_real.add_argument("--name", type=str, default=None)

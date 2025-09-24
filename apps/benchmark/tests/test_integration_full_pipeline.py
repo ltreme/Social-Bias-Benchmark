@@ -34,8 +34,9 @@ class TestEndToEndPipeline(unittest.TestCase):
             return
 
         # Init + create tables
-        from shared.storage.db import init_database, create_tables
+        from shared.storage.db import init_database, create_tables, drop_tables
         init_database(os.getenv("DB_URL"))
+        drop_tables()
         create_tables()
 
         # Prefill lookup tables (idempotent)
@@ -47,13 +48,12 @@ class TestEndToEndPipeline(unittest.TestCase):
             self.skipTest("Set INTEGRATION_FULL=1 to run the end-to-end test.")
 
     def test_full_pipeline_with_real_db(self):
-        # Choose LLM backend from env; default to fake to keep it fast by default
-        llm_kind = os.getenv("INTEGRATION_LLM", "fake").lower()
-        hf_model = os.getenv("HF_MODEL")
-        if llm_kind == "hf" and not hf_model:
-            self.skipTest("HF model requested but HF_MODEL env var not set.")
+        # Choose LLM backend from env; default to vllm for integration testing
+        llm_kind = os.getenv("INTEGRATION_LLM", "vllm").lower()
+        if llm_kind not in ("fake", "vllm"):
+            self.skipTest(f"Unsupported INTEGRATION_LLM={llm_kind}, use 'fake' or 'vllm'")
 
-        # 1) Generate personas and obtain gen_id
+        # 1) Generate personas and obtain dataset_id
         from shared.storage.db import init_database, create_tables
         from persona_generator.main import sample_personas, persist_run_and_personas
 
@@ -73,96 +73,93 @@ class TestEndToEndPipeline(unittest.TestCase):
             sexuality_temperature=0.0, sexuality_exclude=None,
         )
         sampled = sample_personas(n=n, **params)
-        gen_id = persist_run_and_personas(n=n, params=params, sampled=sampled)
+        dataset_id = persist_run_and_personas(n=n, params=params, sampled=sampled)
         # keep for teardown cleanup
-        self._gen_id = gen_id
+        self._dataset_id = dataset_id
 
         # 2) Preprocessing stage
         from benchmark.cli.run_attr_generation import main as attr_gen_main
-        pre_args = [f"--gen-id={gen_id}", "--persist=peewee", "--llm=fake"]
-        if llm_kind == "hf":
-            pre_args = [f"--gen-id={gen_id}", "--persist=peewee", "--llm=hf", f"--hf-model={hf_model}"]
+        pre_args = [f"--dataset-id={dataset_id}", "--llm=fake"]
+        if llm_kind == "vllm":
+            pre_args = [f"--dataset-id={dataset_id}", "--llm=vllm", "--vllm-model=Qwen/Qwen2.5-1.5B-Instruct"]
         rc = attr_gen_main(pre_args)
         self.assertEqual(rc, 0, "Attribute generation pipeline failed")
 
         # 3) Core benchmark stage
         from benchmark.cli.run_core_benchmark import main as bench_main
-        # Use a small questions file for faster runs
-        small_q_path = os.path.join(REPO_ROOT, "out", "questions", "smoke-uuid.csv")
         # Enable benchmark debug to see OK/Retry/Fail counts in logs
         os.environ.setdefault("BENCH_DEBUG", "1")
         max_new = int(os.getenv("MAX_NEW_TOKENS", "160"))
         bench_args = [
-            f"--gen-id={gen_id}",
-            "--persist=peewee",
+            f"--dataset-id={dataset_id}",
             "--llm=fake",
             f"--max-new-tokens={max_new}",
-            f"--question-file={small_q_path}",
         ]
-        if llm_kind == "hf":
+        if llm_kind == "vllm":
             bench_args = [
-                f"--gen-id={gen_id}",
-                "--persist=peewee",
-                "--llm=hf",
-                f"--hf-model={hf_model}",
+                f"--dataset-id={dataset_id}",
+                "--llm=vllm",
+                "--vllm-model=Qwen/Qwen2.5-1.5B-Instruct",
                 f"--max-new-tokens={max_new}",
-                f"--question-file={small_q_path}",
             ]
         rc = bench_main(bench_args)
         self.assertEqual(rc, 0, "Benchmark pipeline failed")
 
-        # 4) Verify persisted rows for this gen_id exist
-        from shared.storage.models import Persona, AdditionalPersonaAttributes, BenchmarkResult, FailLog
-        persona_count = Persona.select().where(Persona.gen_id == gen_id).count()
+        # 4) Verify persisted rows for this dataset_id exist
+        from shared.storage.models import Persona, AdditionalPersonaAttributes, BenchmarkResult, FailLog, DatasetPersona
+        persona_count = DatasetPersona.select().where(DatasetPersona.dataset_id == dataset_id).count()
         attr_count = (
             AdditionalPersonaAttributes
             .select()
             .join(Persona)
-            .where(Persona.gen_id == gen_id)
+            .join(DatasetPersona, on=(DatasetPersona.persona_id == Persona.uuid))
+            .where(DatasetPersona.dataset_id == dataset_id)
             .count()
         )
         bench_count = (
             BenchmarkResult
             .select()
             .join(Persona)
-            .where(Persona.gen_id == gen_id)
+            .join(DatasetPersona, on=(DatasetPersona.persona_id == Persona.uuid))
+            .where(DatasetPersona.dataset_id == dataset_id)
             .count()
         )
         fail_count = (
             FailLog
             .select()
             .join(Persona)
-            .where(Persona.gen_id == gen_id)
+            .join(DatasetPersona, on=(DatasetPersona.persona_id == Persona.uuid))
+            .where(DatasetPersona.dataset_id == dataset_id)
             .count()
         )
+        # Get total number of cases from database
+        from shared.storage.models import Case
+        question_count = Case.select().count()
 
         # Expect exactly 3 attributes per persona
         self.assertGreaterEqual(persona_count, n)
         self.assertEqual(attr_count, persona_count * 3, "Expected exactly 3 attributes per persona")
 
-        # Expected benchmark rows = personas * number_of_questions (from our small file)
-        # Count lines minus header
-        with open(small_q_path, "r", encoding="utf-8") as f:
-            num_questions = sum(1 for _ in f) - 1
-        expected = persona_count * num_questions
+        # Expected benchmark rows = personas * number_of_questions
+        expected = persona_count * question_count
         if bench_count != expected:
             # Provide helpful context before failing
             msg = (
                 f"Unexpected number of benchmark results: got={bench_count} expected={expected} "
-                f"personas={persona_count} questions={num_questions} fails={fail_count}"
+                f"personas={persona_count} questions={question_count} fails={fail_count}"
             )
             self.fail(msg)
 
     def tearDown(self):
-        # Remove generated data for the created gen_id to keep the DB clean
-        if getattr(self, "enabled", False) and hasattr(self, "_gen_id"):
+        # Remove generated data for the created dataset_id to keep the DB clean
+        if getattr(self, "enabled", False) and hasattr(self, "_dataset_id"):
             try:
                 from shared.storage.db import init_database
-                from shared.storage.models import PersonaGeneratorRun
+                from shared.storage.models import Dataset
                 init_database(os.getenv("DB_URL"))
-                # CASCADE: removes Personas, AdditionalPersonaAttributes, BenchmarkResult, FailLog
-                PersonaGeneratorRun.delete().where(
-                    PersonaGeneratorRun.gen_id == self._gen_id
+                # CASCADE: removes DatasetPersona, Personas, AdditionalPersonaAttributes, BenchmarkResult, FailLog
+                Dataset.delete().where(
+                    Dataset.id == self._dataset_id
                 ).execute()
             except Exception:
                 # Don't fail the test run because of cleanup issues

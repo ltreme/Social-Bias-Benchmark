@@ -36,12 +36,9 @@ class BenchPersisterPeewee(BenchPersister):
         if not rows:
             return
         payload = [dict(
-            persona_uuid=r.persona_uuid,
+            persona_uuid_id=r.persona_uuid,
             case_id=r.case_id,
-            model_name=r.model_name,
-            template_version=r.template_version,
-            benchmark_run=r.benchmark_run_id,
-            gen_time_ms=r.gen_time_ms,
+            benchmark_run_id=r.benchmark_run_id,
             attempt=r.attempt,
             answer_raw=r.answer_raw,
             rating=r.rating,
@@ -51,11 +48,10 @@ class BenchPersisterPeewee(BenchPersister):
             (self._Res
             .insert_many(payload)
             .on_conflict(
-                conflict_target=[self._Res.persona_uuid, self._Res.case_id, self._Res.benchmark_run],
+                conflict_target=[self._Res.persona_uuid_id, self._Res.case_id, self._Res.benchmark_run_id],
                 update={
                     self._Res.answer_raw: self._Res.answer_raw,
                     self._Res.rating: self._Res.rating,
-                    self._Res.gen_time_ms: self._Res.gen_time_ms,
                     self._Res.attempt: self._Res.attempt,
                     self._Res.created_at: self._Res.created_at,
                 }
@@ -65,15 +61,26 @@ class BenchPersisterPeewee(BenchPersister):
         if os.getenv("BENCH_DEBUG", "").lower() in ("1", "true", "yes"):
             try:
                 head = payload[0]
-                print(f"[BenchPersisterPeewee] upserted {len(payload)} rows, sample: (persona={head['persona_uuid']}, case={head['case_id']}, rating={head['rating']})")
+                print(f"[BenchPersisterPeewee] upserted {len(payload)} rows, sample: (persona={head['persona_uuid_id']}, case={head['case_id']}, rating={head['rating']})")
             except Exception:
                 pass
 
     def persist_failure(self, fail) -> None:
         with self.db.atomic():
+            # Get model_id from model_name
+            model_id = None
+            if fail.model_id:
+                model_id = fail.model_id
+            else:
+                try:
+                    model = self.models.Model.get(self.models.Model.name == fail.model_name)
+                    model_id = model.id
+                except self.models.Model.DoesNotExist:
+                    pass
+            
             self._Fail.create(
-                persona_uuid=fail.persona_uuid,
-                model_name=fail.model_name,
+                persona_uuid_id=fail.persona_uuid,
+                model_id=model_id,
                 attempt=fail.attempt,
                 error_kind=fail.error_kind,
                 raw_text_snippet=fail.raw_text_snippet,

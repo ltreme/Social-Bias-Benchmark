@@ -38,7 +38,7 @@ def _persist_fail(persist: BenchPersister, spec: BenchPromptSpec, kind: str, raw
 
 def run_benchmark_pipeline(
     *,
-    gen_id: int,
+    dataset_id: int | None,
     question_repo,
     persona_repo: BenchPersonaRepo,
     prompt_factory: BenchPromptFactory,
@@ -65,8 +65,12 @@ def run_benchmark_pipeline(
         persona_count = int(persona_count_override)
     else:
         try:
-            from shared.storage.models import Persona
-            persona_count = Persona.select().where(Persona.gen_id == gen_id).count()
+            if dataset_id is not None:
+                from shared.storage.models import DatasetPersona
+                persona_count = DatasetPersona.select().where(DatasetPersona.dataset_id == dataset_id).count()
+            else:
+                from shared.storage.models import Persona
+                persona_count = Persona.select().count()
         except Exception:
             persona_count = 0
     total_items = persona_count * len(cases) if cases else 0
@@ -104,10 +108,10 @@ def run_benchmark_pipeline(
         return f"{s}s"
 
     def iter_items() -> Iterable[BenchWorkItem]:
-        for p in persona_repo.iter_personas(gen_id):
+        for p in persona_repo.iter_personas(dataset_id):
             for c in cases:
                 yield BenchWorkItem(
-                    gen_id=p.gen_id,
+                    dataset_id=p.dataset_id,
                     persona_uuid=p.persona_uuid,
                     persona_context=p.persona_context,
                     case_id=c.id,

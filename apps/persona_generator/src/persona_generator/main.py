@@ -22,7 +22,8 @@ from shared.paths import PATH_PERSONAS_CSV
 from shared.storage.db import init_database, create_tables, transaction
 from shared.storage.models import (
     Persona,
-    PersonaGeneratorRun,
+    Dataset,
+    DatasetPersona,
     Country,
 )
 from functools import lru_cache
@@ -165,58 +166,56 @@ def persist_run_and_personas(
     export_csv_path: str | None = None,
 ) -> int:
     """
-    Create a PersonaGeneratorRun and insert n Personas in a single transaction.
-    Returns the created run id (gen_id).
+    Create a Dataset and insert n Personas + DatasetPersona links in a single transaction.
+    Returns the created dataset id.
     """
-    # Create run row – serialize lists to JSON to keep reproducibility of parameters
-    run_row = dict(
-        age_min=params["age_min"],
-        age_max=params["age_max"],
-        age_temperature=params["age_temperature"],
-
-        education_exclude=_json_or_none(params.get("education_exclude")),
-        education_temperature=params["education_temperature"],
-
-        gender_exclude=_json_or_none(params.get("gender_exclude")),
-        gender_temperature=params["gender_temperature"],
-
-        marriage_status_exclude=_json_or_none(params.get("marriage_status_exclude")),
-        marriage_status_temperature=params["marriage_status_temperature"],
-
-        origin_exclude=_json_or_none(params.get("origin_exclude")),
-
-        religion_exclude=_json_or_none(params.get("religion_exclude")),
-        religion_temperature=params["religion_temperature"],
-
-        sexuality_exclude=_json_or_none(params.get("sexuality_exclude")),
-        sexuality_temperature=params["sexuality_temperature"],
+    # Create dataset row
+    import datetime
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    dataset_name = f"Generated {n} personas {timestamp}"
+    dataset_row = dict(
+        name=dataset_name,
+        kind="generated",
     )
 
     with transaction():
-        run = PersonaGeneratorRun.create(**run_row)
+        dataset = Dataset.create(**dataset_row)
 
         # Build persona rows
-        rows = []
+        persona_rows = []
         for i in range(n):
             origin_pk = _resolve_country_id(sampled["origins"][i])
             if origin_pk is None:
                 raise ValueError(f"Unresolvable origin: {sampled['origins'][i]!r}")
-            rows.append(dict(
+            persona_rows.append(dict(
                 uuid=uuid.uuid4(),
-                gen_id=run.gen_id,               # FK to run
                 age=sampled["ages"][i],
                 gender=sampled["genders"][i],
                 education=sampled["educations"][i],
                 occupation=sampled["occupations"][i],
                 marriage_status=sampled["marriage_statuses"][i],
                 migration_status=sampled["migration_statuses"][i],
-                origin=origin_pk,            # can be None if unresolved
+                origin_id=origin_pk,
                 religion=sampled["religions"][i],
                 sexuality=sampled["sexualities"][i],
             ))
 
-        # Bulk insert (fastest path)
-        Persona.insert_many(rows).execute()
+        # Bulk insert personas
+        Persona.insert_many(persona_rows).execute()
+
+        # Get the inserted personas (need their ids for DatasetPersona)
+        inserted_personas = list(Persona.select(Persona.uuid).where(Persona.uuid.in_([r['uuid'] for r in persona_rows])).dicts())
+
+        # Build DatasetPersona links
+        dataset_persona_rows = []
+        for p in inserted_personas:
+            dataset_persona_rows.append(dict(
+                dataset_id=dataset.id,
+                persona_id=p['uuid'],  # ForeignKey to Persona.uuid
+            ))
+
+        # Bulk insert links
+        DatasetPersona.insert_many(dataset_persona_rows).execute()
 
         # Optional CSV export for debugging/backups
         if export_csv_path:
@@ -227,12 +226,12 @@ def persist_run_and_personas(
             with open(export_csv_path, "w", newline="", encoding="utf-8") as f:
                 w = csv.DictWriter(f, fieldnames=fieldnames)
                 w.writeheader()
-                for r in rows:
+                for r in persona_rows:
                     # serialize UUID for CSV
                     r_csv = {**r, "uuid": str(r["uuid"])}
                     w.writerow(r_csv)
 
-        return run.gen_id
+        return dataset.id
 
 
 # --------- CLI ---------
@@ -297,14 +296,14 @@ def main():
     )
 
     sampled = sample_personas(n=args.n, **params)
-    gen_id = persist_run_and_personas(
+    dataset_id = persist_run_and_personas(
         n=args.n,
         params=params,
         sampled=sampled,
         export_csv_path=args.export_csv or None,
     )
 
-    print(f"OK: stored {args.n} personas under run gen_id={gen_id}")
+    print(f"OK: stored {args.n} personas under dataset dataset_id={dataset_id}")
 
 
 if __name__ == "__main__":

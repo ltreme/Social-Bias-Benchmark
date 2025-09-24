@@ -21,7 +21,7 @@ class AttributePostProcessor(AbstractPostProcessor, PostProcessor):
     def strict_suffix(self) -> str:
         return "\nSTRICT: JSON ONLY. No commentary. Keys: name, appearance, biography."
 
-    def build_ok(self, res: LLMResult, data, raw_text: str):
+    def build_ok(self, res: LLMResult, data, raw_text: str, attr_generation_run_id: int | None = None):
         if not isinstance(data, dict):
             raise ValueError("not_a_dict")
         missing = [k for k in self.require_keys if k not in data or not str(data[k]).strip()]
@@ -31,7 +31,7 @@ class AttributePostProcessor(AbstractPostProcessor, PostProcessor):
         spec = res.spec
         attrs = [
             AttributeDto(
-                spec.work.persona_uuid, "name", str(data["name"]), spec.model_name, res.gen_time_ms, spec.attempt
+                spec.work.persona_uuid, "name", str(data["name"]), spec.model_name, res.gen_time_ms, spec.attempt, attr_generation_run_id
             ),
             AttributeDto(
                 spec.work.persona_uuid,
@@ -40,6 +40,7 @@ class AttributePostProcessor(AbstractPostProcessor, PostProcessor):
                 spec.model_name,
                 res.gen_time_ms,
                 spec.attempt,
+                attr_generation_run_id,
             ),
             AttributeDto(
                 spec.work.persona_uuid,
@@ -48,6 +49,7 @@ class AttributePostProcessor(AbstractPostProcessor, PostProcessor):
                 spec.model_name,
                 res.gen_time_ms,
                 spec.attempt,
+                attr_generation_run_id,
             ),
         ]
         print(f"[AttributePostProcessor] OK keys={[a.attribute_key for a in attrs]}")

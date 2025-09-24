@@ -7,6 +7,7 @@ from peewee import IntegrityError
 from pathlib import Path
 from .models import (
     Age,
+    Case,
     Country,
     Education,
     ForeignersPerCountry,
@@ -19,13 +20,24 @@ from .models import (
 
 def processed_path(filename: str) -> str:
     """Returns the full path to a processed CSV file."""
-    return Path(f"data/persona/processed/{filename}")
+    # Get the repository root by going up from this file's location
+    repo_root = Path(__file__).parent.parent.parent.parent.parent.parent
+    return repo_root / "data" / "persona" / "processed" / filename
 
 
 
 def raw_path(filename: str) -> str:
     """Returns the full path to a raw CSV file."""
-    return Path(f"data/persona/raw/{filename}")
+    # Get the repository root by going up from this file's location
+    repo_root = Path(__file__).parent.parent.parent.parent.parent.parent
+    return repo_root / "data" / "persona" / "raw" / filename
+
+
+def cases_path(filename: str) -> str:
+    """Returns the full path to a cases CSV file."""
+    # Get the repository root by going up from this file's location
+    repo_root = Path(__file__).parent.parent.parent.parent.parent.parent
+    return repo_root / "data" / "cases" / filename
 
 
 class CSVFiles:
@@ -256,6 +268,22 @@ class DBFiller:
         n = self._bulk_insert_ignore(Occupation, rows)
         print(f"Occupation inserted: {n} (duplicates ignored).")
 
+    def fill_cases(self):
+        # Read cases from CSV file
+        case_csv_path = cases_path("simple_likert.csv")
+        df = self.read_csv(case_csv_path, sep=",")
+        rows = []
+        for _, row in df.iterrows():
+            rows.append(
+                dict(
+                    id=str(row["id"]).strip(),
+                    adjective=row["adjective"].strip(),
+                    case_template=None,
+                )
+            )
+        n = self._bulk_insert_ignore(Case, rows)
+        print(f"Cases inserted: {n} (duplicates ignored).")
+
     def fill_all(self):
         self.fill_ages()
         self.fill_family_status()
@@ -263,3 +291,4 @@ class DBFiller:
         self.fill_countries_religion_foreigner()
         self.fill_education()
         self.fill_jobs()
+        self.fill_cases()

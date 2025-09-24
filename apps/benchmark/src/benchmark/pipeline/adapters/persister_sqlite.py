@@ -30,35 +30,35 @@ class PersisterPeewee(Persister):
     def persist_attributes(self, rows: List[AttributeDto]) -> None:
         if not rows:
             return
+        print(f"PERSISTING {len(rows)} attributes")
         payload = [dict(
-            persona_uuid=r.persona_uuid,
+            persona_uuid_id=r.persona_uuid,
             attribute_key=r.attribute_key,
             value=r.value,
-            model_name=r.model_name,
-            gen_time_ms=r.gen_time_ms,   # passt jetzt zum Model
+            attr_generation_run_id=r.attr_generation_run_id,
             attempt=r.attempt,
         ) for r in rows]
 
-        # Upsert auf Unique(persona_uuid, attribute_key, model_name)
+        # Upsert auf Unique(persona_uuid, attribute_key)
         with self.db.atomic():
             (self._Attr
             .insert_many(payload)
             .on_conflict(
-                conflict_target=[self._Attr.persona_uuid, self._Attr.attribute_key, self._Attr.model_name],
+                conflict_target=[self._Attr.persona_uuid_id, self._Attr.attribute_key],
                 update={
                     self._Attr.value: self._Attr.value,           # oder EXCLUDED.value
-                    self._Attr.model_name: self._Attr.model_name,
-                    self._Attr.gen_time_ms: self._Attr.gen_time_ms,
+                    self._Attr.attr_generation_run_id: self._Attr.attr_generation_run_id,
                     self._Attr.attempt: self._Attr.attempt,
                     self._Attr.created_at: self._Attr.created_at, # aktualisiert timestamp
                 })
             .execute())
+        print(f"PERSISTED {len(rows)} attributes successfully")
 
     def persist_failure(self, fail: FailureDto) -> None:
         with self.db.atomic():
             self._Fail.create(
-                persona_uuid=fail.persona_uuid,
-                model_name=fail.model_name,
+                persona_uuid_id=fail.persona_uuid,
+                model_id=fail.model_id,
                 attempt=fail.attempt,
                 error_kind=fail.error_kind,
                 raw_text_snippet=fail.raw_text_snippet,

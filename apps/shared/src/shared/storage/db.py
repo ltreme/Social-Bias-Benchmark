@@ -51,6 +51,15 @@ def create_tables() -> None:
     with db_proxy:
         db_proxy.create_tables(ALL_MODELS, safe=True)
 
+
+def drop_tables() -> None:
+    """
+    Drop all tables (for testing).
+    """
+    from .models import ALL_MODELS  # local import prevents cycles
+    with db_proxy:
+        db_proxy.drop_tables(ALL_MODELS, safe=True)
+
 @contextmanager
 def transaction():
     """Provide a transactional scope."""

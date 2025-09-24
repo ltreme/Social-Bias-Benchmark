@@ -13,7 +13,6 @@ from shared.storage.models import (
     Dataset,
     DatasetPersona,
     CounterfactualLink,
-    PersonaGeneratorRun,
 )
 
 
@@ -70,7 +69,7 @@ def count_strata(personas: Iterable[Persona]) -> Dict[Tuple[str, str, str, str, 
 
 
 # ----- balanced sampler -----
-def build_balanced_dataset_from_pool(*, pool_gen_id: int, n_target: int, seed: int = 42, name: Optional[str] = None) -> Dataset:
+def build_balanced_dataset_from_pool(*, dataset_id: int, axes: List[str], n_target: int, seed: int = 42, name: Optional[str] = None) -> Dataset:
     """Greedy marginal balancer: enforce near-uniform marginals on selected axes.
 
     Axes: gender, age_bin, subregion, religion, sexuality.
@@ -79,9 +78,9 @@ def build_balanced_dataset_from_pool(*, pool_gen_id: int, n_target: int, seed: i
     """
     rng = random.Random(seed)
 
-    personas: List[Persona] = list(Persona.select().where(Persona.gen_id == pool_gen_id))
+    personas: List[Persona] = list(Persona.select().where(DatasetPersona.dataset_id == dataset_id))
     if not personas:
-        raise ValueError(f"No personas found for gen_id={pool_gen_id}")
+        raise ValueError(f"No personas found for dataset_id={dataset_id}")
 
     axes = ["gender", "age_bin", "subregion", "religion", "sexuality"]
 
@@ -151,7 +150,7 @@ def build_balanced_dataset_from_pool(*, pool_gen_id: int, n_target: int, seed: i
 
     selected = [personas[i] for i in selected_idx]
 
-    ds_name = name or f"balanced-gen{pool_gen_id}-n{len(selected)}"
+    ds_name = name or f"balanced-ds{dataset_id}-n{len(selected)}"
     with transaction():
         ds = Dataset.create(
             name=ds_name,
@@ -159,11 +158,10 @@ def build_balanced_dataset_from_pool(*, pool_gen_id: int, n_target: int, seed: i
             seed=seed,
             config_json=json.dumps({
                 "axes": axes,
-                "pool_gen_id": pool_gen_id,
+                "source_dataset_id": dataset_id,
                 "n_target": n_target,
                 "method": "greedy_marginal_v1",
             }, ensure_ascii=False),
-            gen_id=pool_gen_id,
         )
         DatasetPersona.insert_many([
             {"dataset": ds.id, "persona": p.uuid, "role": "source"} for p in selected
@@ -172,21 +170,20 @@ def build_balanced_dataset_from_pool(*, pool_gen_id: int, n_target: int, seed: i
 
 
 # ----- random sampler -----
-def build_random_subset_from_pool(*, pool_gen_id: int, n: int, seed: int = 42, name: Optional[str] = None) -> Dataset:
+def build_random_subset_from_pool(*, dataset_id: int, n: int, seed: int = 42, name: Optional[str] = None) -> Dataset:
     rng = random.Random(seed)
-    personas: List[Persona] = list(Persona.select().where(Persona.gen_id == pool_gen_id))
+    personas: List[Persona] = list(Persona.select().where(DatasetPersona.dataset_id == dataset_id))
     if len(personas) < n:
-        raise ValueError(f"Pool gen_id={pool_gen_id} has only {len(personas)} personas (< {n})")
+        raise ValueError(f"Dataset id={dataset_id} has only {len(personas)} personas (< {n})")
     rng.shuffle(personas)
     selected = personas[:n]
-    ds_name = name or f"reality-gen{pool_gen_id}-n{n}"
+    ds_name = name or f"reality-gen{dataset_id}-n{n}"
     with transaction():
         ds = Dataset.create(
             name=ds_name,
             kind="reality",
             seed=seed,
-            config_json=json.dumps({"pool_gen_id": pool_gen_id, "n": n}, ensure_ascii=False),
-            gen_id=pool_gen_id,
+            config_json=json.dumps({"dataset_id": dataset_id, "n": n}, ensure_ascii=False),
         )
         DatasetPersona.insert_many([
             {"dataset": ds.id, "persona": p.uuid, "role": "source"} for p in selected
@@ -236,10 +233,10 @@ def _pick_country_in_different_subregion(origin_id: Optional[int], rng: random.R
     if origin_id is None:
         # pick any country with a subregion
         c = (Country
-             .select(Country.id, Country.subregion)
-             .where(~(Country.subregion >> None))
-             .order_by(pw.fn.Random())
-             .first())
+            .select(Country.id, Country.subregion)
+            .where(~(Country.subregion >> None))
+            .order_by(pw.fn.Random())
+            .first())
         if c:
             return c.id, "different_subregion"
         return None, "no_subregion_available"
@@ -263,17 +260,13 @@ def _pick_country_in_different_subregion(origin_id: Optional[int], rng: random.R
 def build_counterfactuals_from_dataset(*, dataset_id: int, seed: int = 42, name: Optional[str] = None) -> Dataset:
     rng = random.Random(seed)
     src_ds = Dataset.get_by_id(dataset_id)
-    members = list(DatasetPersona.select().where(DatasetPersona.dataset == src_ds.id))
+    members = list(DatasetPersona.select().where(DatasetPersona.dataset_id == src_ds.id))
     if not members:
         raise ValueError(f"Dataset {dataset_id} has no members")
 
     # round-robin through attributes to change equally
     change_attrs = ["gender", "age", "origin", "religion", "sexuality"]
     attr_idx = 0
-
-    # synthetic run to own these counterfactual persona rows
-    with transaction():
-        cf_run = PersonaGeneratorRun.create()
 
     cf_rows: List[dict] = []
     cf_links: List[dict] = []
@@ -286,7 +279,6 @@ def build_counterfactuals_from_dataset(*, dataset_id: int, seed: int = 42, name:
         attr_idx += 1
 
         new_p = {
-            "gen_id": cf_run.gen_id,
             "age": p.age,
             "gender": p.gender,
             "education": p.education,
@@ -387,7 +379,6 @@ def build_counterfactuals_from_dataset(*, dataset_id: int, seed: int = 42, name:
             seed=seed,
             source_dataset=src_ds.id,
             config_json=json.dumps({"from_dataset": src_ds.id, "strategy": "round_robin_equal_attrs"}, ensure_ascii=False),
-            gen_id=cf_run.gen_id,
         )
 
         # insert cf personas, collect their UUIDs

@@ -11,7 +11,7 @@ from math import erf, sqrt
 
 from analysis.persona.analytics import set_default_theme
 from shared.storage.db import init_database, get_db, db_proxy, create_tables
-from shared.storage.models import BenchmarkResult, Persona, Country, DatasetPersona, BenchmarkRun
+from shared.storage.models import BenchmarkResult, Persona, Country, DatasetPersona, BenchmarkRun, Model
 
 try:
     import seaborn as sns
@@ -25,7 +25,6 @@ except ImportError as exc:  # pragma: no cover
 
 @dataclass(slots=True)
 class BenchQuery:
-    gen_ids: Sequence[int] | None = None
     model_names: Sequence[str] | None = None
     case_ids: Sequence[str] | None = None
     dataset_ids: Sequence[int] | None = None
@@ -45,7 +44,7 @@ def _ensure_db(db_url: str | None) -> None:
 def load_benchmark_dataframe(cfg: BenchQuery) -> pd.DataFrame:
     """Load benchmark results joined with persona demographics.
 
-    Columns: gen_id, persona_uuid, case_id, model_name, rating, age, gender,
+    Columns: dataset_id, persona_uuid, case_id, model_name, rating, age, gender,
             origin_region, religion, sexuality, marriage_status, education, occupation
     """
     _ensure_db(cfg.db_url)
@@ -53,11 +52,11 @@ def load_benchmark_dataframe(cfg: BenchQuery) -> pd.DataFrame:
 
     q = (
         BenchmarkResult.select(
-            BenchmarkResult.persona_uuid.alias("persona_uuid"),
+            BenchmarkResult.persona_uuid_id.alias("persona_uuid"),
             BenchmarkResult.case_id,
-            BenchmarkResult.model_name,
+            Model.name.alias("model_name"),
             BenchmarkResult.rating,
-            Persona.gen_id.alias("gen_id"),
+            DatasetPersona.dataset_id.alias("dataset_id"),
             Persona.age,
             Persona.gender,
             Persona.education,
@@ -70,24 +69,22 @@ def load_benchmark_dataframe(cfg: BenchQuery) -> pd.DataFrame:
             Country.region.alias("origin_region"),
             Country.subregion.alias("origin_subregion"),
         )
-        .join(Persona, on=(BenchmarkResult.persona_uuid == Persona.uuid))
+        .join(Persona, on=(BenchmarkResult.persona_uuid_id == Persona.uuid))
         .join(Country, pw.JOIN.LEFT_OUTER, on=(Persona.origin_id == Country.id))
-        .join(BenchmarkRun, pw.JOIN.LEFT_OUTER, on=(BenchmarkResult.benchmark_run == BenchmarkRun.id))
+        .join(BenchmarkRun, pw.JOIN.LEFT_OUTER, on=(BenchmarkResult.benchmark_run_id == BenchmarkRun.id))
+        .join(Model, pw.JOIN.LEFT_OUTER, on=(BenchmarkRun.model_id == Model.id))
+        .join(DatasetPersona, pw.JOIN.LEFT_OUTER, on=(DatasetPersona.persona_id == Persona.uuid))
         
     )
-    if cfg.gen_ids:
-        q = q.where(Persona.gen_id.in_(list(cfg.gen_ids)))
     if cfg.dataset_ids:
         # Filter to results where persona is member of given datasets
-        q = (q
-            .join(DatasetPersona, pw.JOIN.INNER, on=(DatasetPersona.persona == Persona.uuid))
-            .where(DatasetPersona.dataset.in_(list(map(int, cfg.dataset_ids)))))
+        q = q.where(DatasetPersona.dataset_id.in_(list(map(int, cfg.dataset_ids))))
     if cfg.model_names:
-        q = q.where(BenchmarkResult.model_name.in_(list(cfg.model_names)))
+        q = q.where(Model.name.in_(list(cfg.model_names)))
     if cfg.case_ids:
         q = q.where(BenchmarkResult.case_id.in_(list(cfg.case_ids)))
     if cfg.run_ids:
-        q = q.where(BenchmarkResult.benchmark_run.in_(list(map(int, cfg.run_ids))))
+        q = q.where(BenchmarkResult.benchmark_run_id.in_(list(map(int, cfg.run_ids))))
     if cfg.include_rationale is not None:
         q = q.where(BenchmarkRun.include_rationale == bool(cfg.include_rationale))
 
@@ -97,8 +94,8 @@ def load_benchmark_dataframe(cfg: BenchQuery) -> pd.DataFrame:
     df = pd.DataFrame(rows)
     if df.empty:
         return df
-    df["gen_id"] = df["gen_id"].astype(int)
-    
+    df["dataset_id"] = df["dataset_id"].astype(int)
+
     if "run_id" in df.columns:
         try:
             df["run_id"] = pd.to_numeric(df["run_id"], errors="coerce").astype("Int64")
@@ -195,7 +192,7 @@ def plot_rating_distribution(df: pd.DataFrame, *, likert_min: int | None = None,
 
 
 def plot_rating_distribution_by_genid(df: pd.DataFrame, *, likert_min: int | None = None, likert_max: int | None = None) -> plt.Axes:
-    """Grouped bars: rating distribution per gen_id to compare runs."""
+    """Grouped bars: rating distribution per dataset_id to compare runs."""
     set_default_theme()
     work = df.copy()
     work["rating"] = pd.to_numeric(work["rating"], errors="coerce").astype("Int64")
@@ -204,16 +201,16 @@ def plot_rating_distribution_by_genid(df: pd.DataFrame, *, likert_min: int | Non
     if likert_max is None:
         likert_max = int(work["rating"].max()) if work["rating"].notna().any() else 7
     cats = list(range(likert_min, likert_max + 1))
-    g = (work.dropna(subset=["rating"]).groupby(["gen_id", "rating"]).size().rename("count").reset_index())
-    totals = g.groupby("gen_id")["count"].sum().rename("total")
-    g = g.merge(totals, on="gen_id")
+    g = (work.dropna(subset=["rating"]).groupby(["dataset_id", "rating"]).size().rename("count").reset_index())
+    totals = g.groupby("dataset_id")["count"].sum().rename("total")
+    g = g.merge(totals, on="dataset_id")
     g["share"] = g["count"] / g["total"]
-    g = g.pivot(index="rating", columns="gen_id", values="share").reindex(index=cats, fill_value=0)
+    g = g.pivot(index="rating", columns="dataset_id", values="share").reindex(index=cats, fill_value=0)
     ax = g.plot(kind="bar", figsize=(8, 4))
     ax.set_xlabel("Rating (Likert)")
     ax.set_ylabel("Anteil")
     ax.yaxis.set_major_formatter(PercentFormatter(1.0))
-    ax.set_title("Rating-Verteilung nach gen_id")
+    ax.set_title("Rating-Verteilung nach dataset_id")
     plt.tight_layout()
     return ax
 
@@ -583,7 +580,7 @@ def export_benchmark_report(
             lines.append(f"![Rating-Verteilung]({img})")
         img = _rel("rating_distribution_by_genid.png")
         if img:
-            lines.append(f"![Rating-Verteilung nach gen_id]({img})")
+            lines.append(f"![Rating-Verteilung nach dataset_id]({img})")
         lines.append("")
     for col in cat_cols:
         if col not in df.columns:

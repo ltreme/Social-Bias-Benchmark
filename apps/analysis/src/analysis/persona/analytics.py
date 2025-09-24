@@ -9,10 +9,11 @@ from datetime import datetime, date
 
 import pandas as pd
 import peewee as pw
+import numpy as np
 
 from analysis import get_project_root
 from shared.storage.db import DEFAULT_SQLITE_PATH, init_database, get_db, db_proxy, create_tables
-from shared.storage.models import Country, Persona, PersonaGeneratorRun, DatasetPersona
+from shared.storage.models import Country, Persona, DatasetPersona
 
 try:
     import seaborn as sns
@@ -35,12 +36,12 @@ _LAST_DB_URL: str | None = None
 
 @dataclass(slots=True)
 class PersonaDataConfig:
-    gen_ids: tuple[int, ...]
+    dataset_ids: tuple[int, ...]
     db_url: str | None = None
 
     @classmethod
-    def from_iterable(cls, gen_ids: Iterable[int], db_url: str | None = None) -> "PersonaDataConfig":
-        return cls(gen_ids=tuple(int(gid) for gid in gen_ids), db_url=db_url)
+    def from_iterable(cls, dataset_ids: Iterable[int], db_url: str | None = None) -> "PersonaDataConfig":
+        return cls(dataset_ids=tuple(int(did) for did in dataset_ids), db_url=db_url)
 
 
 def _resolve_db_url(db_url: str | None = None) -> str:
@@ -70,17 +71,17 @@ def _ensure_database(db_url: str | None = None) -> None:
 
 
 def load_persona_dataframe(config: PersonaDataConfig) -> pd.DataFrame:
-    """Return persona rows for the configured gen_ids as a DataFrame."""
-    if not config.gen_ids:
-        raise ValueError("Provide at least one gen_id")
+    """Return persona rows for the configured dataset_ids as a DataFrame."""
+    if not config.dataset_ids:
+        raise ValueError("Provide at least one dataset_id")
 
     _ensure_database(config.db_url)
     db = get_db()
 
     query = (
-        Persona.select(
+        DatasetPersona.select(
             Persona.uuid.alias("persona_uuid"),
-            Persona.gen_id.alias("gen_id"),
+            DatasetPersona.dataset_id.alias("dataset_id"),
             Persona.age,
             Persona.gender,
             Persona.education,
@@ -95,13 +96,14 @@ def load_persona_dataframe(config: PersonaDataConfig) -> pd.DataFrame:
             Country.region.alias("origin_region"),
             Country.subregion.alias("origin_subregion"),
         )
-        .join(Country, pw.JOIN.LEFT_OUTER)
-        .where(Persona.gen_id.in_(config.gen_ids))
+        .join(Persona)
+        .join(Country, pw.JOIN.LEFT_OUTER, on=(Persona.origin_id == Country.id))
+        .where(DatasetPersona.dataset_id.in_(config.dataset_ids))
     )
 
     # Peewee requires manual alias for join when not using names.
     # Provide deterministic ordering so repeated runs remain stable.
-    query = query.order_by(Persona.gen_id, Persona.created_at)
+    query = query.order_by(DatasetPersona.dataset_id, Persona.created_at)
 
     with db.atomic():
         rows: list[dict[str, Any]] = list(query.dicts())
@@ -110,7 +112,7 @@ def load_persona_dataframe(config: PersonaDataConfig) -> pd.DataFrame:
     if df.empty:
         return df
 
-    df["gen_id"] = df["gen_id"].astype(int)
+    df["dataset_id"] = df["dataset_id"].astype(int)
     df["age"] = pd.to_numeric(df["age"], errors="coerce")
     return df
 
@@ -118,7 +120,7 @@ def load_persona_dataframe(config: PersonaDataConfig) -> pd.DataFrame:
 def load_persona_dataframe_for_datasets(dataset_ids: Sequence[int]) -> pd.DataFrame:
     """Return persona rows for given dataset_ids (DatasetPersona memberships).
 
-    Columns mirror load_persona_dataframe but replace gen_id with dataset_id.
+    Columns mirror load_persona_dataframe but use dataset_id.
     """
     if not dataset_ids:
         raise ValueError("Provide at least one dataset_id")
@@ -126,7 +128,7 @@ def load_persona_dataframe_for_datasets(dataset_ids: Sequence[int]) -> pd.DataFr
     db = get_db()
     q = (
         Persona.select(
-            DatasetPersona.dataset.alias("dataset_id"),
+            DatasetPersona.dataset_id.alias("dataset_id"),
             Persona.uuid.alias("persona_uuid"),
             Persona.age,
             Persona.gender,
@@ -142,11 +144,11 @@ def load_persona_dataframe_for_datasets(dataset_ids: Sequence[int]) -> pd.DataFr
             Country.region.alias("origin_region"),
             Country.subregion.alias("origin_subregion"),
         )
-        .join(DatasetPersona, on=(DatasetPersona.persona == Persona.uuid))
+        .join(DatasetPersona, on=(DatasetPersona.persona_id == Persona.uuid))
         .switch(Persona)
         .join(Country, pw.JOIN.LEFT_OUTER)
-        .where(DatasetPersona.dataset.in_(list(map(int, dataset_ids))))
-        .order_by(DatasetPersona.dataset, Persona.created_at)
+        .where(DatasetPersona.dataset_id.in_(list(map(int, dataset_ids))))
+        .order_by(DatasetPersona.dataset_id, Persona.created_at)
     )
     with db.atomic():
         rows = list(q.dicts())
@@ -159,23 +161,23 @@ def load_persona_dataframe_for_datasets(dataset_ids: Sequence[int]) -> pd.DataFr
 
 
 def summarise_category(df: pd.DataFrame, column: str) -> pd.DataFrame:
-    """Aggregate counts and shares for a categorical column per gen_id."""
+    """Aggregate counts and shares for a categorical column per dataset_id."""
     if column not in df.columns:
         raise KeyError(f"Column '{column}' missing from persona dataframe")
-    working = df[["gen_id", column]].copy()
+    working = df[["dataset_id", column]].copy()
     working[column] = working[column].fillna("Unknown")
 
     counts = (
-        working.groupby(["gen_id", column], dropna=False)
+        working.groupby(["dataset_id", column], dropna=False)
         .size()
         .rename("count")
         .reset_index()
     )
 
-    totals = counts.groupby("gen_id")["count"].sum().rename("total")
-    summary = counts.merge(totals, on="gen_id")
+    totals = counts.groupby("dataset_id")["count"].sum().rename("total")
+    summary = counts.merge(totals, on="dataset_id")
     summary["share"] = summary["count"] / summary["total"]
-    summary = summary.sort_values(["gen_id", "count"], ascending=[True, False])
+    summary = summary.sort_values(["dataset_id", "count"], ascending=[True, False])
     return summary
 
 
@@ -240,10 +242,10 @@ def plot_category_100pct_grouped(
 
 
 def _apply_top_n(summary: pd.DataFrame, column: str, top_n: int | None) -> pd.DataFrame:
-    """Collapse small categories into 'Other' based on global counts (across gen_id)."""
+    """Collapse small categories into 'Other' based on global counts (across dataset_id)."""
     if top_n is None or top_n <= 0:
         return summary
-    # Determine top categories by absolute count over all gen_ids
+    # Determine top categories by absolute count over all dataset_ids
     top_values: set[str] = (
         summary.groupby(column)["count"].sum().nlargest(top_n).index.astype(str).to_list()
     )
@@ -252,10 +254,10 @@ def _apply_top_n(summary: pd.DataFrame, column: str, top_n: int | None) -> pd.Da
     work.loc[~work[column].isin(top_values), column] = "Other"
     # Re-aggregate and recompute shares
     counts = (
-        work.groupby(["gen_id", column], dropna=False)["count"].sum().reset_index()
+        work.groupby(["dataset_id", column], dropna=False)["count"].sum().reset_index()
     )
-    totals = counts.groupby("gen_id")["count"].sum().rename("total")
-    out = counts.merge(totals, on="gen_id")
+    totals = counts.groupby("dataset_id")["count"].sum().rename("total")
+    out = counts.merge(totals, on="dataset_id")
     out["share"] = out["count"] / out["total"]
     return out
 
@@ -279,7 +281,7 @@ def plot_category_distribution(
         data=summary,
         x=column,
         y="share",
-        hue="gen_id",
+        hue="dataset_id",
         palette=palette,
         ax=ax,
     )
@@ -311,7 +313,7 @@ def plot_age_distribution(
     sns.histplot(
         data=plot_df,
         x="age",
-        hue="gen_id",
+        hue="dataset_id",
         element="step",
         stat="probability",
         common_norm=False,
@@ -321,7 +323,7 @@ def plot_age_distribution(
     )
     ax.set_ylabel("Share")
     ax.set_xlabel("Age")
-    ax.set_title("Age distribution by gen_id")
+    ax.set_title("Age distribution by dataset_id")
     ax.grid(axis="y", linestyle="--", alpha=0.3)
     plt.tight_layout()
     return ax
@@ -362,20 +364,20 @@ def plot_age_ridgeline(
     aspect: float = 3.5,
     title_size: int = 10,
 ) -> sns.FacetGrid:
-    """Ridgeline-like KDE small multiples by gen_id.
+    """Ridgeline-like KDE small multiples by dataset_id.
 
     Returns the FacetGrid; caller can save via ``g.fig``.
     """
     if "age" not in df.columns:
         raise KeyError("Column 'age' missing from persona dataframe")
     data = df.dropna(subset=["age"]).copy()
-    # Order rows by gen_id ascending for consistent stacking
-    order = sorted(data["gen_id"].unique())
+    # Order rows by dataset_id ascending for consistent stacking
+    order = sorted(data["dataset_id"].unique())
     g = sns.FacetGrid(
         data,
-        row="gen_id",
+        row="dataset_id",
         row_order=order,
-        hue="gen_id",
+        hue="dataset_id",
         sharex=True,
         sharey=False,
         height=height,
@@ -384,7 +386,7 @@ def plot_age_ridgeline(
     )
     g.map(sns.kdeplot, "age", fill=True, alpha=0.7, linewidth=0.9)
     g.map(plt.axhline, y=0, lw=1, clip_on=False, color="0.5")
-    g.set_titles(row_template="gen_id = {row_name}", size=title_size)
+    g.set_titles(row_template="dataset_id = {row_name}", size=title_size)
     for ax in g.axes.flat:
         ax.set_ylabel("")
         ax.grid(axis="x", linestyle="--", alpha=0.3)
@@ -402,11 +404,11 @@ def plot_category_100pct(
     figsize: tuple[float, float] = (8, 4),
     top_n: int | None = 10,
 ) -> plt.Axes:
-    """100%-gestapelte Balken: eine Säule pro gen_id, Segmente = Kategorien."""
+    """100%-gestapelte Balken: eine Säule pro dataset_id, Segmente = Kategorien."""
     summary = summarise_category(df, column)
     summary = _apply_top_n(summary, column, top_n)
-    wide = summary.pivot(index="gen_id", columns=column, values="share").fillna(0)
-    # Order columns by total share across gen_id descending, keep 'Other' at end if present
+    wide = summary.pivot(index="dataset_id", columns=column, values="share").fillna(0)
+    # Order columns by total share across dataset_id descending, keep 'Other' at end if present
     totals = wide.sum(axis=0).sort_values(ascending=False)
     if "Other" in totals.index:
         totals = totals.drop("Other")
@@ -466,13 +468,13 @@ def make_region_choropleth(
     """Interactive categorical choropleth colored by origin_region.
 
     - Colors each country by its region.
-    - If ``animate=True``, adds a slider over ``gen_id``.
+    - If ``animate=True``, adds a slider over ``dataset_id``.
     """
     if px is None:  # pragma: no cover
         raise RuntimeError("Install plotly to use choropleth maps: pip install plotly")
     use = df.dropna(subset=["origin_country_en"]).copy()
     agg = (
-        use.groupby(["gen_id", "origin_country_en", "origin_region"], dropna=False)
+        use.groupby(["dataset_id", "origin_country_en", "origin_region"], dropna=False)
         .size()
         .rename("count")
         .reset_index()
@@ -484,14 +486,14 @@ def make_region_choropleth(
             locationmode="country names",
             color="origin_region",
             hover_name="origin_country_en",
-            hover_data={"gen_id": True, "count": True, "origin_region": True},
+            hover_data={"dataset_id": True, "count": True, "origin_region": True},
             scope="world",
             projection="natural earth",
             category_orders={"origin_region": sorted(use["origin_region"].dropna().unique())},
-            animation_frame="gen_id",
+            animation_frame="dataset_id",
         )
     else:
-        # Without animation, collapse across gen_ids and show presence
+        # Without animation, collapse across dataset_ids and show presence
         present = agg.groupby(["origin_country_en", "origin_region"], dropna=False)[
             "count"
         ].sum().reset_index()
@@ -518,9 +520,9 @@ def make_country_share_choropleth(
     vmax_percentile: float = 0.95,
     color_scale: str = "Blues",
 ) -> "px.choropleth":
-    """Interactive choropleth shading countries by share of personas per gen_id.
+    """Interactive choropleth shading countries by share of personas per dataset_id.
 
-    - normalize='per_gen_p95' rescales shares by the 95th percentile per gen_id
+    - normalize='per_dataset_p95' rescales shares by the 95th percentile per dataset_id
       (clipped to 1). This counters domination durch stark vertretene Laender.
     - normalize='log1p' uses log(1+share) to expand lower values.
     """
@@ -528,30 +530,30 @@ def make_country_share_choropleth(
         raise RuntimeError("Install plotly to use choropleth maps: pip install plotly")
     use = df.dropna(subset=["origin_country_en"]).copy()
     counts = (
-        use.groupby(["gen_id", "origin_country_en"], dropna=False)
+        use.groupby(["dataset_id", "origin_country_en"], dropna=False)
         .size()
         .rename("count")
         .reset_index()
     )
-    totals = counts.groupby("gen_id")["count"].sum().rename("total")
-    agg = counts.merge(totals, on="gen_id")
+    totals = counts.groupby("dataset_id")["count"].sum().rename("total")
+    agg = counts.merge(totals, on="dataset_id")
     agg["share"] = agg["count"] / agg["total"]
 
     value_col = "share"
     colorbar_title = "Anteil"
     tickformat = ".0%"  # percentage for raw share
-    if normalize == "per_gen_p95":
-        # Compute per-gen scaling factor via percentile to reduce outlier dominance
+    if normalize == "per_dataset_p95":
+        # Compute per-dataset scaling factor via percentile to reduce outlier dominance
         p = (
-            agg.groupby("gen_id")["share"].quantile(vmax_percentile).rename("p95").reset_index()
+            agg.groupby("dataset_id")["share"].quantile(vmax_percentile).rename("p95").reset_index()
         )
-        agg = agg.merge(p, on="gen_id", how="left")
+        agg = agg.merge(p, on="dataset_id", how="left")
         agg["share_norm"] = (agg["share"] / agg["p95"]).clip(upper=1.0)
         value_col = "share_norm"
         colorbar_title = f"Rel. Anteil (p{int(vmax_percentile*100)}=1.0)"
         tickformat = ".2f"
     elif normalize == "log1p":
-        agg["share_norm"] = (agg["share"].apply(lambda x: float(pd.np.log1p(x))))  # type: ignore[attr-defined]
+        agg["share_norm"] = (agg["share"].apply(lambda x: float(np.log1p(x))))
         value_col = "share_norm"
         colorbar_title = "log(1+Anteil)"
         tickformat = ".2f"
@@ -570,14 +572,14 @@ def make_country_share_choropleth(
             color=value_col,
             hover_name="origin_country_en",
             hover_data={
-                "gen_id": True,
+                "dataset_id": True,
                 "count": True,
                 "share": ":.2%",
                 value_col: ":.2f" if normalize != "none" else False,
             },
             scope="world",
             projection="natural earth",
-            animation_frame="gen_id",
+            animation_frame="dataset_id",
             **color_kwargs,
         )
     else:
@@ -587,7 +589,7 @@ def make_country_share_choropleth(
             locationmode="country names",
             color=value_col,
             hover_name="origin_country_en",
-            hover_data={"gen_id": True, "count": True, "share": ":.2%", value_col: ":.2f"},
+            hover_data={"dataset_id": True, "count": True, "share": ":.2%", value_col: ":.2f"},
             scope="world",
             projection="natural earth",
             **color_kwargs,
@@ -595,11 +597,11 @@ def make_country_share_choropleth(
     # Clarify colorbar
     fig.update_coloraxes(colorbar_title_text=colorbar_title, colorbar_tickformat=tickformat)
     # Add short explanation in figure metadata
-    if normalize == "per_gen_p95":
+    if normalize == "per_dataset_p95":
         fig.update_layout(
             annotations=[
                 dict(
-                    text=f"Skalierung pro gen_id: 1.0 ≈ {int(vmax_percentile*100)}. Perzentil",
+                    text=f"Skalierung pro dataset_id: 1.0 ≈ {int(vmax_percentile*100)}. Perzentil",
                     x=0.01,
                     y=0.01,
                     xref="paper",
@@ -628,21 +630,6 @@ def _non_null_settings(d: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
-def load_run_settings(gen_ids: Sequence[int]) -> dict[int, dict[str, Any]]:
-    """Fetch PersonaGeneratorRun settings for given gen_ids as a dict."""
-    _ensure_database()
-    q = (
-        PersonaGeneratorRun.select()
-        .where(PersonaGeneratorRun.gen_id.in_(list(gen_ids)))
-        .order_by(PersonaGeneratorRun.gen_id)
-        .dicts()
-    )
-    result: dict[int, dict[str, Any]] = {}
-    for row in q:
-        gid = int(row.pop("gen_id"))
-        result[gid] = _non_null_settings(row)
-    return result
-
 
 def _age_stats(df: pd.DataFrame) -> dict[str, float]:
     s = pd.to_numeric(df["age"], errors="coerce")
@@ -667,10 +654,10 @@ def _age_stats(df: pd.DataFrame) -> dict[str, float]:
 def _category_shares(df: pd.DataFrame, column: str, top_n: int = 10) -> list[dict[str, Any]]:
     summary = summarise_category(df, column)
     summary = _apply_top_n(summary, column, top_n)
-    # filter this gen later in per-gen loop
+    # filter this dataset later in per-dataset loop
     out = (
-        summary[["gen_id", column, "share", "count"]]
-        .sort_values(["gen_id", "share"], ascending=[True, False])
+        summary[["dataset_id", column, "share", "count"]]
+        .sort_values(["dataset_id", "share"], ascending=[True, False])
         .to_dict(orient="records")
     )
     return out
@@ -682,10 +669,10 @@ def generate_persona_reports(
     *,
     top_n: int = 10,
 ) -> list[Path]:
-    """Create per-gen_id Markdown and JSON reports with settings + key stats."""
+    """Create per-dataset_id Markdown and JSON reports with settings + key stats."""
     output_dir.mkdir(parents=True, exist_ok=True)
-    gen_ids = sorted(df["gen_id"].astype(int).unique().tolist())
-    settings_map = load_run_settings(gen_ids)
+    dataset_ids = sorted(df["dataset_id"].astype(int).unique().tolist())
+    settings_map = {}  # load_run_settings(dataset_ids)  # TODO: removed as PersonaGeneratorRun was removed
 
     exported: list[Path] = []
     cat_cols = [
@@ -698,8 +685,8 @@ def generate_persona_reports(
         "occupation",
     ]
 
-    for gid in gen_ids:
-        sub = df[df["gen_id"] == gid].copy()
+    for did in dataset_ids:
+        sub = df[df["dataset_id"] == did].copy()
         n = int(len(sub))
         missing = {
             col: float(sub[col].isna().mean()) for col in ["age", *cat_cols] if col in sub.columns
@@ -708,23 +695,23 @@ def generate_persona_reports(
         cats: dict[str, list[dict[str, Any]]] = {}
         for col in cat_cols:
             if col in sub.columns:
-                # filter to this gen and take top_n rows
+                # filter to this dataset and take top_n rows
                 s = summarise_category(sub, col).sort_values("share", ascending=False)
                 s = _apply_top_n(s, col, top_n)
                 s = s.sort_values("share", ascending=False).head(top_n + 1)
                 cats[col] = s[[col, "share", "count"]].to_dict(orient="records")
 
         payload = {
-            "gen_id": gid,
+            "dataset_id": did,
             "n_personas": n,
-            "settings": settings_map.get(gid, {}),
+            "settings": settings_map.get(did, {}),
             "missing_rate": missing,
             "age_stats": age_stats,
             "categories": cats,
         }
 
         # JSON
-        json_path = output_dir / f"persona_report_gen_{gid}.json"
+        json_path = output_dir / f"persona_report_dataset_{did}.json"
         import json as _json
 
         json_path.write_text(_json.dumps(payload, indent=2, ensure_ascii=False))
@@ -735,16 +722,16 @@ def generate_persona_reports(
             return f"{x*100:.1f}%"
 
         md_lines: list[str] = []
-        md_lines.append(f"# Persona Report – gen_id {gid}")
-        created = settings_map.get(gid, {}).get("created_at")
+        md_lines.append(f"# Persona Report – dataset_id {did}")
+        created = settings_map.get(did, {}).get("created_at")
         if created:
             md_lines.append(f"_Erstellt am_: {created}")
         md_lines.append("")
         md_lines.append(f"Gesamtanzahl Personas: **{n}**")
         md_lines.append("")
-        if settings_map.get(gid):
-            md_lines.append("## Einstellungen (PersonaGeneratorRun)")
-            for k, v in settings_map[gid].items():
+        if settings_map.get(did):
+            md_lines.append("## Einstellungen (entfernt)")
+            for k, v in settings_map[did].items():
                 md_lines.append(f"- {k}: {v}")
             md_lines.append("")
         if age_stats:
@@ -773,7 +760,7 @@ def generate_persona_reports(
                     md_lines.append(f"- {r[col]}: {_pct(r['share'])} ({int(r['count'])})")
                 md_lines.append("")
 
-        md_path = output_dir / f"persona_report_gen_{gid}.md"
+        md_path = output_dir / f"persona_report_dataset_{did}.md"
         md_path.write_text("\n".join(md_lines))
         exported.append(md_path)
 

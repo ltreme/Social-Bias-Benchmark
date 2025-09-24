@@ -22,11 +22,11 @@ from analysis.persona.analytics import (
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate persona dataset overview plots.")
     parser.add_argument(
-        "--gen-ids",
+        "--dataset-ids",
         type=int,
         nargs="+",
         required=True,
-        help="One or more persona generation ids to include (e.g. --gen-ids 12 13 14)",
+        help="One or more dataset ids to include (e.g. --dataset-ids 12 13 14)",
     )
     parser.add_argument(
         "--top-n",
@@ -81,11 +81,11 @@ def save_figure(fig, path: Path) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    config = PersonaDataConfig.from_iterable(args.gen_ids, db_url=args.db_url)
+    config = PersonaDataConfig.from_iterable(args.dataset_ids, db_url=args.db_url)
     set_default_theme()
     df = load_persona_dataframe(config)
     if df.empty:
-        print(f"No personas found for gen_ids={config.gen_ids}", file=sys.stderr)
+        print(f"No personas found for dataset_ids={config.dataset_ids}", file=sys.stderr)
         return 1
 
     output_dir: Path = args.output_dir
@@ -116,7 +116,7 @@ def main(argv: list[str] | None = None) -> int:
             save_figure(ax.figure, output_dir / filename)
 
     export_summary_tables(df, output_dir)
-    # Per-gen_id text/JSON reports
+    # Per-dataset_id text/JSON reports
     reports_dir = output_dir / "reports"
     generate_persona_reports(df, reports_dir, top_n=args.top_n)
 

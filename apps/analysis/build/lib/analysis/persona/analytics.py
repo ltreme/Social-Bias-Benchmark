@@ -22,12 +22,12 @@ except ImportError as exc:  # pragma: no cover - optional during import
 
 @dataclass(slots=True)
 class PersonaDataConfig:
-    gen_ids: tuple[int, ...]
+    dataset_ids: tuple[int, ...]
     db_url: str | None = None
 
     @classmethod
-    def from_iterable(cls, gen_ids: Iterable[int], db_url: str | None = None) -> "PersonaDataConfig":
-        return cls(gen_ids=tuple(int(gid) for gid in gen_ids), db_url=db_url)
+    def from_iterable(cls, dataset_ids: Iterable[int], db_url: str | None = None) -> "PersonaDataConfig":
+        return cls(dataset_ids=tuple(int(gid) for gid in dataset_ids), db_url=db_url)
 
 
 def _ensure_database(db_url: str | None = None) -> None:
@@ -39,9 +39,9 @@ def _ensure_database(db_url: str | None = None) -> None:
 
 
 def load_persona_dataframe(config: PersonaDataConfig) -> pd.DataFrame:
-    """Return persona rows for the configured gen_ids as a DataFrame."""
-    if not config.gen_ids:
-        raise ValueError("Provide at least one gen_id")
+    """Return persona rows for the configured dataset_ids as a DataFrame."""
+    if not config.dataset_ids:
+        raise ValueError("Provide at least one dataset_id")
 
     _ensure_database(config.db_url)
     db = get_db()
@@ -49,7 +49,7 @@ def load_persona_dataframe(config: PersonaDataConfig) -> pd.DataFrame:
     query = (
         Persona.select(
             Persona.uuid.alias("persona_uuid"),
-            Persona.gen_id.alias("gen_id"),
+            Persona.dataset_id,
             Persona.age,
             Persona.gender,
             Persona.education,
@@ -65,12 +65,12 @@ def load_persona_dataframe(config: PersonaDataConfig) -> pd.DataFrame:
             Country.subregion.alias("origin_subregion"),
         )
         .join(Country, pw.JOIN.LEFT_OUTER)
-        .where(Persona.gen_id.in_(config.gen_ids))
+        .where(Persona.dataset_id.in_(config.dataset_ids))
     )
 
     # Peewee requires manual alias for join when not using names.
     # Provide deterministic ordering so repeated runs remain stable.
-    query = query.order_by(Persona.gen_id, Persona.created_at)
+    query = query.order_by(Persona.dataset_id, Persona.created_at)
 
     with db.atomic():
         rows: list[dict[str, Any]] = list(query.dicts())
@@ -79,29 +79,29 @@ def load_persona_dataframe(config: PersonaDataConfig) -> pd.DataFrame:
     if df.empty:
         return df
 
-    df["gen_id"] = df["gen_id"].astype(int)
+    df["dataset_id"] = df["dataset_id"].astype(int)
     df["age"] = pd.to_numeric(df["age"], errors="coerce")
     return df
 
 
 def summarise_category(df: pd.DataFrame, column: str) -> pd.DataFrame:
-    """Aggregate counts and shares for a categorical column per gen_id."""
+    """Aggregate counts and shares for a categorical column per dataset_id."""
     if column not in df.columns:
         raise KeyError(f"Column '{column}' missing from persona dataframe")
-    working = df[["gen_id", column]].copy()
+    working = df[["dataset_id", column]].copy()
     working[column] = working[column].fillna("Unknown")
 
     counts = (
-        working.groupby(["gen_id", column], dropna=False)
+        working.groupby(["dataset_id", column], dropna=False)
         .size()
         .rename("count")
         .reset_index()
     )
 
-    totals = counts.groupby("gen_id")["count"].sum().rename("total")
-    summary = counts.merge(totals, on="gen_id")
+    totals = counts.groupby("dataset_id")["count"].sum().rename("total")
+    summary = counts.merge(totals, on="dataset_id")
     summary["share"] = summary["count"] / summary["total"]
-    summary = summary.sort_values(["gen_id", "count"], ascending=[True, False])
+    summary = summary.sort_values(["dataset_id", "count"], ascending=[True, False])
     return summary
 
 
@@ -122,7 +122,7 @@ def plot_category_distribution(
         data=summary,
         x=column,
         y="share",
-        hue="gen_id",
+        hue="dataset_id",
         palette=palette,
         ax=ax,
     )
@@ -154,7 +154,7 @@ def plot_age_distribution(
     sns.histplot(
         data=plot_df,
         x="age",
-        hue="gen_id",
+        hue="dataset_id",
         element="step",
         stat="probability",
         common_norm=False,
@@ -164,7 +164,7 @@ def plot_age_distribution(
     )
     ax.set_ylabel("Share")
     ax.set_xlabel("Age")
-    ax.set_title("Age distribution by gen_id")
+    ax.set_title("Age distribution by dataset_id")
     ax.grid(axis="y", linestyle="--", alpha=0.3)
     plt.tight_layout()
     return ax

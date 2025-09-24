@@ -19,7 +19,7 @@ class PersonaRepository(PersonaRepo):
     Only selects the minimal fields needed for prompting.
     """
 
-    def iter_personas(self, gen_id: int) -> Iterable[WorkItem]:
+    def iter_personas(self, dataset_id: int | None = None) -> Iterable[WorkItem]:
         # Ensure DB is initialized by caller (init_database()).
         _ = get_db()
 
@@ -27,14 +27,22 @@ class PersonaRepository(PersonaRepo):
         query = (
             Persona
             .select(
-                Persona.uuid, Persona.gen_id, Persona.age, Persona.gender,
+                Persona.uuid, Persona.age, Persona.gender,
                 Persona.education, Persona.occupation, Persona.marriage_status,
                 Persona.religion, Persona.sexuality,
                 Country.country_de.alias("origin_name"),
             )
-            .join(Country, JOIN.LEFT_OUTER, on=(Persona.origin == Country.id))
-            .where(Persona.gen_id == gen_id)
+            .join(Country, JOIN.LEFT_OUTER, on=(Persona.origin_id == Country.id))
         )
+        
+        if dataset_id is not None:
+            query = (
+                query
+                .join(DatasetPersona, JOIN.INNER, on=(DatasetPersona.persona_id == Persona.uuid))
+                .where(DatasetPersona.dataset_id == dataset_id)
+            )
+        else:
+            query = query.where(True)
 
         translator = TranslatorService()
 
@@ -51,7 +59,7 @@ class PersonaRepository(PersonaRepo):
                 "Sexualität": translator.translate(row.sexuality),
             }
             yield WorkItem(
-                gen_id=row.gen_id,
+                dataset_id=dataset_id or 0,  # Use 0 as default for all personas
                 persona_uuid=PersonaUUID(str(row.uuid)),
                 persona_minimal=persona_minimal,
             )
@@ -62,20 +70,20 @@ class PersonaRepositoryByDataset(PersonaRepo):
     def __init__(self, dataset_id: int):
         self.dataset_id = int(dataset_id)
 
-    def iter_personas(self, gen_id: int):  # gen_id ignored here
+    def iter_personas(self, dataset_id: int):  # dataset_id ignored here, uses self.dataset_id
         _ = get_db()
         query = (
             Persona
             .select(
-                Persona.uuid, Persona.gen_id, Persona.age, Persona.gender,
+                Persona.uuid, Persona.age, Persona.gender,
                 Persona.education, Persona.occupation, Persona.marriage_status,
                 Persona.religion, Persona.sexuality,
                 Country.country_de.alias("origin_name"),
             )
-            .join(DatasetPersona, JOIN.INNER, on=(DatasetPersona.persona == Persona.uuid))
+            .join(DatasetPersona, JOIN.INNER, on=(DatasetPersona.persona_id == Persona.uuid))
             .switch(Persona)
-            .join(Country, JOIN.LEFT_OUTER, on=(Persona.origin == Country.id))
-            .where(DatasetPersona.dataset == self.dataset_id)
+            .join(Country, JOIN.LEFT_OUTER, on=(Persona.origin_id == Country.id))
+            .where(DatasetPersona.dataset_id == self.dataset_id)
         )
 
         translator = TranslatorService()
@@ -93,7 +101,7 @@ class PersonaRepositoryByDataset(PersonaRepo):
                 "Sexualität": translator.translate(row.sexuality),
             }
             yield WorkItem(
-                gen_id=row.gen_id,
+                dataset_id=self.dataset_id,
                 persona_uuid=PersonaUUID(str(row.uuid)),
                 persona_minimal=persona_minimal,
             )
@@ -109,19 +117,27 @@ class FullPersonaRepository(BenchPersonaRepo):
         # Optional model_name to filter AdditionalPersonaAttributes per model
         self.model_name = model_name
 
-    def iter_personas(self, gen_id: int):
+    def iter_personas(self, dataset_id: int | None = None):
         _ = get_db()
         query = (
             Persona
             .select(
-                Persona.uuid, Persona.gen_id, Persona.age, Persona.gender,
+                Persona.uuid, Persona.age, Persona.gender,
                 Persona.education, Persona.occupation, Persona.marriage_status,
                 Persona.religion, Persona.sexuality,
                 Country.country_de.alias("origin_name"),
             )
-            .join(Country, JOIN.LEFT_OUTER, on=(Persona.origin == Country.id))
-            .where(Persona.gen_id == gen_id)
+            .join(Country, JOIN.LEFT_OUTER, on=(Persona.origin_id == Country.id))
         )
+        
+        if dataset_id is not None:
+            query = (
+                query
+                .join(DatasetPersona, JOIN.INNER, on=(DatasetPersona.persona_id == Persona.uuid))
+                .where(DatasetPersona.dataset_id == dataset_id)
+            )
+        else:
+            query = query.where(True)
 
         from shared.storage.models import AdditionalPersonaAttributes as Attr
         translator = TranslatorService()
@@ -130,9 +146,9 @@ class FullPersonaRepository(BenchPersonaRepo):
             origin_name = getattr(row, "origin_name", None)
 
             # fetch enriched attributes for this persona (optionally filter by model)
-            attrs_query = Attr.select(Attr.attribute_key, Attr.value).where(Attr.persona_uuid == row.uuid)
+            attrs_query = Attr.select(Attr.attribute_key, Attr.value).where(Attr.persona_uuid_id == row.uuid)
             if self.model_name:
-                attrs_query = attrs_query.where(Attr.model_name == self.model_name)
+                attrs_query = attrs_query.where(Attr.attr_generation_run_id == self.model_name)  # TODO: adjust to use AttrGenerationRun
             attrs = attrs_query
             attr_map = {a.attribute_key: a.value for a in attrs}
 
@@ -151,7 +167,7 @@ class FullPersonaRepository(BenchPersonaRepo):
             }
 
             yield BenchWorkItem(
-                gen_id=row.gen_id,
+                dataset_id=dataset_id or 0,  # Use 0 as default for all personas
                 persona_uuid=PersonaUUID(str(row.uuid)),
                 persona_context=persona_ctx,
                 case_id="",  # filled later
@@ -163,26 +179,25 @@ class FullPersonaRepository(BenchPersonaRepo):
 class FullPersonaRepositoryByDataset(BenchPersonaRepo):
     """
     Streams personas that are members of a Dataset (DatasetPersona).
-    Ignores the gen_id passed to iter_personas; uses dataset_id instead.
     """
     def __init__(self, dataset_id: int, *, model_name: str | None = None):
         self.dataset_id = int(dataset_id)
         self.model_name = model_name
 
-    def iter_personas(self, gen_id: int) -> Iterable[BenchWorkItem]:  # gen_id unused
+    def iter_personas(self, dataset_id: int) -> Iterable[BenchWorkItem]:  # dataset_id unused, uses self.dataset_id
         _ = get_db()
         query = (
             Persona
             .select(
-                Persona.uuid, Persona.gen_id, Persona.age, Persona.gender,
+                Persona.uuid, Persona.age, Persona.gender,
                 Persona.education, Persona.occupation, Persona.marriage_status,
                 Persona.religion, Persona.sexuality,
                 Country.country_de.alias("origin_name"),
             )
-            .join(DatasetPersona, JOIN.INNER, on=(DatasetPersona.persona == Persona.uuid))
+            .join(DatasetPersona, JOIN.INNER, on=(DatasetPersona.persona_id == Persona.uuid))
             .switch(Persona)
-            .join(Country, JOIN.LEFT_OUTER, on=(Persona.origin == Country.id))
-            .where(DatasetPersona.dataset == self.dataset_id)
+            .join(Country, JOIN.LEFT_OUTER, on=(Persona.origin_id == Country.id))
+            .where(DatasetPersona.dataset_id == self.dataset_id)
         )
 
         from shared.storage.models import AdditionalPersonaAttributes as Attr
@@ -190,9 +205,9 @@ class FullPersonaRepositoryByDataset(BenchPersonaRepo):
 
         for row in query.iterator():
             origin_name = getattr(row, "origin_name", None)
-            attrs_query = Attr.select(Attr.attribute_key, Attr.value).where(Attr.persona_uuid == row.uuid)
+            attrs_query = Attr.select(Attr.attribute_key, Attr.value).where(Attr.persona_uuid_id == row.uuid)
             if self.model_name:
-                attrs_query = attrs_query.where(Attr.model_name == self.model_name)
+                attrs_query = attrs_query.where(Attr.attr_generation_run_id == self.model_name)  # TODO: adjust to use AttrGenerationRun
             attr_map = {a.attribute_key: a.value for a in attrs_query}
 
             persona_ctx = {
@@ -210,7 +225,7 @@ class FullPersonaRepositoryByDataset(BenchPersonaRepo):
             }
 
             yield BenchWorkItem(
-                gen_id=row.gen_id,
+                dataset_id=self.dataset_id,
                 persona_uuid=PersonaUUID(str(row.uuid)),
                 persona_context=persona_ctx,
                 case_id="",

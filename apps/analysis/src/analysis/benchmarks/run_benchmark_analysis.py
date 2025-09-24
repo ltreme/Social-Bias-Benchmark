@@ -25,7 +25,6 @@ from analysis.persona.analytics import set_default_theme
 
 def parse_args(argv=None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Analyze benchmark results by demographics.")
-    p.add_argument("--gen-ids", type=int, nargs="+", required=False, help="One or more gen_id values (optional when --dataset-ids is used)")
     p.add_argument("--dataset-ids", type=int, nargs="+", required=False, help="Filter to personas that are members of these dataset ids")
     p.add_argument("--models", type=str, nargs="*", default=None, help="Optional list of model names")
     p.add_argument("--case-ids", type=str, nargs="*", default=None, help="Optional list of case IDs. If omitted, uses all cases.")
@@ -51,7 +50,7 @@ def parse_args(argv=None) -> argparse.Namespace:
         help="Override baseline per attribute as key=value pairs (e.g., gender=male origin_region=Europe religion=Christians)",
     )
     p.add_argument("--weight-by", type=str, nargs="*", default=None, help="Columns to post-stratify by (e.g., gender origin_region)")
-    p.add_argument("--weight-ref-gen", type=int, default=None, help="Reference gen_id distribution for weights")
+    p.add_argument("--weight-ref-dataset", type=int, default=None, help="Reference dataset_id distribution for weights")
     p.add_argument("--weight-target-csv", type=Path, default=None, help="CSV with target shares for weight-by columns (must include column 'share')")
     p.add_argument("--run-ids", type=int, nargs="*", default=None, help="Optional benchmark run ids to include")
     p.add_argument("--rationale", type=str, choices=["on","off"], default=None, help="Filter by include_rationale flag")
@@ -69,7 +68,6 @@ def main(argv=None) -> int:
     args = parse_args(argv)
     set_default_theme()
     cfg = BenchQuery(
-        gen_ids=args.gen_ids,
         dataset_ids=args.dataset_ids,
         model_names=args.models,
         case_ids=args.case_ids,
@@ -82,7 +80,7 @@ def main(argv=None) -> int:
         print("No results for given filters.")
         return 1
 
-    # Build structured output dir: <model(s)>/<gen_ids>/<question|all>
+    # Build structured output dir: <model(s)>/<dataset_id>/<question|all>
     import re, json
     def _sanitize(s: str) -> str:
         return re.sub(r"[^A-Za-z0-9_.-]+", "_", s).strip("_")
@@ -91,8 +89,8 @@ def main(argv=None) -> int:
     if args.models:
         model_part = "+".join(_sanitize(m) for m in args.models)
 
-    # Derive gen_id part from data (works for dataset-filtered runs)
-    gen_part = "gen-" + "-".join(map(str, sorted(set(df["gen_id"]))))
+    # Derive dataset_id part from data
+    dataset_part = "dataset-" + "-".join(map(str, sorted(set(df["dataset_id"]))))
 
     ds_part = None
     if args.dataset_ids:
@@ -110,13 +108,12 @@ def main(argv=None) -> int:
     if args.rationale:
         rat_part = "rat-on" if args.rationale == "on" else "rat-off"
 
-    out = args.output_dir / model_part / (ds_part or gen_part) / (rat_part or "rat-all") / q_part
+    out = args.output_dir / model_part / (ds_part or dataset_part) / (rat_part or "rat-all") / q_part
     out.mkdir(parents=True, exist_ok=True)
     # Persist filters for traceability
     (out / "filters.json").write_text(json.dumps({
         "models": args.models,
-        "gen_ids": sorted(set(df["gen_id"])) ,
-        "dataset_ids": args.dataset_ids,
+        "dataset_ids": sorted(set(df["dataset_id"])) ,
         "case_ids": args.case_ids,
         "alpha": args.alpha,
         "permutations": args.permutations,
@@ -133,8 +130,8 @@ def main(argv=None) -> int:
         if args.weight_target_csv and args.weight_target_csv.exists():
             import pandas as pd
             target_df = pd.read_csv(args.weight_target_csv)
-        elif args.weight_ref_gen is not None:
-            ref_filter = (df["gen_id"] == int(args.weight_ref_gen))
+        elif args.weight_ref_dataset is not None:
+            ref_filter = (df["dataset_id"] == int(args.weight_ref_dataset))
         df = compute_poststrat_weights(df, by=args.weight_by, target=target_df, ref_filter=ref_filter, weight_col="weight")
         weight_col = "weight"
     
@@ -158,13 +155,13 @@ def main(argv=None) -> int:
         pass
     
     save(ax, out / "rating_distribution.png")
-    if len(set(df["gen_id"])) > 1:
+    if len(set(df["dataset_id"])) > 1:
         axg = plot_rating_distribution_by_genid(df)
         try:
-            axg.set_title("Rating distribution by gen_id\n" + context)
+            axg.set_title("Rating distribution by dataset_id\n" + context)
         except Exception:
             pass
-        save(axg, out / "rating_distribution_by_genid.png")
+        save(axg, out / "rating_distribution_by_dataset_id.png")
 
     # Per-category means + CI and deltas for a few key demographics
     categories = [
@@ -311,7 +308,7 @@ def main(argv=None) -> int:
             sig_tables[col] = pd.DataFrame(rows)
     # Text report
     title_bits = []
-    title_bits.append(f"gen_id={','.join(map(str, sorted(set(df['gen_id']))))}")
+    title_bits.append(f"dataset_id={','.join(map(str, sorted(set(df['dataset_id']))))}")
     if args.models:
         title_bits.append(f"models={','.join(args.models)}")
     if args.dataset_ids:
@@ -320,15 +317,14 @@ def main(argv=None) -> int:
         title_bits.append(f"cases={','.join(args.case_ids)}")
     title = "Benchmark Report – " + " | ".join(title_bits)
     method_meta = {
-        "gen_ids": sorted(set(df["gen_id"])),
+        "dataset_ids": sorted(set(df["dataset_id"])),
         "models": args.models or "all",
         "cases": args.case_ids or "all",
-        "dataset_ids": args.dataset_ids or [],
         "rationale": args.rationale,
         "alpha": args.alpha,
         "permutations": args.permutations,
         "weight_by": args.weight_by or [],
-        "weight_ref_gen": args.weight_ref_gen,
+        "weight_ref_dataset": args.weight_ref_dataset,
         "weight_target_csv": str(args.weight_target_csv) if args.weight_target_csv else None,
         "forest_min_n": args.forest_min_n,
         "baselines": baseline_map if 'baseline_map' in locals() else {},

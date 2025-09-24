@@ -15,7 +15,7 @@ import os
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Run primary bias benchmark pipeline.")
-    p.add_argument("--gen-id", type=int, required=False, help="Persona generation run id (ignored when --dataset-id is set)")
+    p.add_argument("--gen-id", type=int, required=False, help="DEPRECATED: Use --dataset-id instead. Persona generation run id (ignored when --dataset-id is set)")
     p.add_argument("--dataset-id", type=int, required=False, help="Use personas from a Dataset (DatasetPersona membership)")
     # Optional: override the system prompt preamble
     p.add_argument("--system-prompt", type=str, help="Override system prompt/preamble")
@@ -43,7 +43,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # Persona + Question repositories
     from benchmark.repository.persona_repository import FullPersonaRepository, FullPersonaRepositoryByDataset
-    from benchmark.repository.question import CaseRepository
+    from benchmark.repository.case import CaseRepository
 
     if args.case_file:
         if not args.case_file.endswith(".csv") or not os.path.isfile(args.case_file):
@@ -88,57 +88,29 @@ def main(argv: list[str] | None = None) -> int:
     # Instantiate persona repo after model_name is known so we can filter attributes by model
     persona_repo = FullPersonaRepository(model_name=model_name)
     persona_count_override = None
-    use_gen_id = args.gen_id
     if args.dataset_id is not None:
         # Switch to dataset-backed repo
         persona_repo = FullPersonaRepositoryByDataset(dataset_id=int(args.dataset_id), model_name=model_name)
-        # Resolve gen_id from Dataset (all members originate from same gen_id in our builders)
         try:
-            from shared.storage.models import DatasetPersona, Dataset, Persona as _P
-            from shared.storage.db import get_db
-            _ = get_db()
-            ds = Dataset.get_by_id(int(args.dataset_id))
-            use_gen_id = None
-            # Prefer the FK if present
-            if getattr(ds, 'gen_id', None):
-                try:
-                    use_gen_id = int(getattr(ds.gen_id, 'gen_id', ds.gen_id))
-                except Exception:
-                    pass
-            # Fallback: derive from first member persona
-            if use_gen_id is None:
-                use_gen_id = (_P
-                            .select(_P.gen_id)
-                            .join(DatasetPersona, on=(DatasetPersona.persona == _P.uuid))
-                            .where(DatasetPersona.dataset == int(args.dataset_id))
-                            .limit(1)
-                            .scalar())
-                if use_gen_id is not None:
-                    use_gen_id = int(use_gen_id)
-            # Final fallback to provided --gen-id
-            if use_gen_id is None:
-                use_gen_id = args.gen_id
-            persona_count_override = DatasetPersona.select().where(DatasetPersona.dataset == int(args.dataset_id)).count()
+            from shared.storage.models import DatasetPersona
+            persona_count_override = DatasetPersona.select().where(DatasetPersona.dataset_id == int(args.dataset_id)).count()
         except Exception as e:
-            print(f"[warn] could not resolve dataset metadata: {e}", file=sys.stderr)
+            print(f"[warn] could not count personas in dataset: {e}", file=sys.stderr)
 
     persist = BenchPersisterPrint() if args.persist == "print" else BenchPersisterPeewee()
 
     # Create a BenchmarkRun record to capture parameters for traceability
     from shared.storage import models as dbm
     try:
+        # Get or create model entry
+        model_entry = dbm.Model.get_or_create(name=model_name)[0]
         bench_run = dbm.BenchmarkRun.create(
-            gen_id=use_gen_id,
-            llm_kind=args.llm,
-            model_name=model_name,
+            dataset_id=args.dataset_id,
+            model_id=model_entry.id,
             batch_size=args.batch_size,
-            max_new_tokens=args.max_new_tokens,
             max_attempts=args.max_attempts,
-            template_version="v1",
             include_rationale=include_rationale,
             system_prompt=args.system_prompt,
-            case_file=args.case_file,
-            persist_kind=args.persist,
         )
         benchmark_run_id = bench_run.id
     except Exception as e:
@@ -146,7 +118,7 @@ def main(argv: list[str] | None = None) -> int:
         benchmark_run_id = None  # still run pipeline
 
     run_benchmark_pipeline(
-        gen_id=use_gen_id if use_gen_id is not None else 0,
+        dataset_id=args.dataset_id,
         question_repo=case_repo,
         persona_repo=persona_repo,
         prompt_factory=prompt_factory,

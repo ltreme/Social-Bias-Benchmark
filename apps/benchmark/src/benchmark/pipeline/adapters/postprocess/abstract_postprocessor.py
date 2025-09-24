@@ -24,7 +24,7 @@ class AbstractPostProcessor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def build_ok(self, res: LLMResult, data: Any, raw_text: str):
+    def build_ok(self, res: LLMResult, data: Any, raw_text: str, attr_generation_run_id: int | None = None):
         raise NotImplementedError
 
     @abstractmethod
@@ -43,7 +43,7 @@ class AbstractPostProcessor(ABC):
             t = strip_thinking_blocks(t)
         return t.strip()
 
-    def decide(self, res: LLMResult):
+    def decide(self, res: LLMResult, attr_generation_run_id: int | None = None):
         spec = res.spec
         text = self.sanitize(res.raw_text or "")
 
@@ -61,7 +61,7 @@ class AbstractPostProcessor(ABC):
 
         if isinstance(data, (dict, list)):
             try:
-                return self.build_ok(res, data, text)
+                return self.build_ok(res, data, text, attr_generation_run_id)
             except Exception as e:
                 print(f"[{self.__class__.__name__}] validation_error={type(e).__name__}")
 

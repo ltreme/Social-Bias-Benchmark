@@ -13,7 +13,7 @@ from benchmark.pipeline.adapters.llm import (
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Run preprocessing pipeline.")
-    p.add_argument("--gen-id", type=int, required=False, help="Persona generation run id (ignored when --dataset-id is set)")
+    p.add_argument("--gen-id", type=int, required=False, help="DEPRECATED: Use --dataset-id instead. Persona generation run id (ignored when --dataset-id is set)")
     p.add_argument("--dataset-id", type=int, required=False, help="Run only for personas in the given Dataset")
     # Optional: override the system prompt preamble
     p.add_argument("--system-prompt", type=str, help="Override system prompt/preamble")
@@ -39,36 +39,15 @@ def main(argv: list[str] | None = None) -> int:
     # Persona source from shared
     from benchmark.repository.persona_repository import PersonaRepository, PersonaRepositoryByDataset
     persona_repo = PersonaRepository()
-    use_gen_id = args.gen_id
     total_override = None
     if args.dataset_id is not None:
         # Stream only personas in dataset
         persona_repo = PersonaRepositoryByDataset(dataset_id=int(args.dataset_id))
         try:
-            from shared.storage.models import Dataset, DatasetPersona, Persona as _P
-            from shared.storage.db import get_db
-            _ = get_db()
-            ds = Dataset.get_by_id(int(args.dataset_id))
-            use_gen_id = None
-            if getattr(ds, 'gen_id', None):
-                try:
-                    use_gen_id = int(getattr(ds.gen_id, 'gen_id', ds.gen_id))
-                except Exception:
-                    pass
-            if use_gen_id is None:
-                use_gen_id = (_P
-                              .select(_P.gen_id)
-                              .join(DatasetPersona, on=(DatasetPersona.persona == _P.uuid))
-                              .where(DatasetPersona.dataset == int(args.dataset_id))
-                              .limit(1)
-                              .scalar())
-                if use_gen_id is not None:
-                    use_gen_id = int(use_gen_id)
-            if use_gen_id is None:
-                use_gen_id = args.gen_id
-            total_override = DatasetPersona.select().where(DatasetPersona.dataset == int(args.dataset_id)).count()
+            from shared.storage.models import DatasetPersona
+            total_override = DatasetPersona.select().where(DatasetPersona.dataset_id == int(args.dataset_id)).count()
         except Exception as e:
-            print(f"[warn] could not resolve dataset metadata: {e}", file=sys.stderr)
+            print(f"[warn] could not count personas in dataset: {e}", file=sys.stderr)
 
     prompt_factory = AttributePromptFactory(
         max_new_tokens=args.max_new_tokens,
@@ -102,24 +81,24 @@ def main(argv: list[str] | None = None) -> int:
 
     # Record run parameters for attribute generation
     from shared.storage import models as dbm
+    attr_generation_run_id = None
     try:
-        dbm.AttrGenerationRun.create(
-            gen_id=use_gen_id,
-            llm_kind=args.llm,
-            model_name=model_name,
+        # Get or create model entry
+        model_entry = dbm.Model.get_or_create(name=model_name)[0]
+        run_entry = dbm.AttrGenerationRun.create(
+            dataset_id=args.dataset_id,
+            model_id=model_entry.id,
             batch_size=args.batch_size,
             max_new_tokens=args.max_new_tokens,
             max_attempts=args.max_attempts,
-            persist_buffer_size=args.persist_buffer_size,
-            template_version="v1",
             system_prompt=args.system_prompt,
-            persist_kind=args.persist,
         )
+        attr_generation_run_id = run_entry.id
     except Exception as e:
         print(f"[warn] failed to record AttrGenerationRun: {e}", file=sys.stderr)
 
     run_attr_gen_pipeline(
-        gen_id=use_gen_id if use_gen_id is not None else 0,
+        dataset_id=args.dataset_id,
         persona_repo=persona_repo,
         prompt_factory=prompt_factory,
         llm=llm,
@@ -129,6 +108,7 @@ def main(argv: list[str] | None = None) -> int:
         max_attempts=args.max_attempts,
         persist_buffer_size=args.persist_buffer_size,
         total_personas_override=total_override,
+        attr_generation_run_id=attr_generation_run_id,
     )
     return 0
 

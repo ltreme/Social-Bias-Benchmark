@@ -11,3 +11,20 @@ export async function fetchMetrics(params: { dataset_ids?: number[]; models?: st
     const res = await api.get<BenchmarkDistribution>('/metrics/benchmark-distribution', { params });
     return res.data;
 }
+
+export async function fetchModels() {
+    const res = await api.get<string[]>('/models');
+    return res.data;
+}
+
+export type Dataset = {
+    id: number;
+    name: string;
+    kind: string;
+    size: number;
+};
+
+export async function fetchDatasets() {
+    const res = await api.get<Dataset[]>('/datasets');
+    return res.data;
+}

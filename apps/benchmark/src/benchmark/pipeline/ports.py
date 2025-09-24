@@ -8,7 +8,7 @@ PersonaUUID = NewType("PersonaUUID", str)
 
 @dataclass(frozen=True, slots=True)
 class WorkItem:
-    gen_id: int
+    dataset_id: int
     persona_uuid: PersonaUUID
     persona_minimal: dict  # only fields needed for prompting
 
@@ -35,6 +35,7 @@ class AttributeDto:
     model_name: str
     gen_time_ms: int
     attempt: int
+    attr_generation_run_id: int | None = None
 
 @dataclass(frozen=True, slots=True)
 class FailureDto:
@@ -44,6 +45,7 @@ class FailureDto:
     error_kind: str
     raw_text_snippet: str
     prompt_snippet: str
+    model_id: int | None = None
 
 class DecisionKind(Enum):
     OK = "ok"
@@ -70,7 +72,7 @@ class FailDecision:
 Decision = Union[OkDecision, RetryDecision, FailDecision]
 
 class PersonaRepo(Protocol):
-    def iter_personas(self, gen_id: int) -> Iterable[WorkItem]: ...
+    def iter_personas(self, dataset_id: int) -> Iterable[WorkItem]: ...
 
 class PromptFactory(Protocol):
     def prompts(self, items: Iterable[WorkItem], *, model_name: str,

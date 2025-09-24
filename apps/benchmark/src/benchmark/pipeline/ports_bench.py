@@ -8,7 +8,7 @@ PersonaUUID = NewType("PersonaUUID", str)
 # ---- Work + Prompt/Result specs (compatible with LLM adapters) ----
 @dataclass(frozen=True, slots=True)
 class BenchWorkItem:
-    gen_id: int
+    dataset_id: int
     persona_uuid: PersonaUUID
     persona_context: dict  # enriched fields used for prompting
     case_id: str
@@ -73,7 +73,7 @@ Decision = Union[OkDecision, RetryDecision, FailDecision]
 
 # ---- Ports ----
 class BenchPersonaRepo(Protocol):
-    def iter_personas(self, gen_id: int) -> Iterable[BenchWorkItem]: ...
+    def iter_personas(self, dataset_id: int) -> Iterable[BenchWorkItem]: ...
 
 
 class BenchPromptFactory(Protocol):

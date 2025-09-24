@@ -15,6 +15,7 @@ from shared.storage.models import (
     BenchmarkResult,
     BenchmarkRun,
     CounterfactualLink,
+    Model,
 )
 
 
@@ -51,7 +52,7 @@ def main(argv=None) -> int:
     db = get_db()
 
     # Fetch links for this dataset (source <-> cf)
-    q_links = CounterfactualLink.select().where(CounterfactualLink.dataset == int(args.dataset_id))
+    q_links = CounterfactualLink.select().where(CounterfactualLink.dataset_id == int(args.dataset_id))
     if args.attribute:
         q_links = q_links.where(CounterfactualLink.changed_attribute == args.attribute)
     links: List[CounterfactualLink] = list(q_links)
@@ -64,35 +65,35 @@ def main(argv=None) -> int:
 
     # Build filters
     br_src = BenchmarkResult.select(
-        BenchmarkResult.persona_uuid,
+        BenchmarkResult.persona_uuid_id.alias("persona_uuid"),
         BenchmarkResult.case_id,
-        BenchmarkResult.model_name,
+        Model.name.alias("model_name"),
         BenchmarkResult.rating,
-        BenchmarkResult.benchmark_run.alias("run_id"),
+        BenchmarkResult.benchmark_run_id.alias("run_id"),
         BenchmarkRun.include_rationale,
-    ).join(BenchmarkRun, on=(BenchmarkResult.benchmark_run == BenchmarkRun.id)).where(
-        BenchmarkResult.persona_uuid.in_(list(src_ids))
+    ).join(BenchmarkRun, on=(BenchmarkResult.benchmark_run_id == BenchmarkRun.id)).join(Model, on=(BenchmarkRun.model_id == Model.id)).where(
+        BenchmarkResult.persona_uuid_id.in_(list(src_ids))
     )
     br_cf = BenchmarkResult.select(
-        BenchmarkResult.persona_uuid,
+        BenchmarkResult.persona_uuid_id.alias("persona_uuid"),
         BenchmarkResult.case_id,
-        BenchmarkResult.model_name,
+        Model.name.alias("model_name"),
         BenchmarkResult.rating,
-        BenchmarkResult.benchmark_run.alias("run_id"),
+        BenchmarkResult.benchmark_run_id.alias("run_id"),
         BenchmarkRun.include_rationale,
-    ).join(BenchmarkRun, on=(BenchmarkResult.benchmark_run == BenchmarkRun.id)).where(
-        BenchmarkResult.persona_uuid.in_(list(cf_ids))
+    ).join(BenchmarkRun, on=(BenchmarkResult.benchmark_run_id == BenchmarkRun.id)).join(Model, on=(BenchmarkRun.model_id == Model.id)).where(
+        BenchmarkResult.persona_uuid_id.in_(list(cf_ids))
     )
 
     if args.models:
-        br_src = br_src.where(BenchmarkResult.model_name.in_(list(args.models)))
-        br_cf = br_cf.where(BenchmarkResult.model_name.in_(list(args.models)))
+        br_src = br_src.where(Model.name.in_(list(args.models)))
+        br_cf = br_cf.where(Model.name.in_(list(args.models)))
     if args.case_ids:
         br_src = br_src.where(BenchmarkResult.case_id.in_(list(args.case_ids)))
         br_cf = br_cf.where(BenchmarkResult.case_id.in_(list(args.case_ids)))
     if args.run_ids:
-        br_src = br_src.where(BenchmarkResult.benchmark_run.in_(list(args.run_ids)))
-        br_cf = br_cf.where(BenchmarkResult.benchmark_run.in_(list(args.run_ids)))
+        br_src = br_src.where(BenchmarkResult.benchmark_run_id.in_(list(args.run_ids)))
+        br_cf = br_cf.where(BenchmarkResult.benchmark_run_id.in_(list(args.run_ids)))
     if args.rationale is not None:
         want = True if args.rationale == 'on' else False
         br_src = br_src.where(BenchmarkRun.include_rationale == want)

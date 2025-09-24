@@ -22,6 +22,7 @@ from shared.storage.models import (
     Persona,
     Country,
     CounterfactualLink,
+    Model,
 )
 
 from analysis.benchmarks.analytics import BenchQuery, load_benchmark_dataframe
@@ -68,7 +69,7 @@ def list_datasets() -> List[DatasetOut]:
     ensure_db()
     out: List[DatasetOut] = []
     for ds in Dataset.select():
-        n = DatasetPersona.select().where(DatasetPersona.dataset == ds.id).count()
+        n = DatasetPersona.select().where(DatasetPersona.dataset_id == ds.id).count()
         out.append(DatasetOut(id=ds.id, name=ds.name, kind=ds.kind, size=n))
     return out
 
@@ -77,7 +78,7 @@ class RunOut(BaseModel):
     id: int
     model_name: str
     include_rationale: bool
-    gen_id: Optional[int]
+    dataset_id: Optional[int]
     created_at: str
 
 
@@ -85,13 +86,13 @@ class RunOut(BaseModel):
 def list_runs() -> List[RunOut]:
     ensure_db()
     out: List[RunOut] = []
-    for r in BenchmarkRun.select().order_by(BenchmarkRun.id.desc()):
+    for r in BenchmarkRun.select().join(Model).order_by(BenchmarkRun.id.desc()):
         out.append(
             RunOut(
                 id=r.id,
-                model_name=r.model_name,
+                model_name=r.model_id.name,
                 include_rationale=bool(r.include_rationale),
-                gen_id=int(r.gen_id.gen_id) if r.gen_id else None,
+                dataset_id=int(r.dataset_id.id) if r.dataset_id else None,
                 created_at=str(r.created_at),
             )
         )
@@ -108,7 +109,6 @@ def benchmark_distribution(
     """Return rating distribution and simple per-category means."""
     ensure_db()
     cfg = BenchQuery(
-        gen_ids=None,
         dataset_ids=tuple(dataset_ids) if dataset_ids else None,
         model_names=tuple(models) if models else None,
         case_ids=tuple(case_ids) if case_ids else None,
@@ -152,6 +152,11 @@ def benchmark_distribution(
         "hist": {"bins": cats, "shares": shares},
         "per_category": per_category,
     }
+    
+@app.get("/models")
+def list_models() -> List[str]:
+    ensure_db()
+    return [m.name for m in Model.select()]
 
 
 @app.get("/metrics/cf-deltas")
@@ -165,7 +170,8 @@ def counterfactual_deltas(
     """Return paired source->cf deltas summary for a counterfactual dataset."""
     ensure_db()
     # Collect links
-    links_q = CounterfactualLink.select().where(CounterfactualLink.dataset == dataset_id)
+    links_q = CounterfactualLink.select()
+    links_q = links_q.where(CounterfactualLink.dataset_id == dataset_id)
     if attribute:
         links_q = links_q.where(CounterfactualLink.changed_attribute == attribute)
     links = list(links_q)
@@ -176,28 +182,28 @@ def counterfactual_deltas(
     cf_ids = {str(l.cf_persona_id) for l in links}
 
     br_src = BenchmarkResult.select(
-        BenchmarkResult.persona_uuid,
+        BenchmarkResult.persona_uuid_id.alias('persona_uuid'),
         BenchmarkResult.case_id,
-        BenchmarkResult.model_name,
+        Model.name.alias('model_name'),
         BenchmarkResult.rating,
-        BenchmarkResult.benchmark_run.alias("run_id"),
+        BenchmarkResult.benchmark_run_id.alias('run_id'),
         BenchmarkRun.include_rationale,
-    ).join(BenchmarkRun, on=(BenchmarkResult.benchmark_run == BenchmarkRun.id)).where(
-        BenchmarkResult.persona_uuid.in_(list(src_ids))
+    ).join(BenchmarkRun, on=(BenchmarkResult.benchmark_run_id == BenchmarkRun.id)).join(Model, on=(BenchmarkRun.model_id == Model.id)).where(
+        BenchmarkResult.persona_uuid_id.in_(list(src_ids))
     )
     br_cf = BenchmarkResult.select(
-        BenchmarkResult.persona_uuid,
+        BenchmarkResult.persona_uuid_id.alias('persona_uuid'),
         BenchmarkResult.case_id,
-        BenchmarkResult.model_name,
+        Model.name.alias('model_name'),
         BenchmarkResult.rating,
-        BenchmarkResult.benchmark_run.alias("run_id"),
+        BenchmarkResult.benchmark_run_id.alias('run_id'),
         BenchmarkRun.include_rationale,
-    ).join(BenchmarkRun, on=(BenchmarkResult.benchmark_run == BenchmarkRun.id)).where(
-        BenchmarkResult.persona_uuid.in_(list(cf_ids))
+    ).join(BenchmarkRun, on=(BenchmarkResult.benchmark_run_id == BenchmarkRun.id)).join(Model, on=(BenchmarkRun.model_id == Model.id)).where(
+        BenchmarkResult.persona_uuid_id.in_(list(cf_ids))
     )
     if models:
-        br_src = br_src.where(BenchmarkResult.model_name.in_(list(models)))
-        br_cf = br_cf.where(BenchmarkResult.model_name.in_(list(models)))
+        br_src = br_src.where(Model.name.in_(list(models)))
+        br_cf = br_cf.where(Model.name.in_(list(models)))
     if case_ids:
         br_src = br_src.where(BenchmarkResult.case_id.in_(list(case_ids)))
         br_cf = br_cf.where(BenchmarkResult.case_id.in_(list(case_ids)))
@@ -217,12 +223,12 @@ def counterfactual_deltas(
     deltas: List[float] = []
     per_dir: Dict[str, List[float]] = {}
     for l in links:
-        src_uuid = str(l.source_persona_id)
-        cf_uuid = str(l.cf_persona_id)
-        for (p, case_id, run_id, model), y_src in src_map.items():
+        src_uuid = str(l.source_persona)
+        cf_uuid = str(l.cf_persona)
+        for (p, case, run, model), y_src in src_map.items():
             if p != src_uuid:
                 continue
-            y_cf = cf_map.get((cf_uuid, case_id, run_id, model))
+            y_cf = cf_map.get((cf_uuid, case, run, model))
             if y_cf is None:
                 continue
             d = float(y_cf) - float(y_src)

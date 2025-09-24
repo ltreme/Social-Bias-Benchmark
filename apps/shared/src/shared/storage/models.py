@@ -24,31 +24,17 @@ def uuid_default() -> uuid.UUID:
 # == Main domain tables  ==
 # =========================
 
-class PersonaGeneratorRun(BaseModel):
-    gen_id = pw.AutoField(primary_key=True)  # incremental run id
+class Model(BaseModel):
+    id = pw.AutoField()
+    name = pw.CharField(unique=True, null=False)
+    min_vram = pw.IntegerField(null=True, constraints=[pw.Check('min_vram IS NULL OR min_vram >= 0')])
+    vllm_serve_cmd = pw.TextField(null=True)
     created_at = pw.DateTimeField(default=utcnow, null=False)
 
-    age_min = pw.IntegerField(null=True)
-    age_max = pw.IntegerField(null=True)
-    age_temperature = pw.FloatField(null=True)
-
-    education_exclude = pw.TextField(null=True)
-    education_temperature = pw.FloatField(null=True)
-
-    gender_exclude = pw.TextField(null=True)
-    gender_temperature = pw.FloatField(null=True)
-
-    marriage_status_exclude = pw.TextField(null=True)
-    marriage_status_temperature = pw.FloatField(null=True)
-
-    origin_exclude = pw.TextField(null=True)
-
-    religion_exclude = pw.TextField(null=True)
-    religion_temperature = pw.FloatField(null=True)
-
-    sexuality_exclude = pw.TextField(null=True)
-    sexuality_temperature = pw.FloatField(null=True)
-
+class Case(BaseModel):
+    id = pw.CharField(primary_key=True)
+    adjective = pw.CharField(null=False)
+    case_template = pw.TextField(null=True)
 
 class Country(BaseModel):
     id = pw.AutoField()
@@ -64,14 +50,12 @@ class Country(BaseModel):
 class Persona(BaseModel):
     # UUID primary key, stable across DBs
     uuid = pw.UUIDField(primary_key=True, default=uuid_default)
-    # FK to generation run (explicitly referencing its PK field)
-    gen_id = pw.ForeignKeyField(PersonaGeneratorRun, field=PersonaGeneratorRun.gen_id, backref="personas", on_delete="CASCADE")
     created_at = pw.DateTimeField(default=utcnow, null=False)
 
     # RawPersonaDto-like attributes
     age = pw.IntegerField(null=True)
     gender = pw.CharField(null=True)
-    origin = pw.ForeignKeyField(Country, field=Country.id, backref="personas", null=True, on_delete="SET NULL")
+    origin_id = pw.ForeignKeyField(Country, field=Country.id, backref="personas", null=True, on_delete="SET NULL")
     education = pw.CharField(null=True)
     occupation = pw.CharField(null=True)
     marriage_status = pw.CharField(null=True)
@@ -85,38 +69,32 @@ class Persona(BaseModel):
             (("age", "gender"), False),
         )
 
-class AdditionalPersonaAttributes(BaseModel):
-    id = pw.AutoField()
-    persona_uuid = pw.ForeignKeyField(
-        Persona, field=Persona.uuid, backref="extra_attributes", on_delete="CASCADE"
-    )
-    model_name = pw.CharField(null=False)
-
-    # rename: gen_time_seconds -> gen_time_ms  (präziser, passt zum DTO)
-    gen_time_ms = pw.IntegerField(null=False)
-
-    # neu: attempt (für Nachverfolgung von Retries)
-    attempt = pw.IntegerField(null=False, default=1)
-
-    attribute_key = pw.CharField(null=False)
-    value = pw.TextField(null=False)
-    created_at = pw.DateTimeField(default=utcnow, null=False)
-
-    class Meta:
-        indexes = (
-            # Unique per attribute per model to allow multiple model-specific enrichments
-            (("persona_uuid", "attribute_key", "model_name"), True),
-        )
-
 class FailLog(BaseModel):
     id = pw.AutoField()
-    persona_uuid = pw.ForeignKeyField(Persona, field=Persona.uuid, on_delete="CASCADE", null=True)
-    model_name = pw.CharField(null=True)
+    persona_uuid_id = pw.ForeignKeyField(Persona, field=Persona.uuid, on_delete="CASCADE", null=True)
+    model_id = pw.ForeignKeyField(Model, on_delete="SET NULL", null=True)
     attempt = pw.IntegerField(null=True)
     error_kind = pw.CharField(null=False)
     raw_text_snippet = pw.TextField(null=True)
     prompt_snippet = pw.TextField(null=True)
     created_at = pw.DateTimeField(default=utcnow, null=False)
+
+# ==============================
+# == Dataset registry         ==
+# ==============================
+
+class Dataset(BaseModel):
+    id = pw.AutoField()
+    name = pw.CharField(unique=True, null=False)
+    kind = pw.CharField(null=False)  # 'pool' | 'balanced' | 'counterfactual' | 'reality'
+    created_at = pw.DateTimeField(default=utcnow, null=False)
+
+    # Optional seed + config json for reproducibility
+    seed = pw.IntegerField(null=True)
+    config_json = pw.TextField(null=True)
+
+    # Optional source linkage (e.g. balanced from pool, cf from balanced)
+    source_dataset_id = pw.ForeignKeyField('self', null=True, backref='derived', on_delete="SET NULL")
 
 # ==============================
 # == Run tracking (new)       ==
@@ -126,25 +104,21 @@ class BenchmarkRun(BaseModel):
     id = pw.AutoField()
     created_at = pw.DateTimeField(default=utcnow, null=False)
 
-    # Link to the persona generation batch the run used
-    gen_id = pw.ForeignKeyField(PersonaGeneratorRun, field=PersonaGeneratorRun.gen_id, backref="benchmark_runs", on_delete="CASCADE")
+    # Link to the dataset the run used
+    dataset_id = pw.ForeignKeyField(Dataset, backref="benchmark_runs", on_delete="CASCADE")
+
+    # Link to the model
+    model_id = pw.ForeignKeyField(Model, backref="benchmark_runs", on_delete="RESTRICT")
 
     # Core parameters captured from CLI
-    llm_kind = pw.CharField(null=False)              # e.g., 'hf' | 'fake'
-    model_name = pw.CharField(null=False)            # HF model or identifier
     batch_size = pw.IntegerField(null=True)
-    max_new_tokens = pw.IntegerField(null=True)
     max_attempts = pw.IntegerField(null=True)
-    template_version = pw.CharField(null=False, default="v1")
     include_rationale = pw.BooleanField(null=False, default=True)
     system_prompt = pw.TextField(null=True)
-    # path to CSV; keep DB column name for compatibility
-    case_file = pw.TextField(null=True, column_name="question_file")
-    persist_kind = pw.CharField(null=True)           # 'print' | 'peewee'
 
     class Meta:
         indexes = (
-            (("gen_id", "created_at"), False),
+            (("dataset_id", "created_at"), False),
         )
 
 
@@ -152,38 +126,44 @@ class AttrGenerationRun(BaseModel):
     id = pw.AutoField()
     created_at = pw.DateTimeField(default=utcnow, null=False)
 
-    gen_id = pw.ForeignKeyField(PersonaGeneratorRun, field=PersonaGeneratorRun.gen_id, backref="attrgen_runs", on_delete="CASCADE")
+    dataset_id = pw.ForeignKeyField(Dataset, backref="attrgen_runs", on_delete="CASCADE", null=True)
 
     # Parameters for attribute generation CLI
-    llm_kind = pw.CharField(null=False)
-    model_name = pw.CharField(null=False)
+    model_id = pw.ForeignKeyField(Model, backref="attrgen_runs", on_delete="RESTRICT")
     batch_size = pw.IntegerField(null=True)
     max_new_tokens = pw.IntegerField(null=True)
     max_attempts = pw.IntegerField(null=True)
-    persist_buffer_size = pw.IntegerField(null=True)
-    template_version = pw.CharField(null=False, default="v1")
     system_prompt = pw.TextField(null=True)
-    persist_kind = pw.CharField(null=True)
 
-class BenchmarkResult(BaseModel):
+class AdditionalPersonaAttributes(BaseModel):
     id = pw.AutoField()
-    persona_uuid = pw.ForeignKeyField(Persona, field=Persona.uuid, backref="benchmark_results", on_delete="CASCADE")
-    # identifier of the case/adjective row; keep column name for compatibility
-    case_id = pw.CharField(null=False, column_name="question_uuid")
-    model_name = pw.CharField(null=False)
-    template_version = pw.CharField(null=False)
-    # Link to a concrete benchmark run/configuration (nullable for backwards-compat)
-    benchmark_run = pw.ForeignKeyField(BenchmarkRun, backref="results", on_delete="CASCADE", null=True)
-    gen_time_ms = pw.IntegerField(null=False)
-    attempt = pw.IntegerField(null=False, default=1)
-    answer_raw = pw.TextField(null=False)
-    rating = pw.IntegerField(null=True)  # Likert 1-7 when parsed
+    persona_uuid_id = pw.ForeignKeyField(Persona, field=Persona.uuid, backref="extra_attributes", on_delete="CASCADE")
+    attr_generation_run_id = pw.ForeignKeyField(AttrGenerationRun, backref="extra_attributes", on_delete="SET NULL", null=True)
+    attempt = pw.IntegerField(null=False, default=1, constraints=[pw.Check('attempt >= 1')])
+    attribute_key = pw.CharField(null=False)
+    value = pw.TextField(null=False)
     created_at = pw.DateTimeField(default=utcnow, null=False)
 
     class Meta:
         indexes = (
-            # Uniqueness is now per (persona, case, run)
-            (("persona_uuid", "case_id", "benchmark_run"), True),
+            # Unique per attribute per persona (allowing multiple runs)
+            (("persona_uuid_id", "attribute_key"), True),
+        )
+
+class BenchmarkResult(BaseModel):
+    id = pw.AutoField()
+    persona_uuid_id = pw.ForeignKeyField(Persona, field=Persona.uuid, backref="benchmark_results", on_delete="CASCADE")
+    case_id = pw.ForeignKeyField(Case, field=Case.id, backref="benchmark_results", on_delete="RESTRICT")
+    benchmark_run_id = pw.ForeignKeyField(BenchmarkRun, backref="results", on_delete="CASCADE")
+    attempt = pw.IntegerField(null=False, default=1, constraints=[pw.Check('attempt >= 1')])
+    answer_raw = pw.TextField(null=False)
+    rating = pw.IntegerField(null=True, constraints=[pw.Check('rating BETWEEN 1 AND 5')])
+    created_at = pw.DateTimeField(default=utcnow, null=False)
+
+    class Meta:
+        indexes = (
+            # Uniqueness is now per (benchmark_run, persona, case)
+            (("benchmark_run_id", "persona_uuid_id", "case_id"), True),
         )
 
 
@@ -277,41 +257,24 @@ class Occupation(BaseModel):
 # == Dataset registry         ==
 # ==============================
 
-class Dataset(BaseModel):
-    id = pw.AutoField()
-    name = pw.CharField(unique=True, null=False)
-    kind = pw.CharField(null=False)  # 'pool' | 'balanced' | 'counterfactual' | 'reality'
-    created_at = pw.DateTimeField(default=utcnow, null=False)
-
-    # Optional seed + config json for reproducibility
-    seed = pw.IntegerField(null=True)
-    config_json = pw.TextField(null=True)
-
-    # Optional source linkage (e.g. balanced from pool, cf from balanced)
-    source_dataset = pw.ForeignKeyField('self', null=True, backref='derived', on_delete="SET NULL")
-
-    # Optional linkage to generator run for pools or to synthetic runs
-    gen_id = pw.ForeignKeyField(PersonaGeneratorRun, field=PersonaGeneratorRun.gen_id, null=True, backref='datasets', on_delete="SET NULL")
-
-
 class DatasetPersona(BaseModel):
     id = pw.AutoField()
-    dataset = pw.ForeignKeyField(Dataset, backref="members", on_delete="CASCADE")
-    persona = pw.ForeignKeyField(Persona, field=Persona.uuid, backref="datasets", on_delete="CASCADE")
+    dataset_id = pw.ForeignKeyField(Dataset, backref="members", on_delete="CASCADE")
+    persona_id = pw.ForeignKeyField(Persona, field=Persona.uuid, backref="datasets", on_delete="CASCADE")
     role = pw.CharField(null=True)  # optional: 'source' | 'counterfactual'
     created_at = pw.DateTimeField(default=utcnow, null=False)
 
     class Meta:
         indexes = (
-            (("dataset", "persona"), True),  # unique membership
+            (("dataset_id", "persona_id"), True),  # unique membership
         )
 
 
 class CounterfactualLink(BaseModel):
     id = pw.AutoField()
-    dataset = pw.ForeignKeyField(Dataset, backref="counterfactual_links", on_delete="CASCADE")
-    source_persona = pw.ForeignKeyField(Persona, field=Persona.uuid, backref="counterfactual_sources", on_delete="CASCADE")
-    cf_persona = pw.ForeignKeyField(Persona, field=Persona.uuid, backref="counterfactuals", on_delete="CASCADE")
+    dataset_id = pw.ForeignKeyField(Dataset, backref="counterfactual_links", on_delete="CASCADE")
+    source_persona_id = pw.ForeignKeyField(Persona, field=Persona.uuid, backref="counterfactual_sources", on_delete="CASCADE")
+    cf_persona_id = pw.ForeignKeyField(Persona, field=Persona.uuid, backref="counterfactuals", on_delete="CASCADE")
     changed_attribute = pw.CharField(null=False)  # e.g., 'gender' | 'age' | 'origin' | 'religion' | 'sexuality'
     from_value = pw.CharField(null=True)
     to_value = pw.CharField(null=True)
@@ -320,23 +283,22 @@ class CounterfactualLink(BaseModel):
 
     class Meta:
         indexes = (
-            (("dataset", "cf_persona"), True),
+            (("dataset_id", "cf_persona_id"), True),
         )
 
 # ---------- Table creation helper ----------
 ALL_MODELS = [
-    PersonaGeneratorRun,
+    Model,
+    Case,
     Country,
     Persona,
-    AdditionalPersonaAttributes,
     Dataset,
     DatasetPersona,
     CounterfactualLink,
-    # Dataset registry
-    # (added below in file to keep ordering readable)
     BenchmarkRun,
-    BenchmarkResult,
     AttrGenerationRun,
+    AdditionalPersonaAttributes,
+    BenchmarkResult,
     ForeignersPerCountry,
     ReligionPerCountry,
     Age,
