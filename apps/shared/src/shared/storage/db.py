@@ -44,21 +44,17 @@ def init_database(db_url: str | None = None) -> pw.Database:
 
 
 def create_tables() -> None:
-    """
-    Import models lazily to avoid circular imports and create tables.
-    """
+    """Import models lazily and create tables on the active DB connection."""
     from .models import ALL_MODELS  # local import prevents cycles
-    with db_proxy:
-        db_proxy.create_tables(ALL_MODELS, safe=True)
+    db = get_db()
+    db.create_tables(ALL_MODELS, safe=True)
 
 
 def drop_tables() -> None:
-    """
-    Drop all tables (for testing).
-    """
+    """Drop all tables (for testing)."""
     from .models import ALL_MODELS  # local import prevents cycles
-    with db_proxy:
-        db_proxy.drop_tables(ALL_MODELS, safe=True)
+    db = get_db()
+    db.drop_tables(ALL_MODELS, safe=True)
 
 @contextmanager
 def transaction():

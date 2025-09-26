@@ -1,8 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchRuns, startRun } from './api';
+import { fetchRunDeltas, fetchRunForest, fetchRunMetrics, fetchRuns, startRun, fetchRun } from './api';
 
 export function useRuns(status?: string) {
-    return useQuery({ queryKey: ['runs', status], queryFn: () => fetchRuns(status ? { status } : undefined), refetchInterval: 5000 });
+    return useQuery({ queryKey: ['runs'], queryFn: () => fetchRuns(), refetchInterval: 10000 });
+}
+
+export function useRun(runId: number) {
+    return useQuery({ queryKey: ['run', runId], queryFn: () => fetchRun(runId), enabled: Number.isFinite(runId) });
 }
 
 export function useStartRun() {
@@ -11,4 +15,16 @@ export function useStartRun() {
         mutationFn: startRun,
         onSuccess: () => qc.invalidateQueries({ queryKey: ['runs'] }),
     });
+}
+
+export function useRunMetrics(runId: number) {
+    return useQuery({ queryKey: ['run-metrics', runId], queryFn: () => fetchRunMetrics(runId), enabled: Number.isFinite(runId) });
+}
+
+export function useRunDeltas(runId: number, attribute: string, baseline?: string) {
+    return useQuery({ queryKey: ['run-deltas', runId, attribute, baseline], queryFn: () => fetchRunDeltas(runId, { attribute, baseline }), enabled: Number.isFinite(runId) && !!attribute });
+}
+
+export function useRunForest(runId: number, attribute: string, baseline?: string, target?: string) {
+    return useQuery({ queryKey: ['run-forest', runId, attribute, baseline, target], queryFn: () => fetchRunForest(runId, { attribute, baseline, target, min_n: 1 }), enabled: Number.isFinite(runId) && !!attribute && !!target });
 }

@@ -1,4 +1,5 @@
 import { Button, Card, Group, TextInput, Title } from '@mantine/core';
+import { Link } from '@tanstack/react-router';
 import { useRuns, useStartRun } from './hooks';
 import { DataTable } from '../../components/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -8,16 +9,18 @@ import { useState } from 'react';
 export function RunsPage() {
     const { data = [], isLoading } = useRuns();
     const cols: ColumnDef<Run>[] = [
-        { header: 'ID', accessorKey: 'id' },
+        { header: 'ID', accessorKey: 'id', cell: ({ row }) => (
+            <Link to="/runs/$runId" params={{ runId: String(row.original.id) }}>{row.original.id}</Link>
+        ) },
         { header: 'Model', accessorKey: 'model_name' },
-        { header: 'With Rationale', accessorKey: 'include_rationale' },
-        { header: 'GenID', accessorKey: 'gen_id' },
+        { header: 'Rationale', accessorKey: 'include_rationale' },
+        { header: 'Dataset', accessorKey: 'dataset_id' },
         { header: 'Created', accessorKey: 'created_at' },
     ];
 
     const start = useStartRun();
     const [model, setModel] = useState('Qwen/Qwen2.5-1.5B-Instruct');
-    const [dataset, setDataset] = useState('pool-20250919');
+    const [dataset, setDataset] = useState('');
 
     return (
         <Card>

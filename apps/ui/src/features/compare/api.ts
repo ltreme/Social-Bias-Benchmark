@@ -22,6 +22,9 @@ export type Dataset = {
     name: string;
     kind: string;
     size: number;
+    created_at?: string;
+    seed?: number;
+    config_json?: Record<string, any>;
 };
 
 export async function fetchDatasets() {

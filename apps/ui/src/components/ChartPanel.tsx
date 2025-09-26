@@ -4,13 +4,19 @@ type ChartPanelProps = {
     title?: string;
     data: Partial<Plotly.Data>[];
     layout?: Partial<Plotly.Layout>;
+    height?: number;
 };
 
-export function ChartPanel({ title, data, layout }: ChartPanelProps) {
+export function ChartPanel({ title, data, layout, height }: ChartPanelProps) {
     return (
         <div>
             {title && <h3 style={{ marginBottom: 8 }}>{title}</h3>}
-            <Plot data={data} layout={{ autosize: true, margin: { t: 24 }, ...layout }} style={{ width: '100%', height: '420px' }} useResizeHandler />
+            <Plot
+                data={data}
+                layout={{ autosize: true, margin: { t: 24 }, ...layout }}
+                style={{ width: '100%', height: height ? `${height}px` : '420px' }}
+                useResizeHandler
+            />
         </div>
     );
 }
