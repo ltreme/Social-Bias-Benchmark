@@ -8,6 +8,7 @@ export type Dataset = {
     created_at?: string;
     seed?: number;
     config_json?: Record<string, any>;
+    enriched_percentage?: number;
 };
 
 export type Run = {
@@ -43,5 +44,27 @@ export async function fetchDataset(datasetId: number) {
 
 export async function fetchRunsByDataset(datasetId: number) {
     const res = await api.get<Run[]>(`/datasets/${datasetId}/runs`);
+    return res.data;
+}
+
+export type CreateDatasetResponse = { id: number; name: string };
+
+export async function createPool(body: { n: number; temperature: number; age_from: number; age_to: number; name?: string }) {
+    const res = await api.post<CreateDatasetResponse>('/datasets/generate-pool', body);
+    return res.data;
+}
+
+export async function buildBalanced(body: { dataset_id: number; n: number; seed?: number; name?: string }) {
+    const res = await api.post<CreateDatasetResponse>('/datasets/build-balanced', body);
+    return res.data;
+}
+
+export async function sampleReality(body: { dataset_id: number; n: number; seed?: number; name?: string }) {
+    const res = await api.post<CreateDatasetResponse>('/datasets/sample-reality', body);
+    return res.data;
+}
+
+export async function buildCounterfactuals(body: { dataset_id: number; seed?: number; name?: string }) {
+    const res = await api.post<CreateDatasetResponse>('/datasets/build-counterfactuals', body);
     return res.data;
 }

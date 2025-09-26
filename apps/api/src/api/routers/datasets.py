@@ -7,7 +7,13 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from ..utils import ensure_db
-from shared.storage.models import Dataset, DatasetPersona, Persona, Country
+from shared.storage.models import Dataset, DatasetPersona, Persona, Country, AttrGenerationRun, AdditionalPersonaAttributes
+from shared.datasets.builder import (
+    build_balanced_dataset_from_pool,
+    build_counterfactuals_from_dataset,
+    build_random_subset_from_pool,
+)
+from persona_generator.main import sample_personas, persist_run_and_personas
 from peewee import JOIN
 
 
@@ -22,6 +28,11 @@ class DatasetOut(BaseModel):
     created_at: Optional[str] = None
     seed: Optional[int] = None
     config_json: Optional[Dict[str, Any]] = None
+    additional_attributes_n: Optional[int] = 0
+    name_n: Optional[int] = 0
+    appearances_n: Optional[int] = 0
+    biographies_n: Optional[int] = 0
+    enriched_percentage: Optional[float] = 0.0
     
 
 
@@ -41,7 +52,33 @@ def get_dataset(dataset_id: int) -> DatasetOut:
     if not ds:
         return DatasetOut(id=0, name="Unknown", kind="unknown", size=0)
     n = DatasetPersona.select().where(DatasetPersona.dataset_id == ds.id).count()
-    return DatasetOut(id=ds.id, name=ds.name, kind=ds.kind, size=n, created_at=ds.created_at.isoformat() if ds.created_at else None, seed=ds.seed, config_json=json.loads(ds.config_json) if ds.config_json else None)
+    attr_run_id = AttrGenerationRun.select().where(AttrGenerationRun.dataset_id == ds.id).first().id if AttrGenerationRun.select().where(AttrGenerationRun.dataset_id == ds.id).exists() else None
+    additional_attributes_n = AdditionalPersonaAttributes.select().where(AdditionalPersonaAttributes.attr_generation_run_id == attr_run_id).count() if attr_run_id else 0
+    if additional_attributes_n > 0:
+        name_n = AdditionalPersonaAttributes.select().where(AdditionalPersonaAttributes.attr_generation_run_id == attr_run_id, AdditionalPersonaAttributes.attribute_key == 'name').count() if attr_run_id else 0
+        appearances_n = AdditionalPersonaAttributes.select().where(AdditionalPersonaAttributes.attr_generation_run_id == attr_run_id, AdditionalPersonaAttributes.attribute_key == 'appearance').count() if attr_run_id else 0
+        biographies_n = AdditionalPersonaAttributes.select().where(AdditionalPersonaAttributes.attr_generation_run_id == attr_run_id, AdditionalPersonaAttributes.attribute_key == 'biography').count() if attr_run_id else 0
+    else:
+        name_n = 0
+        appearances_n = 0
+        biographies_n = 0
+
+    enriched_percentage = (additional_attributes_n / (n * 3) * 100) if n > 0 else 0.0
+
+    return DatasetOut(
+        id=ds.id, 
+        name=ds.name, 
+        kind=ds.kind, 
+        size=n, 
+        created_at=ds.created_at.isoformat() if ds.created_at else None, 
+        seed=ds.seed, 
+        config_json=json.loads(ds.config_json) if ds.config_json else None,
+        additional_attributes_n = additional_attributes_n,
+        name_n = name_n,
+        appearances_n = appearances_n,
+        biographies_n = biographies_n,
+        enriched_percentage = enriched_percentage,
+    )
 
 
 @router.get("/datasets/{dataset_id}/runs")
@@ -156,3 +193,79 @@ def dataset_composition(dataset_id: int) -> Dict[str, Any]:
 
     return {"ok": True, "n": n, "attributes": attributes, "age": age}
 
+
+# --------- Build endpoints ---------
+
+class CreatePoolIn(BaseModel):
+    n: int = 20000
+    temperature: float = 0.1
+    age_from: int = 0
+    age_to: int = 100
+    name: Optional[str] = None
+
+
+class CreateDsOut(BaseModel):
+    id: int
+    name: str
+
+
+@router.post("/datasets/build-balanced", response_model=CreateDsOut)
+def api_build_balanced(body: Dict[str, Any]) -> CreateDsOut:
+    """Build a balanced dataset from an existing dataset.
+    body: { dataset_id: int, n: int, seed?: int, name?: str }
+    """
+    ensure_db()
+    ds = build_balanced_dataset_from_pool(dataset_id=int(body["dataset_id"]), axes=["gender", "age", "origin"], n_target=int(body.get("n", 2000)), seed=int(body.get("seed", 42)), name=body.get("name"))
+    return CreateDsOut(id=int(ds.id), name=str(ds.name))
+
+
+@router.post("/datasets/sample-reality", response_model=CreateDsOut)
+def api_sample_reality(body: Dict[str, Any]) -> CreateDsOut:
+    """Sample random subset from an existing dataset.
+    body: { dataset_id: int, n: int, seed?: int, name?: str }
+    """
+    ensure_db()
+    ds = build_random_subset_from_pool(dataset_id=int(body["dataset_id"]), n=int(body.get("n", 500)), seed=int(body.get("seed", 42)), name=body.get("name"))
+    return CreateDsOut(id=int(ds.id), name=str(ds.name))
+
+
+@router.post("/datasets/build-counterfactuals", response_model=CreateDsOut)
+def api_build_counterfactuals(body: Dict[str, Any]) -> CreateDsOut:
+    """Build counterfactual dataset from an existing dataset.
+    body: { dataset_id: int, seed?: int, name?: str }
+    """
+    ensure_db()
+    ds = build_counterfactuals_from_dataset(dataset_id=int(body["dataset_id"]), seed=int(body.get("seed", 42)), name=body.get("name"))
+    return CreateDsOut(id=int(ds.id), name=str(ds.name))
+
+
+@router.post("/datasets/generate-pool", response_model=CreateDsOut)
+def api_generate_pool(body: CreatePoolIn) -> CreateDsOut:
+    ensure_db()
+    params = dict(
+        age_min=body.age_from,
+        age_max=body.age_to,
+        age_temperature=body.temperature,
+        education_temperature=body.temperature,
+        education_exclude=None,
+        gender_temperature=body.temperature,
+        gender_exclude=None,
+        occupation_exclude=None,
+        marriage_status_temperature=body.temperature,
+        marriage_status_exclude=None,
+        migration_status_temperature=body.temperature,
+        migration_status_exclude=None,
+        origin_temperature=body.temperature,
+        origin_exclude=None,
+        religion_temperature=body.temperature,
+        religion_exclude=None,
+        sexuality_temperature=body.temperature,
+        sexuality_exclude=None,
+    )
+    sampled = sample_personas(n=body.n, **params)
+    ds_id = persist_run_and_personas(n=body.n, params=params, sampled=sampled, export_csv_path=None)
+    ds = Dataset.get_by_id(ds_id)
+    if body.name:
+        ds.name = str(body.name)
+        ds.save()
+    return CreateDsOut(id=int(ds.id), name=str(ds.name))

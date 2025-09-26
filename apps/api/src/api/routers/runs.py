@@ -30,6 +30,7 @@ def list_runs() -> List[Dict[str, Any]]:
                 "include_rationale": bool(r.include_rationale),
                 "dataset_id": int(r.dataset_id.id) if r.dataset_id else None,
                 "created_at": str(r.created_at),
+                "n_results": BenchmarkResult.select().where(BenchmarkResult.benchmark_run_id == r.id).count(),
             }
         )
     return out
@@ -44,6 +45,7 @@ def get_run(run_id: int) -> Dict[str, Any]:
         "id": int(r.id),
         "model_name": str(r.model_id.name),
         "include_rationale": bool(r.include_rationale),
+        "n_results": BenchmarkResult.select().where(BenchmarkResult.benchmark_run_id == r.id).count(),
         "dataset": {
             "id": int(r.dataset_id.id) if r.dataset_id else None,
             "name": str(r.dataset_id.name) if r.dataset_id else None,

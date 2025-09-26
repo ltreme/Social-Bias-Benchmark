@@ -6,12 +6,14 @@ export type Run = {
     include_rationale: boolean;
     dataset_id?: number | null;
     created_at: string;
+    n_results: number;
 };
 
 export type RunDetail = {
     id: number;
     model_name: string;
     include_rationale: boolean;
+    n_results: number;
     dataset?: {
         id: number | null;
         name: string | null;

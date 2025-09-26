@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
-import { fetchDatasets, fetchDatasetComposition, fetchDataset, fetchRunsByDataset } from './api';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { fetchDatasets, fetchDatasetComposition, fetchDataset, fetchRunsByDataset, createPool, buildBalanced, sampleReality, buildCounterfactuals } from './api';
 
 export function useDatasets(q?: string) {
     return useQuery({ queryKey: ['datasets', q], queryFn: () => fetchDatasets(q ? { q } : undefined) });
@@ -15,4 +15,20 @@ export function useDatasetComposition(datasetId: number) {
 
 export function useDatasetRuns(datasetId: number) {
     return useQuery({ queryKey: ['dataset-runs', datasetId], queryFn: () => fetchRunsByDataset(datasetId), enabled: Number.isFinite(datasetId) });
+}
+
+export function useCreatePool() {
+    return useMutation({ mutationFn: createPool });
+}
+
+export function useBuildBalanced() {
+    return useMutation({ mutationFn: buildBalanced });
+}
+
+export function useSampleReality() {
+    return useMutation({ mutationFn: sampleReality });
+}
+
+export function useBuildCounterfactuals() {
+    return useMutation({ mutationFn: buildCounterfactuals });
 }

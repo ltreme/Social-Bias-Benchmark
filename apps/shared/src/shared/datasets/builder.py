@@ -78,7 +78,11 @@ def build_balanced_dataset_from_pool(*, dataset_id: int, axes: List[str], n_targ
     """
     rng = random.Random(seed)
 
-    personas: List[Persona] = list(Persona.select().where(DatasetPersona.dataset_id == dataset_id))
+    personas: List[Persona] = list(
+        Persona.select()
+        .join(DatasetPersona, on=(DatasetPersona.persona_id == Persona.uuid))
+        .where(DatasetPersona.dataset_id == dataset_id)
+    )
     if not personas:
         raise ValueError(f"No personas found for dataset_id={dataset_id}")
 
@@ -164,7 +168,7 @@ def build_balanced_dataset_from_pool(*, dataset_id: int, axes: List[str], n_targ
             }, ensure_ascii=False),
         )
         DatasetPersona.insert_many([
-            {"dataset": ds.id, "persona": p.uuid, "role": "source"} for p in selected
+            {"dataset_id": ds.id, "persona_id": p.uuid, "role": "source"} for p in selected
         ]).execute()
         return ds
 
@@ -172,7 +176,11 @@ def build_balanced_dataset_from_pool(*, dataset_id: int, axes: List[str], n_targ
 # ----- random sampler -----
 def build_random_subset_from_pool(*, dataset_id: int, n: int, seed: int = 42, name: Optional[str] = None) -> Dataset:
     rng = random.Random(seed)
-    personas: List[Persona] = list(Persona.select().where(DatasetPersona.dataset_id == dataset_id))
+    personas: List[Persona] = list(
+        Persona.select()
+        .join(DatasetPersona, on=(DatasetPersona.persona_id == Persona.uuid))
+        .where(DatasetPersona.dataset_id == dataset_id)
+    )
     if len(personas) < n:
         raise ValueError(f"Dataset id={dataset_id} has only {len(personas)} personas (< {n})")
     rng.shuffle(personas)
@@ -186,7 +194,7 @@ def build_random_subset_from_pool(*, dataset_id: int, n: int, seed: int = 42, na
             config_json=json.dumps({"dataset_id": dataset_id, "n": n}, ensure_ascii=False),
         )
         DatasetPersona.insert_many([
-            {"dataset": ds.id, "persona": p.uuid, "role": "source"} for p in selected
+            {"dataset_id": ds.id, "persona_id": p.uuid, "role": "source"} for p in selected
         ]).execute()
         return ds
 
@@ -377,7 +385,7 @@ def build_counterfactuals_from_dataset(*, dataset_id: int, seed: int = 42, name:
             name=ds_name,
             kind="counterfactual",
             seed=seed,
-            source_dataset=src_ds.id,
+            source_dataset_id=src_ds.id,
             config_json=json.dumps({"from_dataset": src_ds.id, "strategy": "round_robin_equal_attrs"}, ensure_ascii=False),
         )
 
@@ -391,10 +399,10 @@ def build_counterfactuals_from_dataset(*, dataset_id: int, seed: int = 42, name:
         dpm_rows = []
         # Add sources
         for sm in src_members:
-            dpm_rows.append({"dataset": cf_ds.id, "persona": sm["persona"], "role": "source"})
+            dpm_rows.append({"dataset_id": cf_ds.id, "persona_id": sm["persona"], "role": "source"})
         # Add cfs
         for cf in inserted:
-            dpm_rows.append({"dataset": cf_ds.id, "persona": cf.uuid, "role": "counterfactual"})
+            dpm_rows.append({"dataset_id": cf_ds.id, "persona_id": cf.uuid, "role": "counterfactual"})
         DatasetPersona.insert_many(dpm_rows).execute()
 
         # link counterfactual pairs (align by order)
@@ -402,9 +410,9 @@ def build_counterfactuals_from_dataset(*, dataset_id: int, seed: int = 42, name:
         links_rows = []
         for i, cf in enumerate(inserted):
             links_rows.append({
-                "dataset": cf_ds.id,
-                "source_persona": src_members[i]["persona"],
-                "cf_persona": cf.uuid,
+                "dataset_id": cf_ds.id,
+                "source_persona_id": src_members[i]["persona"],
+                "cf_persona_id": cf.uuid,
                 "changed_attribute": cf_links[i]["changed_attribute"],
                 "from_value": cf_links[i]["from_value"],
                 "to_value": cf_links[i]["to_value"],

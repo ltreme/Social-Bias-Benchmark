@@ -15,6 +15,7 @@ export function RunsPage() {
         { header: 'Model', accessorKey: 'model_name' },
         { header: 'Rationale', accessorKey: 'include_rationale' },
         { header: 'Dataset', accessorKey: 'dataset_id' },
+        { header: 'Results', accessorKey: 'n_results' },
         { header: 'Created', accessorKey: 'created_at' },
     ];
 
