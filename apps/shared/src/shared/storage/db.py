@@ -31,9 +31,9 @@ def init_database(db_url: str | None = None) -> pw.Database:
             str(db_path),
             pragmas={
                 "foreign_keys": 1,   # enforce FK constraints
-                # Optional tuning:
-                # "journal_mode": "wal",
-                # "synchronous": "normal",
+                # Improve concurrency: WAL journal and relaxed sync are safe for our usage
+                "journal_mode": "wal",
+                "synchronous": "normal",
             },
         )
 
@@ -48,6 +48,32 @@ def create_tables() -> None:
     from .models import ALL_MODELS  # local import prevents cycles
     db = get_db()
     db.create_tables(ALL_MODELS, safe=True)
+    _fix_legacy_indexes(db)
+
+
+def _fix_legacy_indexes(db: pw.Database) -> None:
+    """Drop broken legacy indexes that can block inserts.
+
+    Specifically: benchmarkresult_persona_uuid_id_question_uuid_benchmark_run_id
+    which referenced a non-existent column (question_uuid) in older DBs and
+    effectively enforces a wrong uniqueness (persona_uuid_id, benchmark_run_id).
+    """
+    try:
+        cur = db.execute_sql("PRAGMA index_list(benchmarkresult)")
+        idx_rows = cur.fetchall()
+        target = 'benchmarkresult_persona_uuid_id_question_uuid_benchmark_run_id'
+        for row in idx_rows:
+            name = row[1]
+            if name != target:
+                continue
+            # Verify it is problematic (contains a NULL column in PRAGMA index_info)
+            info = db.execute_sql(f"PRAGMA index_info({name})").fetchall()
+            has_null_col = any(col[2] is None for col in info)
+            if has_null_col:
+                db.execute_sql(f"DROP INDEX IF EXISTS {name}")
+    except Exception:
+        # Do not block startup on migration issues
+        pass
 
 
 def drop_tables() -> None:

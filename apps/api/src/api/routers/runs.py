@@ -13,6 +13,14 @@ from shared.storage.models import (
 )
 from analysis.benchmarks import analytics as bench_ana
 from analysis.benchmarks.analytics import BenchQuery, load_benchmark_dataframe
+from benchmark.pipeline.benchmark import run_benchmark_pipeline
+from benchmark.repository.case import CaseRepository
+from benchmark.repository.persona_repository import FullPersonaRepositoryByDataset
+from benchmark.pipeline.adapters.prompting import LikertPromptFactory
+from benchmark.pipeline.adapters.postprocess.postprocessor_likert import LikertPostProcessor
+from benchmark.pipeline.adapters.persister_bench_sqlite import BenchPersisterPeewee
+from benchmark.pipeline.adapters.llm import LlmClientFakeBench, LlmClientHFBench, LlmClientVLLMBench
+import threading, time, traceback
 
 
 router = APIRouter(tags=["runs"])
@@ -65,6 +73,140 @@ def _load_run_df(run_id: int):
     cfg = BenchQuery(run_ids=(run_id,))
     df = load_benchmark_dataframe(cfg)
     return df
+
+
+# ---------------- Benchmark job control ----------------
+_BENCH_PROGRESS: dict[int, dict] = {}
+
+def _bench_progress_poller(run_id: int, dataset_id: int) -> None:
+    try:
+        while _BENCH_PROGRESS.get(run_id, {}).get("status") in {"queued", "running"}:
+            _bench_update_progress(run_id, dataset_id)
+            time.sleep(2.0)
+    except Exception:
+        pass
+
+def _bench_update_progress(run_id: int, dataset_id: int) -> None:
+    from shared.storage.models import BenchmarkResult, DatasetPersona
+    done = (BenchmarkResult
+            .select(BenchmarkResult.persona_uuid_id, BenchmarkResult.case_id)
+            .where(BenchmarkResult.benchmark_run_id == run_id)
+            .distinct()
+            .count())
+    try:
+        cases = CaseRepository().count()
+    except Exception:
+        cases = 0
+    total_personas = DatasetPersona.select().where(DatasetPersona.dataset_id == dataset_id).count()
+    total = total_personas * cases if cases and total_personas else 0
+    pct = (100.0 * done / total) if total else 0.0
+    _BENCH_PROGRESS.setdefault(run_id, {})
+    _BENCH_PROGRESS[run_id].update({"done": done, "total": total, "pct": pct})
+
+
+def _bench_run_background(run_id: int) -> None:
+    ensure_db()
+    rec = BenchmarkRun.get_by_id(run_id)
+    ds_id = int(rec.dataset_id.id)
+    model_name = str(rec.model_id.name)
+    include_rationale = bool(rec.include_rationale)
+
+    persona_repo = FullPersonaRepositoryByDataset(dataset_id=ds_id, model_name=model_name)
+    question_repo = CaseRepository()
+    max_new_toks = int(_BENCH_PROGRESS.get(run_id, {}).get('max_new_tokens', 256))
+    system_prompt = rec.system_prompt
+    prompt_factory = LikertPromptFactory(include_rationale=include_rationale, max_new_tokens=max_new_toks, system_preamble=system_prompt)
+    post = LikertPostProcessor()
+    backend = _BENCH_PROGRESS.get(run_id, {}).get('llm') or 'vllm'
+    batch_size = int(_BENCH_PROGRESS.get(run_id, {}).get('batch_size') or (rec.batch_size or 2))
+    if backend == 'fake':
+        llm = LlmClientFakeBench(batch_size=batch_size)
+    elif backend == 'hf':
+        # Requires a configured model, for now fallback to fake if unavailable
+        llm = LlmClientHFBench(model_name_or_path=model_name, batch_size=batch_size)
+    else:
+        import os
+        base = _BENCH_PROGRESS.get(run_id, {}).get('vllm_base_url') or os.getenv('VLLM_BASE_URL') or 'http://localhost:8000'
+        api_key = _BENCH_PROGRESS.get(run_id, {}).get('vllm_api_key') or os.getenv('VLLM_API_KEY')
+        llm = LlmClientVLLMBench(base_url=str(base), model=model_name, api_key=api_key, batch_size=batch_size, max_new_tokens_cap=max_new_toks)
+
+    persist = BenchPersisterPeewee()
+    _BENCH_PROGRESS[run_id] = {**_BENCH_PROGRESS.get(run_id, {}), 'status': 'running'}
+    try:
+        run_benchmark_pipeline(
+            dataset_id=ds_id,
+            question_repo=question_repo,
+            persona_repo=persona_repo,
+            prompt_factory=prompt_factory,
+            llm=llm,
+            post=post,
+            persist=persist,
+            model_name=model_name,
+            benchmark_run_id=run_id,
+            max_attempts=3,
+        )
+        _bench_update_progress(run_id, ds_id)
+        _BENCH_PROGRESS[run_id]['status'] = 'done'
+    except Exception as e:
+        _BENCH_PROGRESS[run_id]['status'] = 'failed'
+        _BENCH_PROGRESS[run_id]['error'] = str(e)
+        try:
+            print(f"[bench_run_background] run_id={run_id} failed: {e}")
+            traceback.print_exc()
+        except Exception:
+            pass
+
+
+@router.post("/benchmarks/start")
+def start_benchmark(body: dict) -> dict:
+    """Start a benchmark run for a dataset with a given model.
+
+    Body: { dataset_id:int, model_name:str, include_rationale?:bool, llm?:'vllm'|'hf'|'fake', batch_size?:int, vllm_base_url?:str }
+    Requires that attr-gen with same model is complete (client-side should ensure).
+    """
+    ensure_db()
+    ds_id = int(body['dataset_id'])
+    model_name = str(body['model_name'])
+    include_rationale = bool(body.get('include_rationale', False))
+    llm = body.get('llm', 'vllm')
+    batch_size = int(body.get('batch_size', 2))
+    vllm_base_url = body.get('vllm_base_url')
+
+    model_entry, _ = Model.get_or_create(name=model_name)
+    max_new_tokens = int(body.get('max_new_tokens', 256))
+    max_attempts = int(body.get('max_attempts', 3))
+    system_prompt = body.get('system_prompt')
+    vllm_api_key = body.get('vllm_api_key')
+    rec = BenchmarkRun.create(dataset_id=ds_id, model_id=model_entry.id, include_rationale=include_rationale, batch_size=batch_size, max_attempts=max_attempts, system_prompt=system_prompt)
+    _BENCH_PROGRESS[int(rec.id)] = {'status': 'queued', 'llm': llm, 'batch_size': batch_size, 'vllm_base_url': vllm_base_url, 'vllm_api_key': vllm_api_key, 'max_new_tokens': max_new_tokens}
+
+    t = threading.Thread(target=_bench_run_background, args=(int(rec.id),), daemon=True)
+    t.start()
+    # Start a lightweight poller to keep progress fresh during the run
+    try:
+        ds_id_int = int(ds_id)
+        t_poll = threading.Thread(target=_bench_progress_poller, args=(int(rec.id), ds_id_int), daemon=True)
+        t_poll.start()
+    except Exception:
+        pass
+    return {'ok': True, 'run_id': int(rec.id)}
+
+
+@router.get("/benchmarks/{run_id}/status")
+def bench_status(run_id: int) -> dict:
+    ensure_db()
+    info = _BENCH_PROGRESS.get(run_id)
+    if not info:
+        try:
+            rec = BenchmarkRun.get_by_id(run_id)
+            ds_id = int(rec.dataset_id.id)
+            _bench_update_progress(run_id, ds_id)
+            info = _BENCH_PROGRESS.get(run_id)
+            if 'status' not in info:
+                info['status'] = 'unknown'
+        except Exception:
+            info = {'status': 'unknown'}
+    return {'ok': True, **(info or {})}
 
 
 @router.get("/runs/{run_id}/metrics")
@@ -202,4 +344,3 @@ def run_forest(
 
     rows_list.sort(key=lambda r: (r["delta"] if (r["delta"] == r["delta"]) else float('inf'), (r.get("label") or r["case_id"])) )
     return {"ok": True, "n": len(rows_list), "rows": rows_list, "overall": overall}
-

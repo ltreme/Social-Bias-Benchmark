@@ -146,9 +146,9 @@ class FullPersonaRepository(BenchPersonaRepo):
             origin_name = getattr(row, "origin_name", None)
 
             # fetch enriched attributes for this persona (optionally filter by model)
+            # NOTE: attr_generation_run_id is an integer FK. Filtering by model_name is incorrect.
+            # Until we thread the specific AttrGenerationRun.id to this repo, don't filter here.
             attrs_query = Attr.select(Attr.attribute_key, Attr.value).where(Attr.persona_uuid_id == row.uuid)
-            if self.model_name:
-                attrs_query = attrs_query.where(Attr.attr_generation_run_id == self.model_name)  # TODO: adjust to use AttrGenerationRun
             attrs = attrs_query
             attr_map = {a.attribute_key: a.value for a in attrs}
 
@@ -205,9 +205,8 @@ class FullPersonaRepositoryByDataset(BenchPersonaRepo):
 
         for row in query.iterator():
             origin_name = getattr(row, "origin_name", None)
+            # See note above: do not filter by model_name here, the FK is a run id.
             attrs_query = Attr.select(Attr.attribute_key, Attr.value).where(Attr.persona_uuid_id == row.uuid)
-            if self.model_name:
-                attrs_query = attrs_query.where(Attr.attr_generation_run_id == self.model_name)  # TODO: adjust to use AttrGenerationRun
             attr_map = {a.attribute_key: a.value for a in attrs_query}
 
             persona_ctx = {

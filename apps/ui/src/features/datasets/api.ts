@@ -68,3 +68,38 @@ export async function buildCounterfactuals(body: { dataset_id: number; seed?: nu
     const res = await api.post<CreateDatasetResponse>('/datasets/build-counterfactuals', body);
     return res.data;
 }
+
+export type AttrgenStartResponse = { ok: boolean; run_id: number };
+export type AttrgenStatus = { ok: boolean; status: string; total?: number; done?: number; pct?: number; error?: string };
+
+export async function startAttrGen(body: { dataset_id: number; model_name: string; llm?: 'hf'|'vllm'|'fake'; batch_size?: number; max_new_tokens?: number; max_attempts?: number; system_prompt?: string; vllm_base_url?: string }) {
+    const res = await api.post<AttrgenStartResponse>('/attrgen/start', body);
+    return res.data;
+}
+
+export async function fetchAttrgenStatus(runId: number) {
+    const res = await api.get<AttrgenStatus>(`/attrgen/${runId}/status`);
+    return res.data;
+}
+
+export async function fetchLatestAttrgen(datasetId: number) {
+    const res = await api.get<{ ok: boolean; found: boolean; run_id?: number; status?: string; total?: number; done?: number; pct?: number }>(`/datasets/${datasetId}/attrgen/latest`);
+    return res.data;
+}
+
+export type AttrgenRun = { id: number; created_at: string; model_name?: string | null; status?: string; done?: number; total?: number; pct?: number };
+export async function fetchAttrgenRuns(datasetId: number) {
+    const res = await api.get<{ ok: boolean; runs: AttrgenRun[] }>(`/datasets/${datasetId}/attrgen/runs`);
+    return res.data;
+}
+
+export type BenchStartResponse = { ok: boolean; run_id: number };
+export type BenchStatus = { ok: boolean; status: string; done?: number; total?: number; pct?: number };
+export async function startBenchmark(body: { dataset_id: number; model_name: string; include_rationale?: boolean; llm?: 'vllm'|'hf'|'fake'; batch_size?: number; vllm_base_url?: string }) {
+    const res = await api.post<BenchStartResponse>('/benchmarks/start', body);
+    return res.data;
+}
+export async function fetchBenchmarkStatus(runId: number) {
+    const res = await api.get<BenchStatus>(`/benchmarks/${runId}/status`);
+    return res.data;
+}

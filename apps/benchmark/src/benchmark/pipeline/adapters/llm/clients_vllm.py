@@ -4,6 +4,7 @@ import time
 from dataclasses import dataclass
 from typing import Iterable, Iterator, Dict, Any
 from concurrent.futures import ThreadPoolExecutor, as_completed, Future
+import threading
 
 import requests
 
@@ -61,8 +62,20 @@ class _BaseVLLMClient:
         )
         self.concurrency = max(1, concurrency)
 
-        self._session = requests.Session()
-        # conservative retries at TCP layer can be set via adapters if needed
+        # Use thread-local sessions to avoid cross-thread contention.
+        # Requests sessions are not guaranteed thread-safe.
+        self._tls: threading.local = threading.local()
+
+    def _get_session(self) -> requests.Session:
+        sess = getattr(self._tls, "session", None)
+        if sess is None:
+            sess = requests.Session()
+            # Increase pool size relative to expected concurrency per thread
+            adapter = requests.adapters.HTTPAdapter(pool_connections=16, pool_maxsize=16)
+            sess.mount("http://", adapter)
+            sess.mount("https://", adapter)
+            self._tls.session = sess
+        return sess
 
     # --- HTTP helpers -----------------------------------------------------
     def _headers(self) -> Dict[str, str]:
@@ -82,7 +95,8 @@ class _BaseVLLMClient:
         }
         t0 = time.perf_counter()
         try:
-            resp = self._session.post(url, json=payload, headers=self._headers(), timeout=self.cfg.timeout_s)
+            sess = self._get_session()
+            resp = sess.post(url, json=payload, headers=self._headers(), timeout=self.cfg.timeout_s)
             dt = int((time.perf_counter() - t0) * 1000)
             if resp.status_code != 200:
                 # If the completions endpoint isn't available, try chat fallback
@@ -122,7 +136,8 @@ class _BaseVLLMClient:
         }
         t0 = time.perf_counter()
         try:
-            resp = self._session.post(url, json=payload, headers=self._headers(), timeout=self.cfg.timeout_s)
+            sess = self._get_session()
+            resp = sess.post(url, json=payload, headers=self._headers(), timeout=self.cfg.timeout_s)
             dt = int((time.perf_counter() - t0) * 1000)
             if resp.status_code != 200:
                 return (f"[error http {resp.status_code}] {resp.text[:300]}", dt)

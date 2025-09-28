@@ -5,7 +5,9 @@ import sys
 from pathlib import Path
 
 # Ensure project root (with 'apps') is importable
-ROOT = Path(__file__).resolve().parents[3]
+# __file__ = .../apps/api/src/api/utils.py
+# parents: [api, src, api, apps, <PROJECT_ROOT>]
+ROOT = Path(__file__).resolve().parents[4]
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 

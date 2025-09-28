@@ -32,30 +32,39 @@ class BenchPersisterPeewee(BenchPersister):
         self._Res = self.models.BenchmarkResult
         self._Fail = self.models.FailLog
 
+        # Detect legacy column 'question_uuid' (pre-rename of case_id) to stay backward compatible
+        self._has_legacy_question_col = False
+        try:
+            cur = self.db.execute_sql("PRAGMA table_info(benchmarkresult)")
+            cols = {row[1] for row in cur.fetchall()}  # row[1] = name
+            self._has_legacy_question_col = "question_uuid" in cols
+        except Exception:
+            pass
+
     def persist_results(self, rows: List[BenchAnswerDto]) -> None:
         if not rows:
             return
-        payload = [dict(
-            persona_uuid_id=r.persona_uuid,
-            case_id=r.case_id,
-            benchmark_run_id=r.benchmark_run_id,
-            attempt=r.attempt,
-            answer_raw=r.answer_raw,
-            rating=r.rating,
-        ) for r in rows]
+        payload = []
+        for r in rows:
+            item = dict(
+                persona_uuid_id=r.persona_uuid,
+                case_id=r.case_id,
+                benchmark_run_id=r.benchmark_run_id,
+                attempt=r.attempt,
+                answer_raw=r.answer_raw,
+                rating=r.rating,
+            )
+            if self._has_legacy_question_col:
+                # Mirror case_id into legacy column to satisfy old UNIQUE(persona_uuid_id, question_uuid, benchmark_run_id)
+                item["question_uuid"] = r.case_id
+            payload.append(item)
 
         with self.db.atomic():
+            # SQLite: use OR IGNORE to be robust to legacy index names/orders.
             (self._Res
-            .insert_many(payload)
-            .on_conflict(
-                conflict_target=[self._Res.persona_uuid_id, self._Res.case_id, self._Res.benchmark_run_id],
-                update={
-                    self._Res.answer_raw: self._Res.answer_raw,
-                    self._Res.rating: self._Res.rating,
-                    self._Res.attempt: self._Res.attempt,
-                    self._Res.created_at: self._Res.created_at,
-                }
-            ).execute())
+             .insert_many(payload)
+             .on_conflict_ignore()
+             .execute())
         # optional debug
         import os
         if os.getenv("BENCH_DEBUG", "").lower() in ("1", "true", "yes"):

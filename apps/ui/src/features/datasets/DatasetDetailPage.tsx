@@ -1,7 +1,10 @@
-import { Card, Grid, Title, Spoiler } from '@mantine/core';
+import { Button, Card, Grid, Group, Progress, Spoiler, Title } from '@mantine/core';
 import { useParams, Link } from '@tanstack/react-router';
 import { ChartPanel } from '../../components/ChartPanel';
-import { useDatasetComposition, useDataset, useDatasetRuns } from './hooks';
+import { useDatasetComposition, useDataset, useDatasetRuns, useStartAttrgen, useAttrgenStatus, useLatestAttrgen, useAttrgenRuns, useStartBenchmark, useBenchmarkStatus } from './hooks';
+import { useModels } from '../compare/hooks';
+import { useEffect, useState } from 'react';
+import { Modal, NumberInput, Select, TextInput, Checkbox, Textarea } from '@mantine/core';
 
 function toBar(items: Array<{ value: string; count: number }>, opts?: { horizontal?: boolean }) {
     const labels = items.map((d) => d.value);
@@ -15,6 +18,32 @@ export function DatasetDetailPage() {
     const { data: dataset_info, isLoading: isLoadingDataset } = useDataset(idNum);
     const { data, isLoading } = useDatasetComposition(idNum);
     const { data: runs, isLoading: isLoadingRuns } = useDatasetRuns(idNum);
+    const startAttr = useStartAttrgen();
+    const { data: availableModels } = useModels();
+    const [modalOpen, setModalOpen] = useState(false);
+    const [benchModalOpen, setBenchModalOpen] = useState(false);
+    const [llm, setLlm] = useState<'vllm'|'fake'>('vllm');
+    const [modelName, setModelName] = useState<string>('');
+    const [batchSize, setBatchSize] = useState<number>(8);
+    const [maxNew, setMaxNew] = useState<number>(192);
+    const [maxAttempts, setMaxAttempts] = useState<number>(3);
+    const [systemPrompt, setSystemPrompt] = useState<string>('');
+    const [vllmBase, setVllmBase] = useState<string>('http://localhost:8000');
+    const [vllmApiKey, setVllmApiKey] = useState<string>('');
+    const [includeRationale, setIncludeRationale] = useState<boolean>(false);
+    const [runId, setRunId] = useState<number | undefined>(undefined);
+    const runsList = useAttrgenRuns(idNum);
+    const [resumeRunId, setResumeRunId] = useState<number | undefined>(undefined);
+    const startBench = useStartBenchmark();
+    const [benchRunId, setBenchRunId] = useState<number | undefined>(undefined);
+    const benchStatus = useBenchmarkStatus(benchRunId);
+    const status = useAttrgenStatus(runId);
+    const latest = useLatestAttrgen(idNum);
+    useEffect(() => {
+        if (!runId && latest.data && latest.data.found && latest.data.run_id) {
+            setRunId(latest.data.run_id);
+        }
+    }, [latest.data, runId]);
 
     const gender = data?.attributes?.gender ?? [];
     const religion = data?.attributes?.religion ?? [];
@@ -38,6 +67,7 @@ export function DatasetDetailPage() {
     }
 
     return (
+        <>
         <Card>
             <Title order={2} mb="md">Dataset {datasetId}: {dataset_info?.name} – Zusammensetzung</Title>
             {isLoadingDataset ? ('') : dataset_info ? (
@@ -49,6 +79,66 @@ export function DatasetDetailPage() {
             ) : (
                 <div style={{ marginBottom: '1em' }}>Dataset nicht gefunden.</div>
             )}
+
+            <Group justify="space-between" mb="md">
+              <div />
+              <Group>
+                <Button variant="light" onClick={() => setBenchModalOpen(true)}>Benchmark starten…</Button>
+                <Button onClick={() => setModalOpen(true)}>Additional Attributes generieren…</Button>
+              </Group>
+            </Group>
+            {/* Zeige Progress nur für aktive Läufe; abgeschlossene werden unten gelistet */}
+            {(runId && status.data && status.data.status !== 'done' && status.data.status !== 'failed') ? (
+              <div style={{ marginBottom: '1em' }}>
+                <b>AttrGen Status:</b> {status.data.status} {status.data.done ?? 0}/{status.data.total ?? 0}
+                <Progress value={status.data.pct ?? 0} mt="xs" />
+              </div>
+            ) : ((latest.data && latest.data.found && latest.data.status !== 'done' && latest.data.status !== 'failed')) ? (
+              <div style={{ marginBottom: '1em' }}>
+                <b>AttrGen Status:</b> {latest.data.status} {latest.data.done ?? 0}/{latest.data.total ?? 0}
+                <Progress value={latest.data.pct ?? 0} mt="xs" />
+              </div>
+            ) : null}
+
+            {/* Liste der AttrGen-Runs: fertige als Eintrag mit Modell, laufende mit Fortschritt */}
+            {runsList.data?.runs && runsList.data.runs.length > 0 ? (
+              <div style={{ marginBottom: '1em' }}>
+                <b>Attribute-Generierung (Historie):</b>
+                <ul style={{ margin: 0, paddingLeft: '1.5em' }}>
+                  {runsList.data.runs.map(r => {
+                    const isDone = (r.status === 'done') || ((r.done ?? 0) > 0 && (r.total ?? 0) > 0 && (r.done === r.total));
+                    return (
+                      <li key={r.id} style={{ marginBottom: 6 }}>
+                        <span>Run #{r.id} – {r.model_name || 'Modell unbekannt'} – {new Date(r.created_at).toLocaleString()} – </span>
+                        {isDone ? (
+                          <span style={{ color: '#2ca25f' }}>Fertig</span>
+                        ) : (
+                          <span>
+                            {r.status} {r.done ?? 0}/{r.total ?? 0}
+                            <div style={{ width: 240 }}>
+                              <Progress value={r.pct ?? 0} mt="xs" />
+                            </div>
+                          </span>
+                        )}
+                        {isDone ? (
+                          <Button size="xs" style={{ marginLeft: 8 }} onClick={() => { setModelName(r.model_name || ''); setBenchModalOpen(true); }}>
+                            Benchmark starten
+                          </Button>
+                        ) : null}
+                      </li>
+                    );
+                  })}
+                </ul>
+                {benchRunId && benchStatus.data ? (
+                  <div style={{ marginTop: 8 }}>
+                    <b>Benchmark-Status:</b> {benchStatus.data.status} {benchStatus.data.done ?? 0}/{benchStatus.data.total ?? 0}
+                    <div style={{ width: 320 }}>
+                      <Progress value={benchStatus.data.pct ?? 0} mt="xs" />
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             {isLoadingRuns ? ('') : runs && runs.length > 0 ? (
                 <div style={{ marginBottom: '1em' }}>
                     <b>Runs mit diesem Dataset:</b>
@@ -97,6 +187,66 @@ export function DatasetDetailPage() {
                 </Grid>
             )}
         </Card>
+        <Modal opened={modalOpen} onClose={() => setModalOpen(false)} title="Additional Attributes generieren" size="lg">
+          <Group grow mb="md">
+            <Select label="Backend" data={[ {value:'vllm',label:'vLLM'}, {value:'fake',label:'Fake'} ]} value={llm} onChange={(v)=>setLlm((v as any)||'vllm')} />
+            <Select label="Model" data={availableModels || []} value={modelName} onChange={(v)=>setModelName(v || '')} searchable placeholder="Model wählen" />
+          </Group>
+          <Group grow mb="md">
+            <Select label="Run fortsetzen" data={ (runsList.data?.runs || []).map(r => ({ value: String(r.id), label: `#${r.id} · ${r.model_name ?? ''} · ${new Date(r.created_at).toLocaleString()} · ${Math.round(r.pct || 0)}%` })) } value={resumeRunId ? String(resumeRunId) : null} onChange={(v)=> setResumeRunId(v ? Number(v) : undefined)} clearable placeholder="Optional" />
+          </Group>
+          {llm==='vllm' ? (
+            <TextInput label="vLLM Base URL" value={vllmBase} onChange={(e)=>setVllmBase(e.currentTarget.value)} />
+          ) : null}
+          <Group grow mb="md">
+            <NumberInput label="Batch Size" value={batchSize} onChange={(v)=>setBatchSize(Number(v||0))} min={1} />
+            <NumberInput label="Max New Tokens" value={maxNew} onChange={(v)=>setMaxNew(Number(v||0))} min={32} />
+            <NumberInput label="Max Attempts" value={maxAttempts} onChange={(v)=>setMaxAttempts(Number(v||0))} min={1} />
+          </Group>
+          <TextInput label="System Prompt (optional)" value={systemPrompt} onChange={(e)=>setSystemPrompt(e.currentTarget.value)} />
+          <Group justify="right" mt="md">
+            <Button variant="default" onClick={()=>setModalOpen(false)}>Abbrechen</Button>
+            <Button loading={startAttr.isPending} disabled={!modelName && !resumeRunId} onClick={async ()=>{
+              try {
+                const r = await startAttr.mutateAsync({ dataset_id: idNum, model_name: modelName, llm, batch_size: batchSize, max_new_tokens: maxNew, max_attempts: maxAttempts, system_prompt: systemPrompt || undefined, vllm_base_url: llm==='vllm'? vllmBase: undefined, resume_run_id: resumeRunId });
+                setRunId(r.run_id); setModalOpen(false);
+              } catch(e) {}
+            }}>Starten</Button>
+          </Group>
+        </Modal>
+        {/* Benchmark Modal */}
+        <Modal opened={benchModalOpen} onClose={() => setBenchModalOpen(false)} title="Benchmark starten" size="lg">
+          {(() => {
+            const completedModels = Array.from(new Set((runsList.data?.runs || []).filter(r => (r.done ?? 0) > 0 && (r.total ?? 0) > 0 && r.done === r.total).map(r => r.model_name || ''))).filter(Boolean);
+            return (
+              <>
+                <Group grow mb="md">
+                  <Select label="Model (aus fertigen AttrGen-Runs)" data={completedModels} value={modelName} onChange={(v)=>setModelName(v || '')} placeholder="Model wählen" searchable />
+                  <NumberInput label="Batch Size" value={batchSize} onChange={(v)=>setBatchSize(Number(v||0))} min={1} />
+                </Group>
+                <Group grow mb="md">
+                  <NumberInput label="Max New Tokens" value={maxNew} onChange={(v)=>setMaxNew(Number(v||0))} min={32} />
+                  <NumberInput label="Max Attempts" value={maxAttempts} onChange={(v)=>setMaxAttempts(Number(v||0))} min={1} />
+                </Group>
+                <Checkbox label="Rationale inkludieren" checked={includeRationale} onChange={(e) => setIncludeRationale(e.currentTarget.checked)} />
+                <Textarea label="System Prompt (optional)" minRows={3} value={systemPrompt} onChange={(e)=>setSystemPrompt(e.currentTarget.value)} />
+                <Group grow mb="md" mt="md">
+                  <TextInput label="vLLM Base URL" value={vllmBase} onChange={(e)=>setVllmBase(e.currentTarget.value)} />
+                  <TextInput label="vLLM API Key (optional)" value={vllmApiKey} onChange={(e)=>setVllmApiKey(e.currentTarget.value)} placeholder="Nutze .env, falls leer" />
+                </Group>
+                <Group justify="right" mt="md">
+                  <Button variant="default" onClick={()=>setBenchModalOpen(false)}>Abbrechen</Button>
+                  <Button loading={startBench.isPending} disabled={!modelName} onClick={async ()=>{
+                    try {
+                      const rs = await startBench.mutateAsync({ dataset_id: idNum, model_name: modelName, include_rationale: includeRationale, llm: 'vllm', batch_size: batchSize, max_new_tokens: maxNew, max_attempts: maxAttempts, system_prompt: systemPrompt || undefined, vllm_base_url: vllmBase, vllm_api_key: vllmApiKey || undefined });
+                      setBenchRunId(rs.run_id); setBenchModalOpen(false);
+                    } catch(e) {}
+                  }}>Benchmark starten</Button>
+                </Group>
+              </>
+            );
+          })()}
+        </Modal>
+        </>
     );
 }
-

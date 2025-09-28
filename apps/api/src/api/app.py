@@ -3,9 +3,13 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+# Ensure repo src paths are on sys.path before importing routers
+from . import utils as _api_utils  # noqa: F401  (triggers sys.path setup)
+
 from .routers.datasets import router as datasets_router
 from .routers.metrics import router as metrics_router
 from .routers.runs import router as runs_router
+from .routers.attrgen import router as attrgen_router
 
 
 def create_app() -> FastAPI:
@@ -31,6 +35,6 @@ def create_app() -> FastAPI:
     app.include_router(datasets_router)
     app.include_router(metrics_router)
     app.include_router(runs_router)
+    app.include_router(attrgen_router)
 
     return app
-
