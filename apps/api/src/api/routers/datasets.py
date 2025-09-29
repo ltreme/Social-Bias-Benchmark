@@ -52,17 +52,25 @@ def get_dataset(dataset_id: int) -> DatasetOut:
     if not ds:
         return DatasetOut(id=0, name="Unknown", kind="unknown", size=0)
     n = DatasetPersona.select().where(DatasetPersona.dataset_id == ds.id).count()
-    attr_run_id = AttrGenerationRun.select().where(AttrGenerationRun.dataset_id == ds.id).first().id if AttrGenerationRun.select().where(AttrGenerationRun.dataset_id == ds.id).exists() else None
-    additional_attributes_n = AdditionalPersonaAttributes.select().where(AdditionalPersonaAttributes.attr_generation_run_id == attr_run_id).count() if attr_run_id else 0
-    if additional_attributes_n > 0:
-        name_n = AdditionalPersonaAttributes.select().where(AdditionalPersonaAttributes.attr_generation_run_id == attr_run_id, AdditionalPersonaAttributes.attribute_key == 'name').count() if attr_run_id else 0
-        appearances_n = AdditionalPersonaAttributes.select().where(AdditionalPersonaAttributes.attr_generation_run_id == attr_run_id, AdditionalPersonaAttributes.attribute_key == 'appearance').count() if attr_run_id else 0
-        biographies_n = AdditionalPersonaAttributes.select().where(AdditionalPersonaAttributes.attr_generation_run_id == attr_run_id, AdditionalPersonaAttributes.attribute_key == 'biography').count() if attr_run_id else 0
-    else:
-        name_n = 0
-        appearances_n = 0
-        biographies_n = 0
-
+    # Use the latest attrgen run for progress stats
+    latest_attr_run = (
+        AttrGenerationRun
+        .select()
+        .where(AttrGenerationRun.dataset_id == ds.id)
+        .order_by(AttrGenerationRun.id.desc())
+        .first()
+    )
+    # Compute enrichment across any run (robust against older rows)
+    def _count_attr(key: str) -> int:
+        return (AdditionalPersonaAttributes
+                .select()
+                .join(DatasetPersona, on=(DatasetPersona.persona_id == AdditionalPersonaAttributes.persona_uuid_id))
+                .where((DatasetPersona.dataset_id == ds.id) & (AdditionalPersonaAttributes.attribute_key == key))
+                .count())
+    name_n = _count_attr('name')
+    appearances_n = _count_attr('appearance')
+    biographies_n = _count_attr('biography')
+    additional_attributes_n = name_n + appearances_n + biographies_n
     enriched_percentage = (additional_attributes_n / (n * 3) * 100) if n > 0 else 0.0
 
     return DatasetOut(

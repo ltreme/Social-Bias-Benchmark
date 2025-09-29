@@ -117,6 +117,8 @@ class BenchmarkRun(BaseModel):
     system_prompt = pw.TextField(null=True)
     # Likert scale order mode: 'in' | 'rev' | 'random50' (optional for legacy rows)
     scale_mode = pw.CharField(null=True)
+    # Fraction (0..1) of pairs asked in both directions
+    dual_fraction = pw.FloatField(null=True)
 
     class Meta:
         indexes = (
@@ -166,8 +168,8 @@ class BenchmarkResult(BaseModel):
 
     class Meta:
         indexes = (
-            # Uniqueness is now per (benchmark_run, persona, case)
-            (("benchmark_run_id", "persona_uuid_id", "case_id"), True),
+            # Uniqueness per (benchmark_run, persona, case, scale_order)
+            (("benchmark_run_id", "persona_uuid_id", "case_id", "scale_order"), True),
         )
 
 

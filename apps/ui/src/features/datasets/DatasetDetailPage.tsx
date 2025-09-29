@@ -42,6 +42,7 @@ export function DatasetDetailPage() {
     const [benchRunId, setBenchRunId] = useState<number | undefined>(undefined);
     const [resumeBenchRunId, setResumeBenchRunId] = useState<number | undefined>(undefined);
     const [scaleMode, setScaleMode] = useState<'in'|'rev'|'random50'>('in');
+    const [dualFrac, setDualFrac] = useState<number>(0.15);
     const benchStatus = useBenchmarkStatus(benchRunId);
     const status = useAttrgenStatus(runId);
     const latest = useLatestAttrgen(idNum);
@@ -256,6 +257,19 @@ export function DatasetDetailPage() {
                   description="Steuert die Reihenfolge der Skala im Prompt"
                   disabled={!!resumeBenchRunId}
                 />
+                <Select
+                  label="Doppel-Befragung Anteil"
+                  data={[
+                    { value: '0', label: '0%' },
+                    { value: '0.10', label: '10%' },
+                    { value: '0.15', label: '15%' },
+                    { value: '0.20', label: '20%' },
+                  ]}
+                  value={String(dualFrac)}
+                  onChange={(v)=> setDualFrac(Number(v || '0'))}
+                  description="Anteil der Paare, die in beiden Richtungen gefragt werden"
+                  disabled={!!resumeBenchRunId}
+                />
                 <Textarea label="System Prompt (optional)" minRows={3} value={systemPrompt} onChange={(e)=>setSystemPrompt(e.currentTarget.value)} />
                 <Group grow mb="md" mt="md">
                   <TextInput label="vLLM Base URL" value={vllmBase} onChange={(e)=>setVllmBase(e.currentTarget.value)} />
@@ -275,7 +289,7 @@ export function DatasetDetailPage() {
                   <Button variant="default" onClick={()=>setBenchModalOpen(false)}>Abbrechen</Button>
                   <Button loading={startBench.isPending} disabled={!modelName && !resumeBenchRunId} onClick={async ()=>{
                     try {
-                      const rs = await startBench.mutateAsync({ dataset_id: idNum, model_name: modelName || undefined, include_rationale: includeRationale, llm: 'vllm', batch_size: batchSize, max_new_tokens: maxNew, max_attempts: maxAttempts, system_prompt: systemPrompt || undefined, vllm_base_url: vllmBase, vllm_api_key: vllmApiKey || undefined, resume_run_id: resumeBenchRunId, scale_mode: resumeBenchRunId ? undefined : scaleMode });
+                      const rs = await startBench.mutateAsync({ dataset_id: idNum, model_name: modelName || undefined, include_rationale: includeRationale, llm: 'vllm', batch_size: batchSize, max_new_tokens: maxNew, max_attempts: maxAttempts, system_prompt: systemPrompt || undefined, vllm_base_url: vllmBase, vllm_api_key: vllmApiKey || undefined, resume_run_id: resumeBenchRunId, scale_mode: resumeBenchRunId ? undefined : scaleMode, dual_fraction: resumeBenchRunId ? undefined : dualFrac });
                       setBenchRunId(rs.run_id); setBenchModalOpen(false); setResumeBenchRunId(undefined);
                     } catch(e) {}
                   }}>Benchmark starten</Button>

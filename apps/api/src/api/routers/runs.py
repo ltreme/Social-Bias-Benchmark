@@ -88,9 +88,10 @@ def _bench_progress_poller(run_id: int, dataset_id: int) -> None:
         pass
 
 def _bench_update_progress(run_id: int, dataset_id: int) -> None:
-    from shared.storage.models import BenchmarkResult, DatasetPersona
+    from shared.storage.models import BenchmarkResult, DatasetPersona, BenchmarkRun
+    # Count completed triples incl. order
     done = (BenchmarkResult
-            .select(BenchmarkResult.persona_uuid_id, BenchmarkResult.case_id)
+            .select(BenchmarkResult.persona_uuid_id, BenchmarkResult.case_id, BenchmarkResult.scale_order)
             .where(BenchmarkResult.benchmark_run_id == run_id)
             .distinct()
             .count())
@@ -99,7 +100,17 @@ def _bench_update_progress(run_id: int, dataset_id: int) -> None:
     except Exception:
         cases = 0
     total_personas = DatasetPersona.select().where(DatasetPersona.dataset_id == dataset_id).count()
-    total = total_personas * cases if cases and total_personas else 0
+    base_total = total_personas * cases if cases and total_personas else 0
+    # Estimate duplicates by dual_fraction
+    try:
+        br = BenchmarkRun.get_by_id(run_id)
+        frac = float(getattr(br, 'dual_fraction', 0.0) or 0.0)
+    except Exception:
+        frac = float(_BENCH_PROGRESS.get(run_id, {}).get('dual_fraction') or 0.0)
+    extra = int(round(base_total * frac)) if base_total and frac else 0
+    total = base_total + extra
+    if done > total:
+        total = done
     pct = (100.0 * done / total) if total else 0.0
     _BENCH_PROGRESS.setdefault(run_id, {})
     _BENCH_PROGRESS[run_id].update({"done": done, "total": total, "pct": pct})
@@ -112,6 +123,7 @@ def _bench_run_background(run_id: int) -> None:
     model_name = str(rec.model_id.name)
     include_rationale = bool(rec.include_rationale)
     scale_mode = getattr(rec, 'scale_mode', None) or _BENCH_PROGRESS.get(run_id, {}).get('scale_mode')
+    dual_fraction = getattr(rec, 'dual_fraction', None) or _BENCH_PROGRESS.get(run_id, {}).get('dual_fraction')
 
     persona_repo = FullPersonaRepositoryByDataset(dataset_id=ds_id, model_name=model_name)
     question_repo = CaseRepository()
@@ -149,6 +161,7 @@ def _bench_run_background(run_id: int) -> None:
             max_attempts=3,
             skip_completed_run_id=run_id if skip_completed else None,
             scale_mode=scale_mode,
+            dual_fraction=float(dual_fraction) if isinstance(dual_fraction, (int,float)) else None,
         )
         _bench_update_progress(run_id, ds_id)
         info = _BENCH_PROGRESS.get(run_id, {})
@@ -188,6 +201,7 @@ def start_benchmark(body: dict) -> dict:
     system_prompt = body.get('system_prompt')
     vllm_api_key = body.get('vllm_api_key')
     scale_mode = body.get('scale_mode')  # 'in' | 'rev' | 'random50'
+    dual_fraction = body.get('dual_fraction')
 
     if resume_run_id is not None:
         # Resume existing run: update params on the existing record
@@ -204,6 +218,11 @@ def start_benchmark(body: dict) -> dict:
                 rec.scale_mode = scale_mode
             except Exception:
                 pass
+        if isinstance(dual_fraction, (int, float)):
+            try:
+                rec.dual_fraction = float(dual_fraction)
+            except Exception:
+                pass
         rec.save()
         run_id = int(rec.id)
         _BENCH_PROGRESS[run_id] = {
@@ -216,13 +235,14 @@ def start_benchmark(body: dict) -> dict:
             'max_new_tokens': max_new_tokens,
             'skip_completed': True,
             'scale_mode': scale_mode,
+            'dual_fraction': float(dual_fraction) if isinstance(dual_fraction, (int,float)) else None,
         }
     else:
         model_name = str(body['model_name'])
         model_entry, _ = Model.get_or_create(name=model_name)
-        rec = BenchmarkRun.create(dataset_id=ds_id, model_id=model_entry.id, include_rationale=include_rationale, batch_size=batch_size, max_attempts=max_attempts, system_prompt=system_prompt, scale_mode=scale_mode)
+        rec = BenchmarkRun.create(dataset_id=ds_id, model_id=model_entry.id, include_rationale=include_rationale, batch_size=batch_size, max_attempts=max_attempts, system_prompt=system_prompt, scale_mode=scale_mode, dual_fraction=float(dual_fraction) if isinstance(dual_fraction, (int,float)) else None)
         run_id = int(rec.id)
-        _BENCH_PROGRESS[run_id] = {'status': 'queued', 'llm': llm, 'batch_size': batch_size, 'vllm_base_url': vllm_base_url, 'vllm_api_key': vllm_api_key, 'max_new_tokens': max_new_tokens, 'scale_mode': scale_mode}
+        _BENCH_PROGRESS[run_id] = {'status': 'queued', 'llm': llm, 'batch_size': batch_size, 'vllm_base_url': vllm_base_url, 'vllm_api_key': vllm_api_key, 'max_new_tokens': max_new_tokens, 'scale_mode': scale_mode, 'dual_fraction': float(dual_fraction) if isinstance(dual_fraction, (int,float)) else None}
 
     t = threading.Thread(target=_bench_run_background, args=(run_id,), daemon=True)
     t.start()

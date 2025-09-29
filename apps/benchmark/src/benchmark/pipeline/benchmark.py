@@ -53,6 +53,7 @@ def run_benchmark_pipeline(
     persona_count_override: int | None = None,
     skip_completed_run_id: int | None = None,
     scale_mode: str | None = None,
+    dual_fraction: float | None = None,
 ) -> None:
     """Primary benchmark pipeline.
 
@@ -111,14 +112,14 @@ def run_benchmark_pipeline(
         return f"{s}s"
 
     # Preload completed keys for skipping if requested
-    completed_keys: set[tuple[str, str]] = set()
+    completed_keys: set[tuple[str, str, str]] = set()
     if skip_completed_run_id is not None:
         try:
             from shared.storage.models import BenchmarkResult
             q = (BenchmarkResult
-                 .select(BenchmarkResult.persona_uuid_id, BenchmarkResult.case_id)
+                 .select(BenchmarkResult.persona_uuid_id, BenchmarkResult.case_id, BenchmarkResult.scale_order)
                  .where(BenchmarkResult.benchmark_run_id == int(skip_completed_run_id)))
-            completed_keys = {(str(r.persona_uuid_id), str(r.case_id)) for r in q}
+            completed_keys = {(str(r.persona_uuid_id), str(r.case_id), str(r.scale_order or 'in')) for r in q}
         except Exception:
             completed_keys = set()
 
@@ -137,19 +138,41 @@ def run_benchmark_pipeline(
     def iter_items() -> Iterable[BenchWorkItem]:
         for p in persona_repo.iter_personas(dataset_id):
             for c in cases:
-                # Skip already completed pairs when resuming
-                if completed_keys and (str(p.persona_uuid), str(c.id)) in completed_keys:
-                    continue
-                scale_rev = _decide_reversed(str(p.persona_uuid), str(c.id))
-                yield BenchWorkItem(
-                    dataset_id=p.dataset_id,
-                    persona_uuid=p.persona_uuid,
-                    persona_context=p.persona_context,
-                    case_id=c.id,
-                    adjective=c.adjective,
-                    case_template=c.case_template,
-                    scale_reversed=scale_rev,
-                )
+                persona_s = str(p.persona_uuid)
+                case_s = str(c.id)
+                scale_rev = _decide_reversed(persona_s, case_s)
+                # Decide duplication
+                def _hash01(a: str) -> float:
+                    h = hashlib.md5(a.encode('utf-8')).digest()
+                    return int.from_bytes(h, 'big') / (2**128)
+                dup = False
+                if isinstance(dual_fraction, (int, float)) and dual_fraction and dual_fraction > 0:
+                    dup = (_hash01(f"dup:{benchmark_run_id}:{persona_s}:{case_s}") < float(dual_fraction))
+
+                # Primary direction
+                if not (completed_keys and (persona_s, case_s, 'rev' if scale_rev else 'in') in completed_keys):
+                    yield BenchWorkItem(
+                        dataset_id=p.dataset_id,
+                        persona_uuid=p.persona_uuid,
+                        persona_context=p.persona_context,
+                        case_id=c.id,
+                        adjective=c.adjective,
+                        case_template=c.case_template,
+                        scale_reversed=scale_rev,
+                    )
+                # Opposite direction for duplicated subset
+                if dup:
+                    opp_rev = not scale_rev
+                    if not (completed_keys and (persona_s, case_s, 'rev' if opp_rev else 'in') in completed_keys):
+                        yield BenchWorkItem(
+                            dataset_id=p.dataset_id,
+                            persona_uuid=p.persona_uuid,
+                            persona_context=p.persona_context,
+                            case_id=c.id,
+                            adjective=c.adjective,
+                            case_template=c.case_template,
+                            scale_reversed=opp_rev,
+                        )
 
     attempt = 1
     base_items: Iterable[BenchWorkItem] = iter_items()
