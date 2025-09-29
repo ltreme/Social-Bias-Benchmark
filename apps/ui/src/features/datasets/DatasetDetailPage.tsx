@@ -40,6 +40,7 @@ export function DatasetDetailPage() {
     const [resumeRunId, setResumeRunId] = useState<number | undefined>(undefined);
     const startBench = useStartBenchmark();
     const [benchRunId, setBenchRunId] = useState<number | undefined>(undefined);
+    const [resumeBenchRunId, setResumeBenchRunId] = useState<number | undefined>(undefined);
     const benchStatus = useBenchmarkStatus(benchRunId);
     const status = useAttrgenStatus(runId);
     const latest = useLatestAttrgen(idNum);
@@ -238,7 +239,7 @@ export function DatasetDetailPage() {
             return (
               <>
                 <Group grow mb="md">
-                  <Select label="Model (aus fertigen AttrGen-Runs)" data={completedModels} value={modelName} onChange={(v)=>setModelName(v || '')} placeholder="Model wählen" searchable />
+                  <Select label="Model (aus fertigen AttrGen-Runs)" data={completedModels} value={modelName} onChange={(v)=>setModelName(v || '')} placeholder="Model wählen" searchable disabled={!!resumeBenchRunId} />
                   <NumberInput label="Batch Size" value={batchSize} onChange={(v)=>setBatchSize(Number(v||0))} min={1} />
                 </Group>
                 <Group grow mb="md">
@@ -251,12 +252,22 @@ export function DatasetDetailPage() {
                   <TextInput label="vLLM Base URL" value={vllmBase} onChange={(e)=>setVllmBase(e.currentTarget.value)} />
                   <TextInput label="vLLM API Key (optional)" value={vllmApiKey} onChange={(e)=>setVllmApiKey(e.currentTarget.value)} placeholder="Nutze .env, falls leer" />
                 </Group>
+                <Group grow mb="md">
+                  <Select
+                    label="Run fortsetzen"
+                    data={(runs || []).map(r => ({ value: String(r.id), label: `#${r.id} · ${r.model_name} · ${new Date(r.created_at).toLocaleString()}` }))}
+                    value={resumeBenchRunId ? String(resumeBenchRunId) : null}
+                    onChange={(v)=> setResumeBenchRunId(v ? Number(v) : undefined)}
+                    clearable
+                    placeholder="Optional"
+                  />
+                </Group>
                 <Group justify="right" mt="md">
                   <Button variant="default" onClick={()=>setBenchModalOpen(false)}>Abbrechen</Button>
-                  <Button loading={startBench.isPending} disabled={!modelName} onClick={async ()=>{
+                  <Button loading={startBench.isPending} disabled={!modelName && !resumeBenchRunId} onClick={async ()=>{
                     try {
-                      const rs = await startBench.mutateAsync({ dataset_id: idNum, model_name: modelName, include_rationale: includeRationale, llm: 'vllm', batch_size: batchSize, max_new_tokens: maxNew, max_attempts: maxAttempts, system_prompt: systemPrompt || undefined, vllm_base_url: vllmBase, vllm_api_key: vllmApiKey || undefined });
-                      setBenchRunId(rs.run_id); setBenchModalOpen(false);
+                      const rs = await startBench.mutateAsync({ dataset_id: idNum, model_name: modelName || undefined, include_rationale: includeRationale, llm: 'vllm', batch_size: batchSize, max_new_tokens: maxNew, max_attempts: maxAttempts, system_prompt: systemPrompt || undefined, vllm_base_url: vllmBase, vllm_api_key: vllmApiKey || undefined, resume_run_id: resumeBenchRunId });
+                      setBenchRunId(rs.run_id); setBenchModalOpen(false); setResumeBenchRunId(undefined);
                     } catch(e) {}
                   }}>Benchmark starten</Button>
                 </Group>

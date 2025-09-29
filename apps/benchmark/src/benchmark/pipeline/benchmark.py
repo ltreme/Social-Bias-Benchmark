@@ -50,6 +50,7 @@ def run_benchmark_pipeline(
     benchmark_run_id: int,
     max_attempts: int = 3,
     persona_count_override: int | None = None,
+    skip_completed_run_id: int | None = None,
 ) -> None:
     """Primary benchmark pipeline.
 
@@ -107,9 +108,24 @@ def run_benchmark_pipeline(
             return f"{m}m{s:02d}s"
         return f"{s}s"
 
+    # Preload completed keys for skipping if requested
+    completed_keys: set[tuple[str, str]] = set()
+    if skip_completed_run_id is not None:
+        try:
+            from shared.storage.models import BenchmarkResult
+            q = (BenchmarkResult
+                 .select(BenchmarkResult.persona_uuid_id, BenchmarkResult.case_id)
+                 .where(BenchmarkResult.benchmark_run_id == int(skip_completed_run_id)))
+            completed_keys = {(str(r.persona_uuid_id), str(r.case_id)) for r in q}
+        except Exception:
+            completed_keys = set()
+
     def iter_items() -> Iterable[BenchWorkItem]:
         for p in persona_repo.iter_personas(dataset_id):
             for c in cases:
+                # Skip already completed pairs when resuming
+                if completed_keys and (str(p.persona_uuid), str(c.id)) in completed_keys:
+                    continue
                 yield BenchWorkItem(
                     dataset_id=p.dataset_id,
                     persona_uuid=p.persona_uuid,

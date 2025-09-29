@@ -78,3 +78,9 @@ export async function deleteRun(runId: number) {
     const res = await api.delete<{ ok: boolean; deleted?: number; error?: string }>(`/runs/${runId}`);
     return res.data;
 }
+
+export type RunMissing = { ok: boolean; dataset_id?: number; total?: number; done?: number; missing?: number; samples?: Array<{ persona_uuid: string; case_id: string; adjective?: string | null }> };
+export async function fetchRunMissing(runId: number) {
+    const res = await api.get<RunMissing>(`/runs/${runId}/missing`);
+    return res.data;
+}

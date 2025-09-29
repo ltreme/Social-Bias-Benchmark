@@ -1,8 +1,9 @@
-import { Card, Grid, Group, Select, Title } from '@mantine/core';
+import { Button, Card, Grid, Group, Select, Title } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from '@tanstack/react-router';
 import { ChartPanel } from '../../components/ChartPanel';
-import { useRunDeltas, useRunForest, useRunMetrics, useRun } from './hooks';
+import { useRunDeltas, useRunForest, useRunMetrics, useRun, useRunMissing } from './hooks';
+import { useStartBenchmark } from '../datasets/hooks';
 
 const ATTRS = [
   { value: 'gender', label: 'Geschlecht' },
@@ -18,6 +19,8 @@ export function RunDetailPage() {
   const idNum = Number(runId);
   const { data: run, isLoading: isLoadingRun } = useRun(idNum);
   const { data: metrics } = useRunMetrics(idNum);
+  const { data: missing } = useRunMissing(idNum);
+  const startBench = useStartBenchmark();
   const [attr, setAttr] = useState<string>('gender');
   const availableCats = metrics?.attributes?.[attr]?.categories || [];
   const defaultBaseline = metrics?.attributes?.[attr]?.baseline || undefined;
@@ -69,6 +72,31 @@ export function RunDetailPage() {
           <div style={{ marginBottom: '1em' }}>
               <b>Datensatz:</b> <Link to={`/datasets/${run.dataset?.id}`}>{run.dataset?.id}: {run.dataset?.name}</Link> | <b>Modell:</b> {run.model_name} | {run.created_at ? (<><b>Erstellt:</b> {new Date(run.created_at).toLocaleDateString()} | <b>Ergebnisse:</b> {run.n_results} | </>) : null}
               {run.include_rationale ? (<><b>Mit Begründung (with_rational):</b> {run.include_rationale ? 'Ja' : 'Nein'} </>) : null}
+              {missing && typeof missing.missing === 'number' && typeof missing.total === 'number' ? (
+                <>
+                  <br />
+                  <b>Status:</b> {missing.missing > 0 ? `partial ${missing.total - missing.missing}/${missing.total}` : `done ${missing.total}/${missing.total}`}
+                  {missing.missing > 0 ? (
+                    <>
+                      <div style={{ marginTop: 6 }}>
+                        {missing.samples && missing.samples.length > 0 ? (
+                          <>
+                            Fehlende Beispiele: {missing.samples.slice(0,5).map(s => `(${s.persona_uuid.slice(0,8)}…, ${s.case_id}${s.adjective ? ' · ' + s.adjective : ''})`).join(', ')}
+                          </>
+                        ) : null}
+                      </div>
+                      <div style={{ marginTop: 6 }}>
+                        <Button size="xs" onClick={async ()=>{
+                          if (!run.dataset?.id) return;
+                          try {
+                            const rs = await startBench.mutateAsync({ dataset_id: run.dataset.id, resume_run_id: idNum });
+                          } catch(e){}
+                        }}>Run fortsetzen</Button>
+                      </div>
+                    </>
+                  ) : null}
+                </>
+              ) : null}
           </div>
       ) : (
           <div style={{ marginBottom: '1em' }}>Run nicht gefunden.</div>

@@ -21,6 +21,7 @@ from benchmark.pipeline.adapters.postprocess.postprocessor_likert import LikertP
 from benchmark.pipeline.adapters.persister_bench_sqlite import BenchPersisterPeewee
 from benchmark.pipeline.adapters.llm import LlmClientFakeBench, LlmClientHFBench, LlmClientVLLMBench
 import threading, time, traceback
+import peewee as pw
 
 
 router = APIRouter(tags=["runs"])
@@ -133,6 +134,7 @@ def _bench_run_background(run_id: int) -> None:
     persist = BenchPersisterPeewee()
     _BENCH_PROGRESS[run_id] = {**_BENCH_PROGRESS.get(run_id, {}), 'status': 'running'}
     try:
+        skip_completed = bool(_BENCH_PROGRESS.get(run_id, {}).get('skip_completed', False))
         run_benchmark_pipeline(
             dataset_id=ds_id,
             question_repo=question_repo,
@@ -144,9 +146,16 @@ def _bench_run_background(run_id: int) -> None:
             model_name=model_name,
             benchmark_run_id=run_id,
             max_attempts=3,
+            skip_completed_run_id=run_id if skip_completed else None,
         )
         _bench_update_progress(run_id, ds_id)
-        _BENCH_PROGRESS[run_id]['status'] = 'done'
+        info = _BENCH_PROGRESS.get(run_id, {})
+        try:
+            done = int(info.get('done') or 0)
+            total = int(info.get('total') or 0)
+        except Exception:
+            done = 0; total = 0
+        _BENCH_PROGRESS[run_id]['status'] = 'done' if (total == 0 or done >= total) else 'partial'
     except Exception as e:
         _BENCH_PROGRESS[run_id]['status'] = 'failed'
         _BENCH_PROGRESS[run_id]['error'] = str(e)
@@ -166,30 +175,56 @@ def start_benchmark(body: dict) -> dict:
     """
     ensure_db()
     ds_id = int(body['dataset_id'])
-    model_name = str(body['model_name'])
+    resume_run_id = body.get('resume_run_id')
     include_rationale = bool(body.get('include_rationale', False))
     llm = body.get('llm', 'vllm')
     batch_size = int(body.get('batch_size', 2))
     vllm_base_url = body.get('vllm_base_url')
 
-    model_entry, _ = Model.get_or_create(name=model_name)
     max_new_tokens = int(body.get('max_new_tokens', 256))
     max_attempts = int(body.get('max_attempts', 3))
     system_prompt = body.get('system_prompt')
     vllm_api_key = body.get('vllm_api_key')
-    rec = BenchmarkRun.create(dataset_id=ds_id, model_id=model_entry.id, include_rationale=include_rationale, batch_size=batch_size, max_attempts=max_attempts, system_prompt=system_prompt)
-    _BENCH_PROGRESS[int(rec.id)] = {'status': 'queued', 'llm': llm, 'batch_size': batch_size, 'vllm_base_url': vllm_base_url, 'vllm_api_key': vllm_api_key, 'max_new_tokens': max_new_tokens}
 
-    t = threading.Thread(target=_bench_run_background, args=(int(rec.id),), daemon=True)
+    if resume_run_id is not None:
+        # Resume existing run: update params on the existing record
+        rec = BenchmarkRun.get_by_id(int(resume_run_id))
+        if int(rec.dataset_id.id) != ds_id:
+            raise ValueError("resume_run_id gehört zu einem anderen Dataset")
+        # Use existing model of the run
+        rec.include_rationale = include_rationale if 'include_rationale' in body else rec.include_rationale
+        rec.batch_size = batch_size or rec.batch_size
+        rec.max_attempts = max_attempts or rec.max_attempts
+        rec.system_prompt = system_prompt if system_prompt is not None else rec.system_prompt
+        rec.save()
+        run_id = int(rec.id)
+        _BENCH_PROGRESS[run_id] = {
+            **_BENCH_PROGRESS.get(run_id, {}),
+            'status': 'queued',
+            'llm': llm,
+            'batch_size': batch_size,
+            'vllm_base_url': vllm_base_url,
+            'vllm_api_key': vllm_api_key,
+            'max_new_tokens': max_new_tokens,
+            'skip_completed': True,
+        }
+    else:
+        model_name = str(body['model_name'])
+        model_entry, _ = Model.get_or_create(name=model_name)
+        rec = BenchmarkRun.create(dataset_id=ds_id, model_id=model_entry.id, include_rationale=include_rationale, batch_size=batch_size, max_attempts=max_attempts, system_prompt=system_prompt)
+        run_id = int(rec.id)
+        _BENCH_PROGRESS[run_id] = {'status': 'queued', 'llm': llm, 'batch_size': batch_size, 'vllm_base_url': vllm_base_url, 'vllm_api_key': vllm_api_key, 'max_new_tokens': max_new_tokens}
+
+    t = threading.Thread(target=_bench_run_background, args=(run_id,), daemon=True)
     t.start()
     # Start a lightweight poller to keep progress fresh during the run
     try:
         ds_id_int = int(ds_id)
-        t_poll = threading.Thread(target=_bench_progress_poller, args=(int(rec.id), ds_id_int), daemon=True)
+        t_poll = threading.Thread(target=_bench_progress_poller, args=(run_id, ds_id_int), daemon=True)
         t_poll.start()
     except Exception:
         pass
-    return {'ok': True, 'run_id': int(rec.id)}
+    return {'ok': True, 'run_id': run_id}
 
 
 @router.get("/benchmarks/{run_id}/status")
@@ -206,6 +241,14 @@ def bench_status(run_id: int) -> dict:
                 info['status'] = 'unknown'
         except Exception:
             info = {'status': 'unknown'}
+    # Normalize status if incomplete
+    try:
+        d = int((info or {}).get('done') or 0)
+        t = int((info or {}).get('total') or 0)
+        if (t > 0 and d < t) and (info or {}).get('status') == 'done':
+            info['status'] = 'partial'
+    except Exception:
+        pass
     return {'ok': True, **(info or {})}
 
 
@@ -237,6 +280,72 @@ def run_metrics(run_id: int) -> Dict[str, Any]:
 
     attrs = {k: attr_meta(k) for k in ["gender","origin_region","religion","sexuality","marriage_status","education"]}
     return {"ok": True, "n": int(len(df)), "hist": {"bins": [str(c) for c in cats], "shares": shares}, "attributes": attrs}
+
+
+@router.get("/runs/{run_id}/missing")
+def run_missing(run_id: int) -> Dict[str, Any]:
+    """Return count of missing BenchmarkResult pairs and a small sample.
+
+    Missing = all (persona in dataset) × (cases) that have no BenchmarkResult for this run.
+    Uses a SQL anti-join for efficiency.
+    """
+    ensure_db()
+    from shared.storage.db import get_db
+    db = get_db()
+    rec = BenchmarkRun.get_or_none(BenchmarkRun.id == run_id)
+    if not rec:
+        return {"ok": False, "error": "run_not_found"}
+    dataset_id = int(rec.dataset_id.id)
+
+    # Total expected pairs and done
+    cases_n = CaseRepository().count()
+    from shared.storage.models import DatasetPersona
+    personas_n = DatasetPersona.select().where(DatasetPersona.dataset_id == dataset_id).count()
+    total = personas_n * cases_n
+    done = (BenchmarkResult
+            .select(BenchmarkResult.persona_uuid_id, BenchmarkResult.case_id)
+            .where(BenchmarkResult.benchmark_run_id == run_id)
+            .distinct()
+            .count())
+
+    # Count missing via anti-join
+    cnt_sql = (
+        "SELECT COUNT(1) AS missing "
+        "FROM datasetpersona dp "
+        "JOIN \"case\" c ON 1=1 "
+        "LEFT JOIN benchmarkresult br "
+        "  ON br.benchmark_run_id = ? AND br.persona_uuid_id = dp.persona_id AND br.case_id = c.id "
+        "WHERE dp.dataset_id = ? AND br.id IS NULL"
+    )
+    missing = 0
+    try:
+        cur = db.execute_sql(cnt_sql, (run_id, dataset_id))
+        row = cur.fetchone()
+        if row:
+            missing = int(row[0] or 0)
+    except Exception:
+        # Fallback: derive from total-done
+        missing = max(0, (total or 0) - (done or 0))
+
+    # Sample a few missing pairs with labels
+    sample_sql = (
+        "SELECT dp.persona_id, c.id AS case_id, c.adjective "
+        "FROM datasetpersona dp "
+        "JOIN \"case\" c ON 1=1 "
+        "LEFT JOIN benchmarkresult br "
+        "  ON br.benchmark_run_id = ? AND br.persona_uuid_id = dp.persona_id AND br.case_id = c.id "
+        "WHERE dp.dataset_id = ? AND br.id IS NULL "
+        "LIMIT 20"
+    )
+    samples = []
+    try:
+        cur = db.execute_sql(sample_sql, (run_id, dataset_id))
+        for pid, cid, adj in cur.fetchall():
+            samples.append({"persona_uuid": str(pid), "case_id": str(cid), "adjective": str(adj) if adj is not None else None})
+    except Exception:
+        samples = []
+
+    return {"ok": True, "dataset_id": dataset_id, "total": total, "done": done, "missing": missing, "samples": samples}
 
 
 @router.delete("/runs/{run_id}")
