@@ -62,9 +62,9 @@ class BenchPersisterPeewee(BenchPersister):
         with self.db.atomic():
             # SQLite: use OR IGNORE to be robust to legacy index names/orders.
             (self._Res
-             .insert_many(payload)
-             .on_conflict_ignore()
-             .execute())
+            .insert_many(payload)
+            .on_conflict_ignore()
+            .execute())
         # optional debug
         import os
         if os.getenv("BENCH_DEBUG", "").lower() in ("1", "true", "yes"):
