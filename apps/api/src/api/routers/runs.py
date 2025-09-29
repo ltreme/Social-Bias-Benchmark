@@ -15,6 +15,7 @@ from shared.storage.models import (
 )
 from analysis.benchmarks import analytics as bench_ana
 from analysis.benchmarks.analytics import BenchQuery, load_benchmark_dataframe
+from functools import lru_cache
 from benchmark.pipeline.benchmark import run_benchmark_pipeline
 from benchmark.repository.case import CaseRepository
 from benchmark.repository.persona_repository import FullPersonaRepositoryByDataset
@@ -76,6 +77,19 @@ def _load_run_df(run_id: int):
     cfg = BenchQuery(run_ids=(run_id,))
     df = load_benchmark_dataframe(cfg)
     return df
+
+
+@lru_cache(maxsize=64)
+def _load_run_df_cached(run_id: int):
+    # Cache the joined dataframe for expensive endpoints
+    return _load_run_df(run_id)
+
+def _df_for_read(run_id: int):
+    """Return cached DF for finished runs; live DF while running."""
+    info = _BENCH_PROGRESS.get(run_id, {})
+    if info.get('status') in {'running', 'queued'}:
+        return _load_run_df(run_id)
+    return _load_run_df_cached(run_id)
 
 
 # ---------------- Benchmark job control ----------------
@@ -286,7 +300,7 @@ def bench_status(run_id: int) -> dict:
 @router.get("/runs/{run_id}/metrics")
 def run_metrics(run_id: int) -> Dict[str, Any]:
     ensure_db()
-    df = _load_run_df(run_id)
+    df = _df_for_read(run_id)
     if df.empty:
         return {"ok": True, "n": 0, "hist": {"bins": [], "shares": []}, "attributes": {}}
     s = df["rating"].dropna().astype(int)
@@ -321,8 +335,7 @@ def run_order_metrics(run_id: int) -> Dict[str, Any]:
     reversed answers are mapped to the normal direction already.
     """
     ensure_db()
-    cfg = BenchQuery(run_ids=(run_id,))
-    df = load_benchmark_dataframe(cfg)
+    df = _df_for_read(run_id)
     if df.empty:
         return {"ok": True, "n_pairs": 0, "rma": {}, "obe": {}, "usage": {}, "test_retest": {}, "correlation": {}, "by_case": []}
     # Keep only rows with explicit scale_order
@@ -492,6 +505,10 @@ def delete_run(run_id: int) -> Dict[str, Any]:
     # Perform delete (cascades to results)
     try:
         deleted = BenchmarkRun.delete().where(BenchmarkRun.id == run_id).execute()
+        try:
+            _load_run_df_cached.cache_clear()
+        except Exception:
+            pass
         return {"ok": True, "deleted": int(deleted)}
     except Exception as e:
         return {"ok": False, "error": str(e)}
@@ -506,7 +523,7 @@ def run_deltas(
     alpha: float = 0.05,
 ) -> Dict[str, Any]:
     ensure_db()
-    df = _load_run_df(run_id)
+    df = _df_for_read(run_id)
     if df.empty or attribute not in df.columns:
         return {"ok": True, "n": 0, "rows": []}
     table = bench_ana.deltas_with_significance(df, attribute, baseline=baseline, n_perm=n_perm, alpha=alpha)
@@ -534,7 +551,7 @@ def run_forest(
     min_n: int = 1,
 ) -> Dict[str, Any]:
     ensure_db()
-    df = _load_run_df(run_id)
+    df = _df_for_read(run_id)
     if df.empty or attribute not in df.columns:
         return {"ok": True, "n": 0, "rows": []}
 
