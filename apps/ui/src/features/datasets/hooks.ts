@@ -1,5 +1,5 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { fetchDatasets, fetchDatasetComposition, fetchDataset, fetchRunsByDataset, createPool, buildBalanced, sampleReality, buildCounterfactuals, startAttrGen, fetchAttrgenStatus, fetchLatestAttrgen, fetchAttrgenRuns, startBenchmark, fetchBenchmarkStatus } from './api';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { fetchDatasets, fetchDatasetComposition, fetchDataset, fetchRunsByDataset, createPool, buildBalanced, sampleReality, buildCounterfactuals, startAttrGen, fetchAttrgenStatus, fetchLatestAttrgen, fetchAttrgenRuns, startBenchmark, fetchBenchmarkStatus, deleteDataset } from './api';
 
 export function useDatasets(q?: string) {
     return useQuery({ queryKey: ['datasets', q], queryFn: () => fetchDatasets(q ? { q } : undefined) });
@@ -55,4 +55,14 @@ export function useStartBenchmark() {
 
 export function useBenchmarkStatus(runId?: number) {
     return useQuery({ queryKey: ['bench-status', runId], queryFn: () => fetchBenchmarkStatus(runId!), enabled: !!runId, refetchInterval: 2000 });
+}
+
+export function useDeleteDataset() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (datasetId: number) => deleteDataset(datasetId),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['datasets'] });
+        },
+    });
 }

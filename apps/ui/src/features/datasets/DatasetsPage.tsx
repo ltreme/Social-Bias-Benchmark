@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ActionIcon, Button, Card, Group, Menu, Title } from '@mantine/core';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { useDatasets } from './hooks';
+import { useDatasets, useDeleteDataset } from './hooks';
 import { DataTable } from '../../components/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { Dataset } from './api';
@@ -13,6 +13,7 @@ export function DatasetsPage() {
     const [builderOpen, setBuilderOpen] = useState(false);
     const [rowBuilder, setRowBuilder] = useState<{ mode: 'balanced' | 'reality' | 'counterfactuals'; id: number } | null>(null);
     const navigate = useNavigate();
+    const delDs = useDeleteDataset();
 
     const columns: ColumnDef<Dataset>[] = [
         { header: 'ID', accessorKey: 'id' },
@@ -33,6 +34,13 @@ export function DatasetsPage() {
                 <Menu.Item onClick={() => setRowBuilder({ mode: 'balanced', id: row.original.id })}>Balanced erstellen…</Menu.Item>
                 <Menu.Item onClick={() => setRowBuilder({ mode: 'reality', id: row.original.id })}>Subset erstellen…</Menu.Item>
                 <Menu.Item onClick={() => setRowBuilder({ mode: 'counterfactuals', id: row.original.id })}>Counterfactuals…</Menu.Item>
+                <Menu.Divider />
+                <Menu.Item color="red" onClick={async () => {
+                  if (!confirm(`Dataset "${row.original.name}" (#${row.original.id}) wirklich löschen?`)) return;
+                  try {
+                    await delDs.mutateAsync(row.original.id);
+                  } catch (e) { /* handled globally */ }
+                }}>Löschen…</Menu.Item>
               </Menu.Dropdown>
             </Menu>
         ) },

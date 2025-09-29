@@ -69,6 +69,11 @@ export async function buildCounterfactuals(body: { dataset_id: number; seed?: nu
     return res.data;
 }
 
+export async function deleteDataset(datasetId: number) {
+    const res = await api.delete<{ ok: boolean }>(`/datasets/${datasetId}`);
+    return res.data;
+}
+
 export type AttrgenStartResponse = { ok: boolean; run_id: number };
 export type AttrgenStatus = { ok: boolean; status: string; total?: number; done?: number; pct?: number; error?: string };
 
