@@ -115,6 +115,8 @@ class BenchmarkRun(BaseModel):
     max_attempts = pw.IntegerField(null=True)
     include_rationale = pw.BooleanField(null=False, default=True)
     system_prompt = pw.TextField(null=True)
+    # Likert scale order mode: 'in' | 'rev' | 'random50' (optional for legacy rows)
+    scale_mode = pw.CharField(null=True)
 
     class Meta:
         indexes = (
@@ -158,6 +160,8 @@ class BenchmarkResult(BaseModel):
     attempt = pw.IntegerField(null=False, default=1, constraints=[pw.Check('attempt >= 1')])
     answer_raw = pw.TextField(null=False)
     rating = pw.IntegerField(null=True, constraints=[pw.Check('rating BETWEEN 1 AND 5')])
+    # Record order used when asking Likert scale: 'in' or 'rev'
+    scale_order = pw.CharField(null=True)
     created_at = pw.DateTimeField(default=utcnow, null=False)
 
     class Meta:

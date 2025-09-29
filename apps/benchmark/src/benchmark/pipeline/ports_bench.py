@@ -14,6 +14,8 @@ class BenchWorkItem:
     case_id: str
     adjective: str
     case_template: str | None
+    # Likert scale order flag at item level (False=in-order, True=reversed)
+    scale_reversed: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -45,6 +47,7 @@ class BenchAnswerDto:
     gen_time_ms: int
     answer_raw: str
     rating: int | None  # parsed Likert rating if available
+    scale_reversed: bool = False
 
 
 # ---- Decisions ----

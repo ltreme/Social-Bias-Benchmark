@@ -38,6 +38,7 @@ class BenchPersisterPeewee(BenchPersister):
             cur = self.db.execute_sql("PRAGMA table_info(benchmarkresult)")
             cols = {row[1] for row in cur.fetchall()}  # row[1] = name
             self._has_legacy_question_col = "question_uuid" in cols
+            self._has_scale_order_col = "scale_order" in cols
         except Exception:
             pass
 
@@ -57,6 +58,8 @@ class BenchPersisterPeewee(BenchPersister):
             if self._has_legacy_question_col:
                 # Mirror case_id into legacy column to satisfy old UNIQUE(persona_uuid_id, question_uuid, benchmark_run_id)
                 item["question_uuid"] = r.case_id
+            if getattr(self, "_has_scale_order_col", False):
+                item["scale_order"] = ("rev" if getattr(r, "scale_reversed", False) else "in")
             payload.append(item)
 
         with self.db.atomic():

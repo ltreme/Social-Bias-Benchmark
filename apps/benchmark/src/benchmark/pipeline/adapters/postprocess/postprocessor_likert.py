@@ -50,6 +50,7 @@ class LikertPostProcessor(AbstractPostProcessor, BenchPostProcessor):
             gen_time_ms=res.gen_time_ms,
             answer_raw=(raw_text[:2000] if raw_text else ""),
             rating=rating,
+            scale_reversed=bool(getattr(spec.work, 'scale_reversed', False)),
         )
         return OkDecision(kind="ok", answers=[ans])
 

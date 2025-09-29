@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import Iterable, List, Optional, Tuple
+import hashlib
 import os, time
 
 from .ports_bench import (
@@ -51,6 +52,7 @@ def run_benchmark_pipeline(
     max_attempts: int = 3,
     persona_count_override: int | None = None,
     skip_completed_run_id: int | None = None,
+    scale_mode: str | None = None,
 ) -> None:
     """Primary benchmark pipeline.
 
@@ -120,12 +122,25 @@ def run_benchmark_pipeline(
         except Exception:
             completed_keys = set()
 
+    def _decide_reversed(persona_uuid: str, case_id: str) -> bool:
+        # Decide based on run-level setting in _BENCH_PROGRESS via environment
+        mode = scale_mode
+        if mode == 'rev':
+            return True
+        if mode == 'in':
+            return False
+        if mode == 'random50':
+            h = hashlib.md5(f"{benchmark_run_id}:{persona_uuid}:{case_id}".encode('utf-8')).digest()
+            return (h[0] % 2) == 0
+        return False
+
     def iter_items() -> Iterable[BenchWorkItem]:
         for p in persona_repo.iter_personas(dataset_id):
             for c in cases:
                 # Skip already completed pairs when resuming
                 if completed_keys and (str(p.persona_uuid), str(c.id)) in completed_keys:
                     continue
+                scale_rev = _decide_reversed(str(p.persona_uuid), str(c.id))
                 yield BenchWorkItem(
                     dataset_id=p.dataset_id,
                     persona_uuid=p.persona_uuid,
@@ -133,6 +148,7 @@ def run_benchmark_pipeline(
                     case_id=c.id,
                     adjective=c.adjective,
                     case_template=c.case_template,
+                    scale_reversed=scale_rev,
                 )
 
     attempt = 1

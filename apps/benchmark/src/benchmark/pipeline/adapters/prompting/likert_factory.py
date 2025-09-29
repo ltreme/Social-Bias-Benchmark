@@ -28,7 +28,7 @@ class LikertPromptFactory(BasePromptFactory[BenchWorkItem, BenchPromptSpec], Ben
         adjective = (work.adjective or "")
         question_text = f"Wie {adjective} wirkt {name}?".strip()
 
-        likert_block = likert_5_de(adjective)
+        likert_block = likert_5_de(adjective, reverse=bool(getattr(work, 'scale_reversed', False)))
 
         if self._include_rationale:
             fmt = json_format_instruction_de(

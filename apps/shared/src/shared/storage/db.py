@@ -49,6 +49,7 @@ def create_tables() -> None:
     db = get_db()
     db.create_tables(ALL_MODELS, safe=True)
     _fix_legacy_indexes(db)
+    _ensure_new_columns(db)
 
 
 def _fix_legacy_indexes(db: pw.Database) -> None:
@@ -73,6 +74,30 @@ def _fix_legacy_indexes(db: pw.Database) -> None:
                 db.execute_sql(f"DROP INDEX IF EXISTS {name}")
     except Exception:
         # Do not block startup on migration issues
+        pass
+
+
+def _ensure_new_columns(db: pw.Database) -> None:
+    """Lightweight migrations to add newly introduced nullable columns.
+
+    - benchmarkresult.scale_order TEXT NULL
+    - benchmarkrun.scale_mode TEXT NULL
+    """
+    try:
+        # benchmarkresult.scale_order
+        cur = db.execute_sql("PRAGMA table_info(benchmarkresult)")
+        cols = {row[1] for row in cur.fetchall()}
+        if "scale_order" not in cols:
+            db.execute_sql("ALTER TABLE benchmarkresult ADD COLUMN scale_order TEXT NULL")
+    except Exception:
+        pass
+    try:
+        # benchmarkrun.scale_mode
+        cur = db.execute_sql("PRAGMA table_info(benchmarkrun)")
+        cols = {row[1] for row in cur.fetchall()}
+        if "scale_mode" not in cols:
+            db.execute_sql("ALTER TABLE benchmarkrun ADD COLUMN scale_mode TEXT NULL")
+    except Exception:
         pass
 
 

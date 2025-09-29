@@ -56,6 +56,7 @@ def load_benchmark_dataframe(cfg: BenchQuery) -> pd.DataFrame:
             BenchmarkResult.case_id,
             Model.name.alias("model_name"),
             BenchmarkResult.rating,
+            BenchmarkResult.scale_order,
             DatasetPersona.dataset_id.alias("dataset_id"),
             Persona.age,
             Persona.gender,
@@ -101,8 +102,19 @@ def load_benchmark_dataframe(cfg: BenchQuery) -> pd.DataFrame:
             df["run_id"] = pd.to_numeric(df["run_id"], errors="coerce").astype("Int64")
         except Exception:
             pass
-    # ensure rating numeric
+    # ensure rating numeric and normalise if reversed
     df["rating"] = pd.to_numeric(df["rating"], errors="coerce")
+    if "scale_order" in df.columns:
+        df["rating_raw"] = df["rating"]
+        # map: if 'rev' then 6 - rating, else keep
+        def _norm(row):
+            try:
+                if str(row.get("scale_order") or "in") == "rev" and pd.notna(row.get("rating")):
+                    return 6 - int(row["rating"]) if row["rating"] == row["rating"] else row["rating"]
+            except Exception:
+                pass
+            return row.get("rating")
+        df["rating"] = df.apply(_norm, axis=1)
     return df
 
 

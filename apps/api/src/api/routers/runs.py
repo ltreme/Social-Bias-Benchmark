@@ -111,6 +111,7 @@ def _bench_run_background(run_id: int) -> None:
     ds_id = int(rec.dataset_id.id)
     model_name = str(rec.model_id.name)
     include_rationale = bool(rec.include_rationale)
+    scale_mode = getattr(rec, 'scale_mode', None) or _BENCH_PROGRESS.get(run_id, {}).get('scale_mode')
 
     persona_repo = FullPersonaRepositoryByDataset(dataset_id=ds_id, model_name=model_name)
     question_repo = CaseRepository()
@@ -147,6 +148,7 @@ def _bench_run_background(run_id: int) -> None:
             benchmark_run_id=run_id,
             max_attempts=3,
             skip_completed_run_id=run_id if skip_completed else None,
+            scale_mode=scale_mode,
         )
         _bench_update_progress(run_id, ds_id)
         info = _BENCH_PROGRESS.get(run_id, {})
@@ -185,6 +187,7 @@ def start_benchmark(body: dict) -> dict:
     max_attempts = int(body.get('max_attempts', 3))
     system_prompt = body.get('system_prompt')
     vllm_api_key = body.get('vllm_api_key')
+    scale_mode = body.get('scale_mode')  # 'in' | 'rev' | 'random50'
 
     if resume_run_id is not None:
         # Resume existing run: update params on the existing record
@@ -196,6 +199,11 @@ def start_benchmark(body: dict) -> dict:
         rec.batch_size = batch_size or rec.batch_size
         rec.max_attempts = max_attempts or rec.max_attempts
         rec.system_prompt = system_prompt if system_prompt is not None else rec.system_prompt
+        if scale_mode in ('in','rev','random50'):
+            try:
+                rec.scale_mode = scale_mode
+            except Exception:
+                pass
         rec.save()
         run_id = int(rec.id)
         _BENCH_PROGRESS[run_id] = {
@@ -207,13 +215,14 @@ def start_benchmark(body: dict) -> dict:
             'vllm_api_key': vllm_api_key,
             'max_new_tokens': max_new_tokens,
             'skip_completed': True,
+            'scale_mode': scale_mode,
         }
     else:
         model_name = str(body['model_name'])
         model_entry, _ = Model.get_or_create(name=model_name)
-        rec = BenchmarkRun.create(dataset_id=ds_id, model_id=model_entry.id, include_rationale=include_rationale, batch_size=batch_size, max_attempts=max_attempts, system_prompt=system_prompt)
+        rec = BenchmarkRun.create(dataset_id=ds_id, model_id=model_entry.id, include_rationale=include_rationale, batch_size=batch_size, max_attempts=max_attempts, system_prompt=system_prompt, scale_mode=scale_mode)
         run_id = int(rec.id)
-        _BENCH_PROGRESS[run_id] = {'status': 'queued', 'llm': llm, 'batch_size': batch_size, 'vllm_base_url': vllm_base_url, 'vllm_api_key': vllm_api_key, 'max_new_tokens': max_new_tokens}
+        _BENCH_PROGRESS[run_id] = {'status': 'queued', 'llm': llm, 'batch_size': batch_size, 'vllm_base_url': vllm_base_url, 'vllm_api_key': vllm_api_key, 'max_new_tokens': max_new_tokens, 'scale_mode': scale_mode}
 
     t = threading.Thread(target=_bench_run_background, args=(run_id,), daemon=True)
     t.start()
