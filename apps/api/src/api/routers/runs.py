@@ -526,20 +526,68 @@ def run_deltas(
     df = _df_for_read(run_id)
     if df.empty or attribute not in df.columns:
         return {"ok": True, "n": 0, "rows": []}
+    # Compute table via analytics helper
     table = bench_ana.deltas_with_significance(df, attribute, baseline=baseline, n_perm=n_perm, alpha=alpha)
-    rows = [
-        {
+
+    # Add BH q-values
+    try:
+        qvals = bench_ana.benjamini_hochberg(table["p_value"].tolist())
+        table = table.assign(q_value=qvals)
+    except Exception:
+        table = table.assign(q_value=[float("nan")] * len(table))
+
+    # Add Cliff's delta per category vs baseline
+    try:
+        import pandas as _pd
+        from analysis.benchmarks.analytics import mann_whitney_cliffs as _mw
+        work = df.copy()
+        work[attribute] = work[attribute].fillna("Unknown").astype(str)
+        base = str(table["baseline"].iloc[0]) if "baseline" in table.columns and not table.empty else None
+        if base is not None:
+            base_vals = _pd.to_numeric(work.loc[work[attribute] == base, "rating"], errors="coerce").dropna()
+            cliffs = []
+            for _, r in table.iterrows():
+                cat = str(r[attribute])
+                vals = _pd.to_numeric(work.loc[work[attribute] == cat, "rating"], errors="coerce").dropna()
+                _, _, cd = _mw(base_vals, vals)
+                cliffs.append(float(cd))
+            table = table.assign(cliffs_delta=cliffs)
+    except Exception:
+        table = table.assign(cliffs_delta=[float("nan")] * len(table))
+
+    rows = []
+    for _, r in table.iterrows():
+        rows.append({
             "category": str(r[attribute]),
             "count": int(round(r["count"])),
             "mean": float(r["mean"]),
-            "delta": float(r["delta"]),
-            "p_value": float(r["p_value"]),
-            "significant": bool(r["significant"]),
-            "baseline": str(r["baseline"]),
-        }
-        for _, r in table.iterrows()
-    ]
+            "delta": float(r["delta"]) if r["delta"] == r["delta"] else None,
+            "p_value": float(r["p_value"]) if r["p_value"] == r["p_value"] else None,
+            "q_value": float(r.get("q_value", float("nan"))) if r.get("q_value", float("nan")) == r.get("q_value", float("nan")) else None,
+            "cliffs_delta": float(r.get("cliffs_delta", float("nan"))) if r.get("cliffs_delta", float("nan")) == r.get("cliffs_delta", float("nan")) else None,
+            "significant": bool(r.get("significant", False)),
+            "baseline": str(r.get("baseline", baseline)) if r.get("baseline", baseline) is not None else None,
+        })
     return {"ok": True, "n": int(len(df)), "rows": rows, "baseline": rows[0]["baseline"] if rows else baseline}
+
+
+@router.get("/runs/{run_id}/means")
+def run_means(run_id: int, attribute: str, top_n: Optional[int] = None) -> Dict[str, Any]:
+    """Mean rating and counts per category for a given attribute."""
+    ensure_db()
+    import pandas as pd
+    df = _df_for_read(run_id)
+    if df.empty or attribute not in df.columns:
+        return {"ok": True, "rows": []}
+    work = df.copy()
+    work[attribute] = work[attribute].fillna("Unknown").astype(str)
+    s = pd.to_numeric(work["rating"], errors="coerce")
+    g = work.assign(r=s).groupby(attribute)["r"].agg(["count","mean"]).reset_index()
+    g = g.sort_values("count", ascending=False)
+    if top_n and top_n > 0:
+        g = g.head(int(top_n))
+    rows = [{"category": str(r[attribute]), "count": int(r["count"]), "mean": float(r["mean"])} for _, r in g.iterrows()]
+    return {"ok": True, "rows": rows}
 
 
 @router.get("/runs/{run_id}/forest")

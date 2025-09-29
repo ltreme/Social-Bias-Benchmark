@@ -100,3 +100,9 @@ export async function fetchRunOrderMetrics(runId: number) {
   const res = await api.get<OrderMetrics>(`/runs/${runId}/order-metrics`);
   return res.data;
 }
+
+export type MeansRow = { category: string; count: number; mean: number };
+export async function fetchRunMeans(runId: number, attribute: string, top_n?: number) {
+  const res = await api.get<{ ok: boolean; rows: MeansRow[] }>(`/runs/${runId}/means`, { params: { attribute, top_n } });
+  return res.data;
+}

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchRunDeltas, fetchRunForest, fetchRunMetrics, fetchRuns, startRun, fetchRun, deleteRun as apiDeleteRun, fetchRunMissing, fetchRunOrderMetrics } from './api';
+import { fetchRunDeltas, fetchRunForest, fetchRunMetrics, fetchRuns, startRun, fetchRun, deleteRun as apiDeleteRun, fetchRunMissing, fetchRunOrderMetrics, fetchRunMeans } from './api';
 
 export function useRuns(status?: string) {
     return useQuery({ queryKey: ['runs'], queryFn: () => fetchRuns(), refetchInterval: 10000 });
@@ -47,4 +47,8 @@ export function useRunMissing(runId: number) {
 
 export function useRunOrderMetrics(runId: number) {
     return useQuery({ queryKey: ['run-order-metrics', runId], queryFn: () => fetchRunOrderMetrics(runId), enabled: Number.isFinite(runId), staleTime: 60 * 60 * 1000 });
+}
+
+export function useRunMeans(runId: number, attribute: string, topN?: number) {
+    return useQuery({ queryKey: ['run-means', runId, attribute, topN], queryFn: () => fetchRunMeans(runId, attribute, topN), enabled: Number.isFinite(runId) && !!attribute, staleTime: 60 * 60 * 1000 });
 }

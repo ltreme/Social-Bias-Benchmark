@@ -2,7 +2,7 @@ import { Badge, Button, Card, Divider, Grid, Group, Select, Text, Title, Tooltip
 import { useEffect, useState } from 'react';
 import { Link, useParams } from '@tanstack/react-router';
 import { ChartPanel } from '../../components/ChartPanel';
-import { useRunDeltas, useRunForest, useRunMetrics, useRun, useRunMissing, useRunOrderMetrics } from './hooks';
+import { useRunDeltas, useRunForest, useRunMetrics, useRun, useRunMissing, useRunOrderMetrics, useRunMeans } from './hooks';
 import { useStartBenchmark } from '../datasets/hooks';
 
 const ATTRS = [
@@ -11,7 +11,7 @@ const ATTRS = [
   { value: 'sexuality', label: 'Sexualität' },
   { value: 'marriage_status', label: 'Familienstand' },
   { value: 'education', label: 'Bildung' },
-  { value: 'origin_region', label: 'Herkunft-Region' },
+  { value: 'origin_subregion', label: 'Herkunft-Subregion' },
 ];
 
 export function RunDetailPage() {
@@ -82,6 +82,40 @@ export function RunDetailPage() {
 
   const { data: deltas } = useRunDeltas(idNum, attr, baseline);
   const { data: forest } = useRunForest(idNum, attr, baseline, target);
+  // Means for fixed attribute set (avoid calling hooks in loops)
+  const meansGender = useRunMeans(idNum, 'gender');
+  const meansSubregion = useRunMeans(idNum, 'origin_subregion');
+  const meansReligion = useRunMeans(idNum, 'religion');
+  const meansMigration = useRunMeans(idNum, 'migration_status');
+  const meansSexuality = useRunMeans(idNum, 'sexuality');
+  const meansMarriage = useRunMeans(idNum, 'marriage_status');
+  const meansEducation = useRunMeans(idNum, 'education');
+  const meansData = [
+    { a: 'gender', q: meansGender },
+    { a: 'origin_subregion', q: meansSubregion },
+    { a: 'religion', q: meansReligion },
+    { a: 'migration_status', q: meansMigration },
+    { a: 'sexuality', q: meansSexuality },
+    { a: 'marriage_status', q: meansMarriage },
+    { a: 'education', q: meansEducation },
+  ];
+  // Deltas (significance tables)
+  const deltasGender = useRunDeltas(idNum, 'gender');
+  const deltasSubregion = useRunDeltas(idNum, 'origin_subregion');
+  const deltasReligion = useRunDeltas(idNum, 'religion');
+  const deltasMigration = useRunDeltas(idNum, 'migration_status');
+  const deltasSexuality = useRunDeltas(idNum, 'sexuality');
+  const deltasMarriage = useRunDeltas(idNum, 'marriage_status');
+  const deltasEducation = useRunDeltas(idNum, 'education');
+  const deltasData = [
+    { a: 'gender', q: deltasGender },
+    { a: 'origin_subregion', q: deltasSubregion },
+    { a: 'religion', q: deltasReligion },
+    { a: 'migration_status', q: deltasMigration },
+    { a: 'sexuality', q: deltasSexuality },
+    { a: 'marriage_status', q: deltasMarriage },
+    { a: 'education', q: deltasEducation },
+  ];
 
   const histBars: Partial<Plotly.Data>[] = metrics ? [{ type: 'bar', x: metrics.hist.bins, y: metrics.hist.shares, marker: { color: '#3182bd' } }] : [];
 
@@ -150,6 +184,7 @@ export function RunDetailPage() {
           <div style={{ marginBottom: '1em' }}>Run nicht gefunden.</div>
       )}
       <Grid>
+
         <Grid.Col span={{ base: 12 }}>
           {order.data && order.data.n_pairs > 0 ? (
             <Card withBorder padding="md" style={{ marginBottom: 12 }}>
@@ -237,6 +272,62 @@ export function RunDetailPage() {
             <div>Keine Daten für Forest-Plot.</div>
           )) : (<div>Bitte Kategorie für Forest auswählen.</div>)}
         </Grid.Col>
+        <Grid.Col span={12}>
+          <Card withBorder padding="md" style={{ marginBottom: 12 }}>
+            <Title order={4}>Mittelwerte pro Merkmal</Title>
+            {meansData.map(({a,q}) => (
+              <div key={a} style={{ marginTop: 8 }}>
+                <b>{ATTRS.find(x=>x.value===a)?.label || a}</b>
+                <div style={{ fontFamily:'monospace' }}>
+                  {q.data?.rows && q.data.rows.length>0 ? q.data.rows.map(r => `${r.category}: mean=${r.mean.toFixed(2)} (n=${r.count})`).join(' · ') : '—'}
+                </div>
+              </div>
+            ))}
+          </Card>
+        </Grid.Col>
+        <Grid.Col span={12}>
+          <Card withBorder padding="md" style={{ marginBottom: 12 }}>
+            <Title order={4}>Signifikanz-Tabellen (p, q, Cliff’s δ)</Title>
+            {deltasData.map(({a,q}) => (
+              <div key={a} style={{ marginTop: 12 }}>
+                <b>{ATTRS.find(x=>x.value===a)?.label || a}</b>
+                {q.data && q.data.rows && q.data.rows.length>0 ? (
+                  <div style={{ overflowX:'auto' }}>
+                    <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ textAlign:'left' }}>Kategorie</th>
+                          <th style={{ textAlign:'right' }}>n</th>
+                          <th style={{ textAlign:'right' }}>Mittel</th>
+                          <th style={{ textAlign:'right' }}>Delta</th>
+                          <th style={{ textAlign:'right' }}>p</th>
+                          <th style={{ textAlign:'right' }}>q</th>
+                          <th style={{ textAlign:'right' }}>Cliff’s δ</th>
+                          <th style={{ textAlign:'center' }}>Sig</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {q.data.rows.map(r => (
+                          <tr key={r.category}>
+                            <td>{r.category}</td>
+                            <td style={{ textAlign:'right' }}>{r.count}</td>
+                            <td style={{ textAlign:'right' }}>{Number.isFinite(r.mean) ? r.mean.toFixed(2) : '—'}</td>
+                            <td style={{ textAlign:'right' }}>{(r.delta ?? NaN)=== (r.delta ?? NaN) ? (r.delta as number).toFixed(2) : '—'}</td>
+                            <td style={{ textAlign:'right' }}>{(r.p_value ?? NaN)=== (r.p_value ?? NaN) ? (r.p_value as number).toFixed(3) : '—'}</td>
+                            <td style={{ textAlign:'right' }}>{(r as any).q_value != null && (r as any).q_value === (r as any).q_value ? (r as any).q_value.toFixed(3) : '—'}</td>
+                            <td style={{ textAlign:'right' }}>{(r as any).cliffs_delta != null && (r as any).cliffs_delta === (r as any).cliffs_delta ? (r as any).cliffs_delta.toFixed(2) : '—'}</td>
+                            <td style={{ textAlign:'center' }}>{r.significant ? 'yes' : ''}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (<div>—</div>)}
+              </div>
+            ))}
+          </Card>
+        </Grid.Col>
+
       </Grid>
     </Card>
   );
