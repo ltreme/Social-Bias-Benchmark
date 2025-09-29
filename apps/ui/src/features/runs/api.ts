@@ -84,3 +84,19 @@ export async function fetchRunMissing(runId: number) {
     const res = await api.get<RunMissing>(`/runs/${runId}/missing`);
     return res.data;
 }
+
+export type OrderMetrics = {
+  ok: boolean;
+  n_pairs: number;
+  rma: { exact_rate?: number; mae?: number; cliffs_delta?: number };
+  obe: { mean_diff?: number; ci_low?: number; ci_high?: number; sd?: number };
+  usage: { eei?: number; mni?: number; sv?: number };
+  test_retest: { within1_rate?: number; mean_abs_diff?: number };
+  correlation: { pearson?: number; spearman?: number; kendall?: number };
+  by_case: Array<{ case_id: string; adjective?: string | null; n_pairs: number; exact_rate: number; mae: number }>;
+};
+
+export async function fetchRunOrderMetrics(runId: number) {
+  const res = await api.get<OrderMetrics>(`/runs/${runId}/order-metrics`);
+  return res.data;
+}

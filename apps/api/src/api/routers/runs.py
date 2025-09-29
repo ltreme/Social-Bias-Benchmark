@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
+import pandas as pd
+import numpy as np
 
 from fastapi import APIRouter, Query
 
@@ -309,6 +311,102 @@ def run_metrics(run_id: int) -> Dict[str, Any]:
 
     attrs = {k: attr_meta(k) for k in ["gender","origin_region","religion","sexuality","marriage_status","education"]}
     return {"ok": True, "n": int(len(df)), "hist": {"bins": [str(c) for c in cats], "shares": shares}, "attributes": attrs}
+
+
+@router.get("/runs/{run_id}/order-metrics")
+def run_order_metrics(run_id: int) -> Dict[str, Any]:
+    """Metrics for pairs asked in both directions (in vs. rev).
+
+    Returns aggregate and per-case metrics based on normalised ratings where
+    reversed answers are mapped to the normal direction already.
+    """
+    ensure_db()
+    cfg = BenchQuery(run_ids=(run_id,))
+    df = load_benchmark_dataframe(cfg)
+    if df.empty:
+        return {"ok": True, "n_pairs": 0, "rma": {}, "obe": {}, "usage": {}, "test_retest": {}, "correlation": {}, "by_case": []}
+    # Keep only rows with explicit scale_order
+    if "scale_order" not in df.columns:
+        return {"ok": True, "n_pairs": 0, "rma": {}, "obe": {}, "usage": {}, "test_retest": {}, "correlation": {}, "by_case": []}
+
+    work = df.copy()
+    # Build pairs by (persona, case)
+    sub = work.loc[work["scale_order"].isin(["in", "rev"]) & work["rating"].notna(), ["persona_uuid", "case_id", "rating", "scale_order"]]
+    if sub.empty:
+        return {"ok": True, "n_pairs": 0, "rma": {}, "obe": {}, "usage": {}, "test_retest": {}, "correlation": {}, "by_case": []}
+    piv = sub.pivot_table(index=["persona_uuid", "case_id"], columns="scale_order", values="rating", aggfunc="first").reset_index()
+    if not ("in" in piv.columns and "rev" in piv.columns):
+        return {"ok": True, "n_pairs": 0, "rma": {}, "obe": {}, "usage": {}, "test_retest": {}, "correlation": {}, "by_case": []}
+    pairs = piv.dropna(subset=["in", "rev"]).copy()
+    if pairs.empty:
+        return {"ok": True, "n_pairs": 0, "rma": {}, "obe": {}, "usage": {}, "test_retest": {}, "correlation": {}, "by_case": []}
+    pairs["diff"] = pairs["in"].astype(float) - pairs["rev"].astype(float)
+    pairs["abs_diff"] = pairs["diff"].abs()
+
+    # RMA
+    exact = float((pairs["abs_diff"] == 0).mean()) if len(pairs) else 0.0
+    mae = float(pairs["abs_diff"].mean()) if len(pairs) else 0.0
+    try:
+        from analysis.benchmarks.analytics import mann_whitney_cliffs
+        _, _, cliffs = mann_whitney_cliffs(pairs["in"], pairs["rev"])
+        cliffs = float(cliffs) if np.isfinite(cliffs) else float("nan")
+    except Exception:
+        cliffs = float("nan")
+
+    # OBE = mean difference with 95% CI
+    d = pairs["diff"].to_numpy(dtype=float)
+    n = d.size
+    mu = float(d.mean()) if n else 0.0
+    sd = float(d.std(ddof=1)) if n > 1 else 0.0
+    se = sd / np.sqrt(n) if n > 1 else 0.0
+    ci_low = mu - 1.96 * se
+    ci_high = mu + 1.96 * se
+
+    # Usage metrics on all normalised ratings (both directions)
+    s = pd.to_numeric(sub["rating"], errors="coerce").dropna()
+    eei = float(((s == 1) | (s == 5)).mean()) if not s.empty else 0.0
+    mni = float((s == 3).mean()) if not s.empty else 0.0
+    sv = float(s.std(ddof=1)) if s.size > 1 else 0.0
+
+    # Test-retest like
+    within1 = float((pairs["abs_diff"] <= 1).mean()) if len(pairs) else 0.0
+    mean_abs = mae
+
+    # Correlations
+    pear = float(pairs["in"].corr(pairs["rev"], method="pearson")) if len(pairs) > 1 else float("nan")
+    spear = float(pairs["in"].corr(pairs["rev"], method="spearman")) if len(pairs) > 1 else float("nan")
+    try:
+        import scipy.stats as ss  # type: ignore
+        kend = float(ss.kendalltau(pairs["in"], pairs["rev"]).correlation)
+    except Exception:
+        kend = float("nan")
+
+    # Per-case breakdown
+    rows: List[Dict[str, Any]] = []
+    try:
+        case_map = {str(r.id): (r.adjective or str(r.id)) for r in Case.select()}
+    except Exception:
+        case_map = {}
+    for k, g in pairs.groupby("case_id"):
+        ad = float((g["abs_diff"] == 0).mean()) if len(g) else 0.0
+        rows.append({
+            "case_id": str(k),
+            "adjective": case_map.get(str(k)),
+            "n_pairs": int(len(g)),
+            "exact_rate": ad,
+            "mae": float(g["abs_diff"].mean()) if len(g) else 0.0,
+        })
+
+    return {
+        "ok": True,
+        "n_pairs": int(len(pairs)),
+        "rma": {"exact_rate": exact, "mae": mae, "cliffs_delta": cliffs},
+        "obe": {"mean_diff": mu, "ci_low": ci_low, "ci_high": ci_high, "sd": sd},
+        "usage": {"eei": eei, "mni": mni, "sv": sv},
+        "test_retest": {"within1_rate": within1, "mean_abs_diff": mean_abs},
+        "correlation": {"pearson": pear, "spearman": spear, "kendall": kend},
+        "by_case": rows,
+    }
 
 
 @router.get("/runs/{run_id}/missing")
