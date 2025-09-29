@@ -239,6 +239,28 @@ def run_metrics(run_id: int) -> Dict[str, Any]:
     return {"ok": True, "n": int(len(df)), "hist": {"bins": [str(c) for c in cats], "shares": shares}, "attributes": attrs}
 
 
+@router.delete("/runs/{run_id}")
+def delete_run(run_id: int) -> Dict[str, Any]:
+    """Delete a benchmark run and all associated results.
+
+    Thanks to FK constraints with ON DELETE CASCADE on BenchmarkResult.benchmark_run_id,
+    removing the BenchmarkRun row also removes its BenchmarkResult rows.
+    """
+    ensure_db()
+    # Clear progress cache if present
+    try:
+        if run_id in _BENCH_PROGRESS:
+            _BENCH_PROGRESS.pop(run_id, None)
+    except Exception:
+        pass
+    # Perform delete (cascades to results)
+    try:
+        deleted = BenchmarkRun.delete().where(BenchmarkRun.id == run_id).execute()
+        return {"ok": True, "deleted": int(deleted)}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
 @router.get("/runs/{run_id}/deltas")
 def run_deltas(
     run_id: int,

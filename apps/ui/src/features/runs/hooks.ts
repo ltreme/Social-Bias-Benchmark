@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchRunDeltas, fetchRunForest, fetchRunMetrics, fetchRuns, startRun, fetchRun } from './api';
+import { fetchRunDeltas, fetchRunForest, fetchRunMetrics, fetchRuns, startRun, fetchRun, deleteRun as apiDeleteRun } from './api';
 
 export function useRuns(status?: string) {
     return useQuery({ queryKey: ['runs'], queryFn: () => fetchRuns(), refetchInterval: 10000 });
@@ -27,4 +27,15 @@ export function useRunDeltas(runId: number, attribute: string, baseline?: string
 
 export function useRunForest(runId: number, attribute: string, baseline?: string, target?: string) {
     return useQuery({ queryKey: ['run-forest', runId, attribute, baseline, target], queryFn: () => fetchRunForest(runId, { attribute, baseline, target, min_n: 1 }), enabled: Number.isFinite(runId) && !!attribute && !!target });
+}
+
+export function useDeleteRun() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (runId: number) => apiDeleteRun(runId),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['runs'] });
+            // dataset-runs queries have key ['dataset-runs', datasetId]; callers can optionally invalidate explicitly
+        },
+    });
 }

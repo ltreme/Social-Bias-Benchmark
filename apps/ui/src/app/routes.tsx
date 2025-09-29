@@ -2,7 +2,6 @@ import { createRootRoute, createRoute, createRouter } from '@tanstack/react-rout
 import { PageShell } from '../components/PageShell';
 import { DatasetsPage } from '../features/datasets/DatasetsPage';
 import { DatasetDetailPage } from '../features/datasets/DatasetDetailPage';
-import { RunsPage } from '../features/runs/RunsPage';
 import { RunDetailPage } from '../features/runs/RunDetailPage';
 import { ComparePage } from '../features/compare/ComparePage';
 
@@ -22,11 +21,6 @@ const datasetDetailRoute = createRoute({
     component: DatasetDetailPage,
 });
 
-const runsRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/runs',
-    component: RunsPage,
-});
 
 const runDetailRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -40,5 +34,5 @@ const compareRoute = createRoute({
     component: ComparePage,
 });
 
-export const routeTree = rootRoute.addChildren([datasetsRoute, datasetDetailRoute, runsRoute, runDetailRoute, compareRoute]);
+export const routeTree = rootRoute.addChildren([datasetsRoute, datasetDetailRoute, runDetailRoute, compareRoute]);
 export const router = createRouter({ routeTree });

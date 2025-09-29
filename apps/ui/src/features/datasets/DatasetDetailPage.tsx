@@ -1,10 +1,14 @@
-import { Button, Card, Grid, Group, Progress, Spoiler, Title } from '@mantine/core';
+import { ActionIcon, Button, Card, Grid, Group, Progress, Spoiler, Title } from '@mantine/core';
 import { useParams, Link } from '@tanstack/react-router';
 import { ChartPanel } from '../../components/ChartPanel';
 import { useDatasetComposition, useDataset, useDatasetRuns, useStartAttrgen, useAttrgenStatus, useLatestAttrgen, useAttrgenRuns, useStartBenchmark, useBenchmarkStatus } from './hooks';
 import { useModels } from '../compare/hooks';
 import { useEffect, useState } from 'react';
 import { Modal, NumberInput, Select, TextInput, Checkbox, Textarea } from '@mantine/core';
+import { DataTable } from '../../components/DataTable';
+import type { ColumnDef } from '@tanstack/react-table';
+import { useDeleteRun } from '../runs/hooks';
+import { useQueryClient } from '@tanstack/react-query';
 
 function toBar(items: Array<{ value: string; count: number }>, opts?: { horizontal?: boolean }) {
     const labels = items.map((d) => d.value);
@@ -65,6 +69,27 @@ export function DatasetDetailPage() {
     if (other.some((v) => v > 0)) {
         traces.push({ name: 'Other', type: 'bar', x: other, y: ageBins, orientation: 'h' });
     }
+
+    // Columns for runs table
+    const runsColumns: ColumnDef<{ id: number; model_name: string; include_rationale: boolean; created_at: string }>[] = [
+        { header: 'ID', accessorKey: 'id', cell: ({ row }) => (<Link to={`/runs/${row.original.id}`}>#{row.original.id}</Link>) },
+        { header: 'Model', accessorKey: 'model_name' },
+        { header: 'Rationale', accessorKey: 'include_rationale', cell: ({ row }) => (row.original.include_rationale ? 'Ja' : 'Nein') },
+        { header: 'Erstellt', accessorKey: 'created_at', cell: ({ row }) => (row.original.created_at ? new Date(row.original.created_at).toLocaleString() : '') },
+        { header: '', accessorKey: 'actions', cell: ({ row }) => (
+            <ActionIcon variant="subtle" color="red" title="Run löschen" onClick={async (e) => {
+                e.preventDefault();
+                if (!confirm(`Run #${row.original.id} wirklich löschen?`)) return;
+                try {
+                    await delRun.mutateAsync(row.original.id);
+                    qc.invalidateQueries({ queryKey: ['dataset-runs', idNum] });
+                } catch (err) { /* no-op */ }
+            }}>🗑️</ActionIcon>
+        ) },
+    ];
+
+    const delRun = useDeleteRun();
+    const qc = useQueryClient();
 
     return (
         <>
@@ -142,15 +167,7 @@ export function DatasetDetailPage() {
             {isLoadingRuns ? ('') : runs && runs.length > 0 ? (
                 <div style={{ marginBottom: '1em' }}>
                     <b>Runs mit diesem Dataset:</b>
-                    <ul style={{ margin: 0, paddingLeft: '1.5em' }}>
-                        {runs.map(r => (
-                            <li key={r.id}>
-                                <Link to={`/runs/${r.id}`}>Run {r.id}</Link> – {r.model_name}
-                                {r.include_rationale ? ' (mit Begründung)' : ''}
-                                {r.created_at ? `, erstellt ${new Date(r.created_at).toLocaleDateString()}` : ''}
-                            </li>
-                        ))}
-                    </ul>
+                    <DataTable data={runs} columns={runsColumns} />
                 </div>
             ) : runs && runs.length === 0 ? (
                 <div style={{ marginBottom: '1em' }}>Keine Runs mit diesem Dataset.</div>

@@ -73,3 +73,8 @@ export async function fetchRunForest(runId: number, params: { attribute: string;
     const res = await api.get<RunForest>(`/runs/${runId}/forest`, { params });
     return res.data;
 }
+
+export async function deleteRun(runId: number) {
+    const res = await api.delete<{ ok: boolean; deleted?: number; error?: string }>(`/runs/${runId}`);
+    return res.data;
+}
