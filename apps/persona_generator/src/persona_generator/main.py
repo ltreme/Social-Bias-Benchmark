@@ -200,22 +200,34 @@ def persist_run_and_personas(
                 sexuality=sampled["sexualities"][i],
             ))
 
-        # Bulk insert personas
-        Persona.insert_many(persona_rows).execute()
+        # Helper: chunked insert to respect SQLite variable limit (~999 params)
+        def _chunked(seq, size):
+            for i in range(0, len(seq), size):
+                yield seq[i:i+size]
 
-        # Get the inserted personas (need their ids for DatasetPersona)
-        inserted_personas = list(Persona.select(Persona.uuid).where(Persona.uuid.in_([r['uuid'] for r in persona_rows])).dicts())
+        # Bulk insert personas in safe chunks
+        if persona_rows:
+            cols = len(persona_rows[0])
+            # Keep a safety margin under 999 to account for SQLite limits
+            max_vars = 900
+            max_rows = max(1, max_vars // max(1, cols))
+            for chunk in _chunked(persona_rows, max_rows):
+                Persona.insert_many(chunk).execute()
 
-        # Build DatasetPersona links
-        dataset_persona_rows = []
-        for p in inserted_personas:
-            dataset_persona_rows.append(dict(
-                dataset_id=dataset.id,
-                persona_id=p['uuid'],  # ForeignKey to Persona.uuid
-            ))
+        # Build DatasetPersona links using the UUIDs we just inserted (avoid huge IN())
+        persona_uuids = [r['uuid'] for r in persona_rows]
+        dataset_persona_rows = [
+            dict(dataset_id=dataset.id, persona_id=u)
+            for u in persona_uuids
+        ]
 
-        # Bulk insert links
-        DatasetPersona.insert_many(dataset_persona_rows).execute()
+        # Insert links in safe chunks (2 columns each)
+        if dataset_persona_rows:
+            cols_links = len(dataset_persona_rows[0])
+            max_vars = 900
+            max_rows = max(1, max_vars // max(1, cols_links))
+            for chunk in _chunked(dataset_persona_rows, max_rows):
+                DatasetPersona.insert_many(chunk).execute()
 
         # Optional CSV export for debugging/backups
         if export_csv_path:
