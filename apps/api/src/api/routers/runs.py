@@ -324,7 +324,7 @@ def run_metrics(run_id: int) -> Dict[str, Any]:
         return {"categories": cats_meta, "baseline": base}
 
     attrs = {k: attr_meta(k) for k in ["gender","origin_region","religion","sexuality","marriage_status","education"]}
-    return {"ok": True, "n": int(len(df)), "hist": {"bins": [str(c) for c in cats], "shares": shares}, "attributes": attrs}
+    return {"ok": True, "n": int(len(df)), "hist": {"bins": [str(c) for c in cats], "shares": shares, "counts": [int(x) for x in counts.tolist()]}, "attributes": attrs}
 
 
 @router.get("/runs/{run_id}/order-metrics")
@@ -555,20 +555,54 @@ def run_deltas(
     except Exception:
         table = table.assign(cliffs_delta=[float("nan")] * len(table))
 
+    # Enrich with spread/CI based on SDs of baseline and category
+    import pandas as _pd
+    work = df.copy()
+    work[attribute] = work[attribute].fillna("Unknown").astype(str)
+    base = str(table["baseline"].iloc[0]) if "baseline" in table.columns and not table.empty else None
+    base_vals = _pd.to_numeric(work.loc[work[attribute] == base, "rating"], errors="coerce").dropna() if base is not None else _pd.Series([], dtype=float)
+    n_base = int(base_vals.shape[0]) if base is not None else 0
+    mean_base = float(base_vals.mean()) if n_base > 0 else float('nan')
+    sd_base = float(base_vals.std(ddof=1)) if n_base > 1 else float('nan')
+
     rows = []
     for _, r in table.iterrows():
+        cat = str(r[attribute])
+        vals = _pd.to_numeric(work.loc[work[attribute] == cat, "rating"], errors="coerce").dropna()
+        n_cat = int(vals.shape[0])
+        sd_cat = float(vals.std(ddof=1)) if n_cat > 1 else float('nan')
+        delta = float(r["delta"]) if r["delta"] == r["delta"] else float('nan')
+        # Standard error and CI of difference of means
+        import math as _math
+        if n_base > 1 and n_cat > 1 and _math.isfinite(sd_base) and _math.isfinite(sd_cat):
+            se = float(_math.sqrt((sd_base ** 2) / n_base + (sd_cat ** 2) / n_cat))
+            ci_low = float(delta - 1.96 * se) if _math.isfinite(delta) else None
+            ci_high = float(delta + 1.96 * se) if _math.isfinite(delta) else None
+        else:
+            se = float('nan')
+            ci_low = None
+            ci_high = None
         rows.append({
-            "category": str(r[attribute]),
-            "count": int(round(r["count"])),
+            "category": cat,
+            "count": int(round(r["count"])) ,
             "mean": float(r["mean"]),
-            "delta": float(r["delta"]) if r["delta"] == r["delta"] else None,
+            "delta": delta if delta == delta else None,
             "p_value": float(r["p_value"]) if r["p_value"] == r["p_value"] else None,
             "q_value": float(r.get("q_value", float("nan"))) if r.get("q_value", float("nan")) == r.get("q_value", float("nan")) else None,
             "cliffs_delta": float(r.get("cliffs_delta", float("nan"))) if r.get("cliffs_delta", float("nan")) == r.get("cliffs_delta", float("nan")) else None,
             "significant": bool(r.get("significant", False)),
-            "baseline": str(r.get("baseline", baseline)) if r.get("baseline", baseline) is not None else None,
+            "baseline": base,
+            "n_base": n_base,
+            "sd_base": sd_base if sd_base == sd_base else None,
+            "mean_base": mean_base if mean_base == mean_base else None,
+            "n_cat": n_cat,
+            "sd_cat": sd_cat if sd_cat == sd_cat else None,
+            "mean_cat": float(vals.mean()) if n_cat > 0 else None,
+            "se_delta": se if se == se else None,
+            "ci_low": ci_low,
+            "ci_high": ci_high,
         })
-    return {"ok": True, "n": int(len(df)), "rows": rows, "baseline": rows[0]["baseline"] if rows else baseline}
+    return {"ok": True, "n": int(len(df)), "rows": rows, "baseline": base}
 
 
 @router.get("/runs/{run_id}/means")

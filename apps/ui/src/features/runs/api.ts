@@ -41,7 +41,7 @@ export async function startRun(body: { model_name: string; dataset_id: string })
 export type RunMetrics = {
     ok: boolean;
     n: number;
-    hist: { bins: number[]; shares: number[] };
+    hist: { bins: number[]; shares: number[]; counts?: number[] };
     attributes: Record<string, { baseline: string | null; categories: Array<{ category: string; count: number; mean: number }> }>;
 };
 
@@ -54,7 +54,21 @@ export type RunDeltas = {
     ok: boolean;
     n: number;
     baseline?: string | null;
-    rows: Array<{ category: string; count: number; mean: number; delta: number; p_value: number; significant: boolean; baseline: string }>;
+    rows: Array<{
+        category: string;
+        count: number;
+        mean: number;
+        delta: number;
+        p_value: number;
+        significant: boolean;
+        baseline: string;
+        q_value?: number | null;
+        cliffs_delta?: number | null;
+        // Added spread/CI
+        n_base?: number; sd_base?: number | null; mean_base?: number | null;
+        n_cat?: number; sd_cat?: number | null; mean_cat?: number | null;
+        se_delta?: number | null; ci_low?: number | null; ci_high?: number | null;
+    }>;
 };
 
 export async function fetchRunDeltas(runId: number, params: { attribute: string; baseline?: string; n_perm?: number; alpha?: number }) {
