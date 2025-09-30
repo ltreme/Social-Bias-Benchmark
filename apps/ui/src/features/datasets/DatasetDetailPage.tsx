@@ -109,7 +109,9 @@ export function DatasetDetailPage() {
             )}
 
             <Group justify="space-between" mb="md">
-              <div />
+              <Group>
+                <Button component={Link} to={'/datasets/$datasetId/personas'} params={{ datasetId: String(datasetId) }}>Personas anzeigen</Button>
+              </Group>
               <Group>
                 <Button variant="light" onClick={() => setBenchModalOpen(true)}>Benchmark starten…</Button>
                 <Button onClick={() => setModalOpen(true)}>Additional Attributes generieren…</Button>

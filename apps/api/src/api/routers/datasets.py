@@ -202,6 +202,134 @@ def dataset_composition(dataset_id: int) -> Dict[str, Any]:
     return {"ok": True, "n": n, "attributes": attributes, "age": age}
 
 
+# --------- Persona browser endpoints ---------
+
+class PersonaOut(BaseModel):
+    uuid: str
+    created_at: Optional[str] = None
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    education: Optional[str] = None
+    occupation: Optional[str] = None
+    marriage_status: Optional[str] = None
+    migration_status: Optional[str] = None
+    religion: Optional[str] = None
+    sexuality: Optional[str] = None
+    origin_country: Optional[str] = None
+    origin_region: Optional[str] = None
+    origin_subregion: Optional[str] = None
+    additional_attributes: Optional[dict] = None
+
+
+@router.get("/datasets/{dataset_id}/personas")
+def list_personas(
+    dataset_id: int,
+    limit: int = 50,
+    offset: int = 0,
+    sort: str = "created_at",
+    order: str = "desc",
+    gender: Optional[str] = None,
+    religion: Optional[str] = None,
+    sexuality: Optional[str] = None,
+    education: Optional[str] = None,
+    marriage_status: Optional[str] = None,
+    migration_status: Optional[str] = None,
+    origin_subregion: Optional[str] = None,
+    min_age: Optional[int] = None,
+    max_age: Optional[int] = None,
+) -> Dict[str, Any]:
+    """Return personas that belong to a dataset with pagination, simple filters and latest additional attributes.
+
+    Query parameters:
+      - limit, offset
+      - sort: one of ['created_at','age','gender','education','religion','sexuality','marriage_status','migration_status','origin_subregion']
+      - order: 'asc' | 'desc'
+      - filters: listed optional fields
+    """
+    ensure_db()
+    from peewee import JOIN
+
+    q = (Persona
+         .select(Persona, Country)
+         .join(DatasetPersona, on=(DatasetPersona.persona_id == Persona.uuid))
+         .switch(Persona)
+         .join(Country, JOIN.LEFT_OUTER, on=(Persona.origin_id == Country.id))
+         .where(DatasetPersona.dataset_id == dataset_id))
+
+    # Apply filters
+    if gender:
+        q = q.where((Persona.gender == gender))
+    if religion:
+        q = q.where((Persona.religion == religion))
+    if sexuality:
+        q = q.where((Persona.sexuality == sexuality))
+    if education:
+        q = q.where((Persona.education == education))
+    if marriage_status:
+        q = q.where((Persona.marriage_status == marriage_status))
+    if migration_status:
+        q = q.where((Persona.migration_status == migration_status))
+    if origin_subregion:
+        q = q.where((Country.subregion == origin_subregion))
+    if min_age is not None:
+        q = q.where((Persona.age.is_null(True)) | (Persona.age >= int(min_age)))
+    if max_age is not None:
+        q = q.where((Persona.age.is_null(True)) | (Persona.age <= int(max_age)))
+
+    total = q.count()
+
+    # Sorting
+    sort_map = {
+        'created_at': Persona.created_at,
+        'age': Persona.age,
+        'gender': Persona.gender,
+        'education': Persona.education,
+        'religion': Persona.religion,
+        'sexuality': Persona.sexuality,
+        'marriage_status': Persona.marriage_status,
+        'migration_status': Persona.migration_status,
+        'origin_subregion': Country.subregion,
+    }
+    col = sort_map.get(sort, Persona.created_at)
+    col = col.desc() if str(order).lower() == 'desc' else col.asc()
+    q = q.order_by(col).limit(max(1, int(limit))).offset(max(0, int(offset)))
+
+    rows = list(q)
+    uuids = [r.uuid for r in rows]
+    # Fetch latest additional attributes per persona+key
+    add_map: Dict[str, Dict[str, Any]] = {}
+    if uuids:
+        sub = (AdditionalPersonaAttributes
+               .select(AdditionalPersonaAttributes)
+               .where(AdditionalPersonaAttributes.persona_uuid_id.in_(uuids))
+               .order_by(AdditionalPersonaAttributes.persona_uuid_id, AdditionalPersonaAttributes.attribute_key, AdditionalPersonaAttributes.id.desc()))
+        for a in sub:
+            pid = str(a.persona_uuid_id)
+            add_map.setdefault(pid, {})
+            if a.attribute_key not in add_map[pid]:
+                add_map[pid][a.attribute_key] = a.value
+
+    items: List[PersonaOut] = []
+    for r in rows:
+        items.append(PersonaOut(
+            uuid=str(r.uuid),
+            created_at=str(r.created_at) if r.created_at else None,
+            age=int(r.age) if r.age is not None else None,
+            gender=r.gender,
+            education=r.education,
+            occupation=r.occupation,
+            marriage_status=r.marriage_status,
+            migration_status=r.migration_status,
+            religion=r.religion,
+            sexuality=r.sexuality,
+            origin_country=getattr(r.origin_id, 'country_en', None),
+            origin_region=getattr(r.origin_id, 'region', None),
+            origin_subregion=getattr(r.origin_id, 'subregion', None),
+            additional_attributes=add_map.get(str(r.uuid), {}),
+        ))
+    return {"ok": True, "total": int(total), "items": [i.model_dump() for i in items]}
+
+
 # --------- Build endpoints ---------
 
 class CreatePoolIn(BaseModel):
