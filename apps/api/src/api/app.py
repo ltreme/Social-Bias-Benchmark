@@ -9,6 +9,7 @@ from . import utils as _api_utils  # noqa: F401  (triggers sys.path setup)
 from .routers.datasets import router as datasets_router
 from .routers.metrics import router as metrics_router
 from .routers.runs import router as runs_router
+from .routers.cases import router as cases_router
 from .routers.attrgen import router as attrgen_router
 
 
@@ -36,5 +37,6 @@ def create_app() -> FastAPI:
     app.include_router(metrics_router)
     app.include_router(runs_router)
     app.include_router(attrgen_router)
+    app.include_router(cases_router)
 
     return app

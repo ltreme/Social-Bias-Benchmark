@@ -4,6 +4,7 @@ import { DatasetsPage } from '../features/datasets/DatasetsPage';
 import { DatasetDetailPage } from '../features/datasets/DatasetDetailPage';
 import { RunDetailPage } from '../features/runs/RunDetailPage';
 import { ComparePage } from '../features/compare/ComparePage';
+import { CasesPage } from '../features/cases/CasesPage';
 
 export const rootRoute = createRootRoute({
     component: () => <PageShell />,
@@ -34,5 +35,11 @@ const compareRoute = createRoute({
     component: ComparePage,
 });
 
-export const routeTree = rootRoute.addChildren([datasetsRoute, datasetDetailRoute, runDetailRoute, compareRoute]);
+const casesRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/cases',
+    component: CasesPage,
+});
+
+export const routeTree = rootRoute.addChildren([datasetsRoute, datasetDetailRoute, runDetailRoute, compareRoute, casesRoute]);
 export const router = createRouter({ routeTree });
