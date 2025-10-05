@@ -7,7 +7,6 @@ from benchmark.pipeline.adapters.postprocess.postprocessor_attr import Attribute
 from benchmark.pipeline.adapters.persister_sqlite import PersisterPrint, PersisterPeewee
 from benchmark.pipeline.adapters.llm import (
     LlmClientFake,
-    LlmClientHF,
     LlmClientVLLM,
 )
 
@@ -20,8 +19,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--max-attempts", type=int, default=3)
     p.add_argument("--max-new-tokens", type=int, default=192)
     p.add_argument("--persist-buffer-size", type=int, default=256)
-    p.add_argument("--llm", choices=["fake", "hf", "vllm"], default="hf")
-    p.add_argument("--hf-model", type=str, help="HF model name/path (when --llm=hf)")
+    p.add_argument("--llm", choices=["fake", "vllm"], default="vllm",
+                help="LLM backend: vllm (preferred), or fake (testing)")
     # vLLM OpenAI-compatible server options
     p.add_argument("--vllm-base-url", type=str, default="http://localhost:8000",
                 help="Base URL of vLLM server root (e.g., http://host:port)")
@@ -58,12 +57,6 @@ def main(argv: list[str] | None = None) -> int:
     if args.llm == "fake":
         llm = LlmClientFake(batch_size=args.batch_size)
         model_name = "fake"
-    elif args.llm == "hf":
-        if not args.hf_model:
-            print("[fatal] --hf-model is required when --llm=hf", file=sys.stderr)
-            return 2
-        llm = LlmClientHF(model_name_or_path=args.hf_model, batch_size=args.batch_size)
-        model_name = args.hf_model
     else:  # vllm
         if not args.vllm_model:
             print("[fatal] --vllm-model is required when --llm=vllm", file=sys.stderr)

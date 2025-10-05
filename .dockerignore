@@ -1,0 +1,26 @@
+# General
+.git
+.gitignore
+.env
+.env.*
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+
+# Python venv
+venv/
+
+# Node artifacts
+apps/ui/node_modules/
+apps/ui/dist/
+
+# Outputs and data (mounted at runtime)
+out/
+data/
+
+# OS/editor
+.DS_Store
+.vscode/
+*.swp
+

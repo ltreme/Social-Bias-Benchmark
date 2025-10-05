@@ -4,3 +4,8 @@ peewee==3.17.6
 pydantic==2.8.2
 numpy
 pandas
+seaborn
+matplotlib
+requests
+peewee
+scipy

@@ -45,16 +45,16 @@ class PersisterPeewee(Persister):
         from peewee import SQL
         with self.db.atomic():
             (self._Attr
-             .insert_many(payload)
-             .on_conflict(
-                 conflict_target=[self._Attr.persona_uuid_id, self._Attr.attribute_key],
-                 update={
-                     self._Attr.value: SQL('excluded.value'),
-                     self._Attr.attr_generation_run_id: SQL('excluded.attr_generation_run_id'),
-                     self._Attr.attempt: SQL('excluded.attempt'),
-                     self._Attr.created_at: SQL('excluded.created_at'),
-                 })
-             .execute())
+            .insert_many(payload)
+            .on_conflict(
+                conflict_target=[self._Attr.persona_uuid_id, self._Attr.attribute_key],
+                update={
+                    self._Attr.value: SQL('excluded.value'),
+                    self._Attr.attr_generation_run_id: SQL('excluded.attr_generation_run_id'),
+                    self._Attr.attempt: SQL('excluded.attempt'),
+                    self._Attr.created_at: SQL('excluded.created_at'),
+                })
+            .execute())
         print(f"PERSISTED {len(rows)} attributes successfully")
 
     def persist_failure(self, fail: FailureDto) -> None:

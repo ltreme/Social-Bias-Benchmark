@@ -15,7 +15,7 @@ from benchmark.repository.persona_repository import PersonaRepositoryByDataset
 from benchmark.pipeline.adapters.prompting import AttributePromptFactory
 from benchmark.pipeline.adapters.postprocess.postprocessor_attr import AttributePostProcessor
 from benchmark.pipeline.adapters.persister_sqlite import PersisterPeewee
-from benchmark.pipeline.adapters.llm import LlmClientFake, LlmClientHF, LlmClientVLLM
+from benchmark.pipeline.adapters.llm import LlmClientFake, LlmClientVLLM
 
 router = APIRouter(tags=["attrgen"])
 
@@ -36,14 +36,14 @@ REQUIRED_KEYS = ("name", "appearance", "biography")
 def _update_progress_done(run_id: int, dataset_id: int) -> None:
     # Derive done personas = have all required attributes for this run
     sub = (AdditionalPersonaAttributes
-           .select(AdditionalPersonaAttributes.persona_uuid_id,
-                   pw.fn.COUNT(AdditionalPersonaAttributes.id).alias('c'))
-           .where(
-               (AdditionalPersonaAttributes.attr_generation_run_id == run_id) &
-               (AdditionalPersonaAttributes.attribute_key.in_(REQUIRED_KEYS))
-           )
-           .group_by(AdditionalPersonaAttributes.persona_uuid_id)
-           .having(pw.fn.COUNT(AdditionalPersonaAttributes.id) >= len(REQUIRED_KEYS)))
+        .select(AdditionalPersonaAttributes.persona_uuid_id,
+                pw.fn.COUNT(AdditionalPersonaAttributes.id).alias('c'))
+        .where(
+            (AdditionalPersonaAttributes.attr_generation_run_id == run_id) &
+            (AdditionalPersonaAttributes.attribute_key.in_(REQUIRED_KEYS))
+        )
+        .group_by(AdditionalPersonaAttributes.persona_uuid_id)
+        .having(pw.fn.COUNT(AdditionalPersonaAttributes.id) >= len(REQUIRED_KEYS)))
     done = sub.count()
     total = DatasetPersona.select().where(DatasetPersona.dataset_id == dataset_id).count()
     PROGRESS.setdefault(run_id, {})
@@ -53,13 +53,13 @@ def _update_progress_done(run_id: int, dataset_id: int) -> None:
 def _incomplete_uuid_set(run_id: int, dataset_id: int) -> set[str]:
     # Personas in dataset that are missing at least one required attribute for this run
     q = (DatasetPersona
-         .select(DatasetPersona.persona_id.alias('pid'), pw.fn.COUNT(AdditionalPersonaAttributes.id).alias('c'))
-         .join(AdditionalPersonaAttributes, pw.JOIN.LEFT_OUTER, on=((AdditionalPersonaAttributes.persona_uuid_id == DatasetPersona.persona_id) &
-                                                                   (AdditionalPersonaAttributes.attr_generation_run_id == run_id) &
-                                                                   (AdditionalPersonaAttributes.attribute_key.in_(REQUIRED_KEYS))))
-         .where(DatasetPersona.dataset_id == dataset_id)
-         .group_by(DatasetPersona.persona_id)
-         .having(pw.fn.COUNT(AdditionalPersonaAttributes.id) < len(REQUIRED_KEYS)))
+        .select(DatasetPersona.persona_id.alias('pid'), pw.fn.COUNT(AdditionalPersonaAttributes.id).alias('c'))
+        .join(AdditionalPersonaAttributes, pw.JOIN.LEFT_OUTER, on=((AdditionalPersonaAttributes.persona_uuid_id == DatasetPersona.persona_id) &
+            (AdditionalPersonaAttributes.attr_generation_run_id == run_id) &
+            (AdditionalPersonaAttributes.attribute_key.in_(REQUIRED_KEYS))))
+        .where(DatasetPersona.dataset_id == dataset_id)
+        .group_by(DatasetPersona.persona_id)
+        .having(pw.fn.COUNT(AdditionalPersonaAttributes.id) < len(REQUIRED_KEYS)))
     return {str(r.pid) for r in q}
 
 
@@ -78,11 +78,9 @@ def _run_attrgen_background(run_id: int) -> None:
     batch_size = int(rec.batch_size or 2)
     if llm_backend == "fake":
         llm = LlmClientFake(batch_size=batch_size)
-    elif llm_backend == "vllm":
+    else:
         base = PROGRESS[run_id].get("vllm_base_url") or "http://localhost:8000"
         llm = LlmClientVLLM(base_url=str(base), model=model_name, api_key=None, batch_size=batch_size, max_new_tokens_cap=int(rec.max_new_tokens or 192))
-    else:
-        llm = LlmClientHF(model_name_or_path=model_name, batch_size=batch_size, max_new_tokens_cap=int(rec.max_new_tokens or 192))
 
     persist = PersisterPeewee()
 
@@ -193,10 +191,10 @@ def latest_attrgen_for_dataset(dataset_id: int) -> Dict[str, Any]:
     ensure_db()
     try:
         rec = (AttrGenerationRun
-               .select()
-               .where(AttrGenerationRun.dataset_id == dataset_id)
-               .order_by(AttrGenerationRun.id.desc())
-               .first())
+            .select()
+            .where(AttrGenerationRun.dataset_id == dataset_id)
+            .order_by(AttrGenerationRun.id.desc())
+            .first())
         if not rec:
             return {"ok": True, "found": False}
         rid = int(rec.id)

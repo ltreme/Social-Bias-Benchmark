@@ -25,8 +25,6 @@ class TestEndToEndPipeline(unittest.TestCase):
             message=r"builtin type .*has no __module__ attribute",
             category=DeprecationWarning,
         )
-        # Lower HF logging verbosity to hide "invalid generation flags" info logs
-        os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
         # Allow opting-in to the slow integration test
         flag = os.getenv("INTEGRATION_FULL", "0").lower()
         cls.enabled = flag in ("1", "true", "yes")

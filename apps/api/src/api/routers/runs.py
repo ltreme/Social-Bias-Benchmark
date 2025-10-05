@@ -22,7 +22,7 @@ from benchmark.repository.persona_repository import FullPersonaRepositoryByDatas
 from benchmark.pipeline.adapters.prompting import LikertPromptFactory
 from benchmark.pipeline.adapters.postprocess.postprocessor_likert import LikertPostProcessor
 from benchmark.pipeline.adapters.persister_bench_sqlite import BenchPersisterPeewee
-from benchmark.pipeline.adapters.llm import LlmClientFakeBench, LlmClientHFBench, LlmClientVLLMBench
+from benchmark.pipeline.adapters.llm import LlmClientFakeBench, LlmClientVLLMBench
 import threading, time, traceback
 import peewee as pw
 
@@ -151,9 +151,6 @@ def _bench_run_background(run_id: int) -> None:
     batch_size = int(_BENCH_PROGRESS.get(run_id, {}).get('batch_size') or (rec.batch_size or 2))
     if backend == 'fake':
         llm = LlmClientFakeBench(batch_size=batch_size)
-    elif backend == 'hf':
-        # Requires a configured model, for now fallback to fake if unavailable
-        llm = LlmClientHFBench(model_name_or_path=model_name, batch_size=batch_size)
     else:
         import os
         base = _BENCH_PROGRESS.get(run_id, {}).get('vllm_base_url') or os.getenv('VLLM_BASE_URL') or 'http://localhost:8000'
@@ -201,7 +198,7 @@ def _bench_run_background(run_id: int) -> None:
 def start_benchmark(body: dict) -> dict:
     """Start a benchmark run for a dataset with a given model.
 
-    Body: { dataset_id:int, model_name:str, include_rationale?:bool, llm?:'vllm'|'hf'|'fake', batch_size?:int, vllm_base_url?:str }
+    Body: { dataset_id:int, model_name:str, include_rationale?:bool, llm?:'vllm'|'fake', batch_size?:int, vllm_base_url?:str }
     Requires that attr-gen with same model is complete (client-side should ensure).
     """
     ensure_db()

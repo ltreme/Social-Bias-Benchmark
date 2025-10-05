@@ -48,9 +48,10 @@ class AbstractPostProcessor(ABC):
         text = self.sanitize(res.raw_text or "")
 
         try:
+            snippet = (text[: self.debug_snippet_len]).replace("\n", "\\n")
             print(
                 f"[{self.__class__.__name__}] persona={spec.work.persona_uuid} "
-                f"attempt={spec.attempt} raw={(text[:self.debug_snippet_len]).replace(chr(10),'\\n')}"
+                f"attempt={spec.attempt} raw={snippet}"
             )
         except Exception:
             pass
