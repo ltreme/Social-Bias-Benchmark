@@ -1,7 +1,8 @@
 import { ActionIcon, Button, Card, Grid, Group, Progress, Spoiler, Title } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import { useParams, Link } from '@tanstack/react-router';
 import { ChartPanel } from '../../components/ChartPanel';
-import { useDatasetComposition, useDataset, useDatasetRuns, useStartAttrgen, useAttrgenStatus, useLatestAttrgen, useAttrgenRuns, useStartBenchmark, useBenchmarkStatus } from './hooks';
+import { useDatasetComposition, useDataset, useDatasetRuns, useStartAttrgen, useAttrgenStatus, useLatestAttrgen, useAttrgenRuns, useStartBenchmark, useBenchmarkStatus, useDeleteAttrgenRun } from './hooks';
 import { useModels } from '../compare/hooks';
 import { useEffect, useState } from 'react';
 import { Modal, NumberInput, Select, TextInput, Checkbox, Textarea } from '@mantine/core';
@@ -9,6 +10,8 @@ import { DataTable } from '../../components/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useDeleteRun } from '../runs/hooks';
 import { useQueryClient } from '@tanstack/react-query';
+import { IconPlayerPlay, IconUsers, IconTrash } from '@tabler/icons-react';
+import type { AttrgenRun } from './api';
 
 function toBar(items: Array<{ value: string; count: number }>, opts?: { horizontal?: boolean }) {
     const labels = items.map((d) => d.value);
@@ -32,7 +35,7 @@ export function DatasetDetailPage() {
     const [maxNew, setMaxNew] = useState<number>(192);
     const [maxAttempts, setMaxAttempts] = useState<number>(3);
     const [systemPrompt, setSystemPrompt] = useState<string>('');
-    const [vllmBase, setVllmBase] = useState<string>('http://localhost:8000');
+    const [vllmBase, setVllmBase] = useState<string>('http://host.docker.internal:8000');
     const [vllmApiKey, setVllmApiKey] = useState<string>('');
     const [includeRationale, setIncludeRationale] = useState<boolean>(false);
     const [runId, setRunId] = useState<number | undefined>(undefined);
@@ -47,11 +50,30 @@ export function DatasetDetailPage() {
     const benchStatus = useBenchmarkStatus(benchRunId);
     const status = useAttrgenStatus(runId);
     const latest = useLatestAttrgen(idNum);
+    const delAttrRun = useDeleteAttrgenRun(idNum);
     useEffect(() => {
         if (!runId && latest.data && latest.data.found && latest.data.run_id) {
             setRunId(latest.data.run_id);
         }
     }, [latest.data, runId]);
+
+    // Notify user on failed attrgen status
+    useEffect(() => {
+        const s = status.data?.status;
+        const l = latest.data?.status;
+        const err = (status.data as any)?.error || (latest.data as any)?.error;
+        if ((s === 'failed' || l === 'failed') && err) {
+            notifications.show({ color: 'red', title: 'AttrGen fehlgeschlagen', message: String(err) });
+        }
+    }, [status.data?.status, latest.data?.status]);
+
+    // Notify user on failed benchmark status
+    useEffect(() => {
+        const st = benchStatus.data?.status;
+        if (st === 'failed' && (benchStatus.data as any)?.error) {
+            notifications.show({ color: 'red', title: 'Benchmark fehlgeschlagen', message: String((benchStatus.data as any).error) });
+        }
+    }, [benchStatus.data?.status]);
 
     const gender = data?.attributes?.gender ?? [];
     const religion = data?.attributes?.religion ?? [];
@@ -92,6 +114,51 @@ export function DatasetDetailPage() {
         ) },
     ];
 
+    // Columns for attribute-generation runs
+    const attrColumns: ColumnDef<AttrgenRun>[] = [
+        { header: 'ID', accessorKey: 'id', cell: ({ row }) => (<>#{row.original.id}</>) },
+        { header: 'Model', accessorKey: 'model_name', cell: ({ row }) => (row.original.model_name || '') },
+        { header: 'Status', accessorKey: 'status', cell: ({ row }) => {
+            const r = row.original;
+            const isDone = (r.status === 'done') || ((r.done ?? 0) > 0 && (r.total ?? 0) > 0 && (r.done === r.total));
+            return (
+              <div style={{ minWidth: 180 }}>
+                {r.status === 'failed' ? (
+                  <span style={{ color: '#d32f2f' }} title={r.error || ''}>Fehlgeschlagen</span>
+                ) : isDone ? (<span style={{ color: '#2ca25f' }}>Fertig</span>) : (
+                  <>
+                    <span>{r.status} {r.done ?? 0}/{r.total ?? 0}</span>
+                    <div style={{ width: 140 }}><Progress value={r.pct ?? 0} mt="xs" /></div>
+                  </>
+                )}
+              </div>
+            );
+        } },
+        { header: 'Erstellt', accessorKey: 'created_at', cell: ({ row }) => (row.original.created_at ? new Date(row.original.created_at).toLocaleString() : '') },
+        { header: 'Aktionen', accessorKey: 'actions', cell: ({ row }) => {
+            const r = row.original;
+            const isDone = (r.status === 'done') || ((r.done ?? 0) > 0 && (r.total ?? 0) > 0 && (r.done === r.total));
+            return (
+              <Group gap="xs">
+                <ActionIcon title="Benchmark starten" variant="light" onClick={() => { setModelName(r.model_name || ''); setAttrgenRunForBenchmark(r.id); setBenchModalOpen(true); }} disabled={!isDone}>
+                  <IconPlayerPlay size={16} />
+                </ActionIcon>
+                <ActionIcon title="Personas anzeigen" variant="light" component={Link as any} to={'/datasets/$datasetId/personas'} params={{ datasetId: String(datasetId) }} search={{ attrgenRunId: r.id }}>
+                  <IconUsers size={16} />
+                </ActionIcon>
+                <ActionIcon title="Attr-Run löschen" color="red" variant="subtle" onClick={async () => {
+                  if (!confirm(`AttrGen-Run #${r.id} wirklich löschen?`)) return;
+                  try {
+                    await delAttrRun.mutateAsync(r.id);
+                  } catch (e) { /* notification via interceptor */ }
+                }}>
+                  <IconTrash size={16} />
+                </ActionIcon>
+              </Group>
+            );
+        } },
+    ];
+
     const delRun = useDeleteRun();
     const qc = useQueryClient();
 
@@ -119,59 +186,44 @@ export function DatasetDetailPage() {
               </Group>
             </Group>
             {/* Zeige Progress nur für aktive Läufe; abgeschlossene werden unten gelistet */}
-            {(runId && status.data && status.data.status !== 'done' && status.data.status !== 'failed') ? (
+            {(runId && status.data && status.data.status === 'failed') ? (
+              <div style={{ marginBottom: '1em', color: '#d32f2f' }}>
+                <b>AttrGen Fehler:</b> {status.data.error || 'Unbekannter Fehler'}
+              </div>
+            ) : (runId && status.data && status.data.status !== 'done') ? (
               <div style={{ marginBottom: '1em' }}>
                 <b>AttrGen Status:</b> {status.data.status} {status.data.done ?? 0}/{status.data.total ?? 0}
                 <Progress value={status.data.pct ?? 0} mt="xs" />
               </div>
-            ) : ((latest.data && latest.data.found && latest.data.status !== 'done' && latest.data.status !== 'failed')) ? (
+            ) : ((latest.data && latest.data.found && latest.data.status === 'failed')) ? (
+              <div style={{ marginBottom: '1em', color: '#d32f2f' }}>
+                <b>AttrGen Fehler:</b> {latest.data.error || 'Unbekannter Fehler'}
+              </div>
+            ) : ((latest.data && latest.data.found && latest.data.status !== 'done')) ? (
               <div style={{ marginBottom: '1em' }}>
                 <b>AttrGen Status:</b> {latest.data.status} {latest.data.done ?? 0}/{latest.data.total ?? 0}
                 <Progress value={latest.data.pct ?? 0} mt="xs" />
               </div>
             ) : null}
 
-            {/* Liste der AttrGen-Runs: fertige als Eintrag mit Modell, laufende mit Fortschritt */}
-            {runsList.data?.runs && runsList.data.runs.length > 0 ? (
+            {/* Attribute-Generierung Runs als Tabelle */}
+            {(runsList.data?.runs && runsList.data.runs.length > 0) ? (
               <div style={{ marginBottom: '1em' }}>
                 <b>Attribute-Generierung (Historie):</b>
-                <ul style={{ margin: 0, paddingLeft: '1.5em' }}>
-                  {runsList.data.runs.map(r => {
-                    const isDone = (r.status === 'done') || ((r.done ?? 0) > 0 && (r.total ?? 0) > 0 && (r.done === r.total));
-                    return (
-                      <li key={r.id} style={{ marginBottom: 6 }}>
-                        <span>Run #{r.id} – {r.model_name || 'Modell unbekannt'} – {new Date(r.created_at).toLocaleString()} – </span>
-                        {isDone ? (
-                          <span style={{ color: '#2ca25f' }}>Fertig</span>
-                        ) : (
-                          <span>
-                            {r.status} {r.done ?? 0}/{r.total ?? 0}
-                            <div style={{ width: 240 }}>
-                              <Progress value={r.pct ?? 0} mt="xs" />
-                            </div>
-                          </span>
-                        )}
-                        {isDone ? (
-                          <>
-                            <Button size="xs" style={{ marginLeft: 8 }} onClick={() => { setModelName(r.model_name || ''); setAttrgenRunForBenchmark(r.id); setBenchModalOpen(true); }}>
-                              Benchmark starten
-                            </Button>
-                            <Button size="xs" variant="light" style={{ marginLeft: 6 }} component={Link} to={'/datasets/$datasetId/personas'} params={{ datasetId: String(datasetId) }} search={{ attrgenRunId: r.id }}>
-                              Personas anzeigen
-                            </Button>
-                          </>
-                        ) : null}
-                      </li>
-                    );
-                  })}
-                </ul>
+                <DataTable data={runsList.data.runs} columns={attrColumns} />
                 {benchRunId && benchStatus.data ? (
-                  <div style={{ marginTop: 8 }}>
-                    <b>Benchmark-Status:</b> {benchStatus.data.status} {benchStatus.data.done ?? 0}/{benchStatus.data.total ?? 0}
-                    <div style={{ width: 320 }}>
-                      <Progress value={benchStatus.data.pct ?? 0} mt="xs" />
+                  benchStatus.data.status === 'failed' ? (
+                    <div style={{ marginTop: 8, color: '#d32f2f' }}>
+                      <b>Benchmark-Fehler:</b> {(benchStatus.data as any).error || 'Unbekannter Fehler'}
                     </div>
-                  </div>
+                  ) : (
+                    <div style={{ marginTop: 8 }}>
+                      <b>Benchmark-Status:</b> {benchStatus.data.status} {benchStatus.data.done ?? 0}/{benchStatus.data.total ?? 0}
+                      <div style={{ width: 320 }}>
+                        <Progress value={benchStatus.data.pct ?? 0} mt="xs" />
+                      </div>
+                    </div>
+                  )
                 ) : null}
               </div>
             ) : null}

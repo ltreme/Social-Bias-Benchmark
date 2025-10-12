@@ -23,7 +23,9 @@ from benchmark.pipeline.adapters.prompting import LikertPromptFactory
 from benchmark.pipeline.adapters.postprocess.postprocessor_likert import LikertPostProcessor
 from benchmark.pipeline.adapters.persister_bench_sqlite import BenchPersisterPeewee
 from benchmark.pipeline.adapters.llm import LlmClientFakeBench, LlmClientVLLMBench
-import threading, time, traceback
+import threading, time, traceback, os
+from urllib.parse import urlparse, urlunparse
+import requests
 import peewee as pw
 
 
@@ -153,8 +155,40 @@ def _bench_run_background(run_id: int) -> None:
     if backend == 'fake':
         llm = LlmClientFakeBench(batch_size=batch_size)
     else:
-        import os
-        base = _BENCH_PROGRESS.get(run_id, {}).get('vllm_base_url') or os.getenv('VLLM_BASE_URL') or 'http://localhost:8000'
+        def _probe_models(u: str) -> dict:
+            r = requests.get(u.rstrip('/') + '/v1/models', timeout=2.5, headers={'accept':'application/json'})
+            r.raise_for_status(); return r.json()
+        base_pref = _BENCH_PROGRESS.get(run_id, {}).get('vllm_base_url') or os.getenv('VLLM_BASE_URL') or 'http://localhost:8000'
+        # Build candidates similar to attrgen
+        cands = []
+        def _norm(url: str) -> str:
+            try:
+                p = urlparse(url)
+                host = (p.hostname or '').lower()
+                if host in {"localhost","127.0.0.1"}:
+                    p = p._replace(netloc=f"host.docker.internal:{p.port or 80}")
+                    return urlunparse(p)
+            except Exception:
+                pass
+            return url
+        if base_pref: cands += [base_pref, _norm(base_pref)]
+        envb = os.getenv('VLLM_BASE_URL');
+        if envb: cands += [envb, _norm(envb)]
+        cands += ['http://host.docker.internal:8000', 'http://localhost:8000']
+        tried = []
+        base = None
+        for u in [x for i,x in enumerate(cands) if x and x not in cands[:i]]:
+            try:
+                data = _probe_models(u)
+                ids = [str(m.get('id')) for m in (data.get('data') or []) if isinstance(m, dict)]
+                if not ids or model_name in ids:
+                    base = u; break
+                tried.append((u, f"Modell '{model_name}' nicht gelistet"))
+            except Exception as e:
+                tried.append((u, str(e)))
+        if base is None:
+            _BENCH_PROGRESS[run_id] = {**_BENCH_PROGRESS.get(run_id, {}), 'status':'failed', 'error': f"vLLM nicht erreichbar oder Modell fehlt – versucht: {'; '.join([f'{u}: {err}' for u,err in tried])}"}
+            return
         api_key = _BENCH_PROGRESS.get(run_id, {}).get('vllm_api_key') or os.getenv('VLLM_API_KEY')
         llm = LlmClientVLLMBench(base_url=str(base), model=model_name, api_key=api_key, batch_size=batch_size, max_new_tokens_cap=max_new_toks)
 

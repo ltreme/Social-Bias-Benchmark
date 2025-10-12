@@ -17,6 +17,9 @@ services:
     environment:
       # SQLite path defaults to ./data/benchmark.db (mounted via repo volume)
       PYTHONUNBUFFERED: "1"
+      # Base URL for vLLM server reachable from inside the container
+      # If your vLLM runs on the host at localhost:8000, use host.docker.internal
+      VLLM_BASE_URL: http://host.docker.internal:8000
       # Optionally override DB with: DB_URL=sqlite:////app/data/benchmark.db
     volumes:
       - .:/app

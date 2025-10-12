@@ -88,18 +88,23 @@ export async function fetchAttrgenStatus(runId: number) {
 }
 
 export async function fetchLatestAttrgen(datasetId: number) {
-    const res = await api.get<{ ok: boolean; found: boolean; run_id?: number; status?: string; total?: number; done?: number; pct?: number }>(`/datasets/${datasetId}/attrgen/latest`);
+    const res = await api.get<{ ok: boolean; found: boolean; run_id?: number; status?: string; total?: number; done?: number; pct?: number; error?: string }>(`/datasets/${datasetId}/attrgen/latest`);
     return res.data;
 }
 
-export type AttrgenRun = { id: number; created_at: string; model_name?: string | null; status?: string; done?: number; total?: number; pct?: number };
+export type AttrgenRun = { id: number; created_at: string; model_name?: string | null; status?: string; done?: number; total?: number; pct?: number; error?: string };
 export async function fetchAttrgenRuns(datasetId: number) {
     const res = await api.get<{ ok: boolean; runs: AttrgenRun[] }>(`/datasets/${datasetId}/attrgen/runs`);
     return res.data;
 }
 
+export async function deleteAttrgenRun(runId: number) {
+    const res = await api.delete<{ ok: boolean; deleted_attributes?: number }>(`/attrgen/${runId}`);
+    return res.data;
+}
+
 export type BenchStartResponse = { ok: boolean; run_id: number };
-export type BenchStatus = { ok: boolean; status: string; done?: number; total?: number; pct?: number };
+export type BenchStatus = { ok: boolean; status: string; done?: number; total?: number; pct?: number; error?: string };
 export async function startBenchmark(body: { dataset_id: number; model_name?: string; include_rationale?: boolean; llm?: 'vllm'|'hf'|'fake'; batch_size?: number; vllm_base_url?: string; vllm_api_key?: string; max_new_tokens?: number; max_attempts?: number; system_prompt?: string; resume_run_id?: number; scale_mode?: 'in'|'rev'|'random50'; dual_fraction?: number; attrgen_run_id?: number }) {
     const res = await api.post<BenchStartResponse>('/benchmarks/start', body);
     return res.data;

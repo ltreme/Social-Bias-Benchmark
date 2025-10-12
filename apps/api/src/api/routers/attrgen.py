@@ -3,11 +3,14 @@ from __future__ import annotations
 import threading
 import time
 from typing import Any, Dict, Optional
+import os
+from urllib.parse import urlparse, urlunparse
+import requests
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from ..utils import ensure_db
-from shared.storage.models import AttrGenerationRun, Model, DatasetPersona, AdditionalPersonaAttributes
+from shared.storage.models import AttrGenerationRun, Model, DatasetPersona, AdditionalPersonaAttributes, BenchmarkRun
 import peewee as pw
 
 from benchmark.pipeline.attr_gen import run_attr_gen_pipeline
@@ -32,6 +35,67 @@ def _progress_poller(run_id: int, dataset_id: int) -> None:
 
 
 REQUIRED_KEYS = ("name", "appearance", "biography")
+
+def _normalize_base_url(url: Optional[str]) -> str:
+    base = (url or os.getenv('VLLM_BASE_URL') or 'http://localhost:8000').strip()
+    try:
+        p = urlparse(base)
+        host = (p.hostname or '').lower()
+        if host in {"localhost", "127.0.0.1"}:
+            # Inside a container, talk to the host via host.docker.internal
+            # Keep port/protocol as provided
+            p = p._replace(netloc=f"host.docker.internal:{p.port or 80}")
+            return urlunparse(p)
+    except Exception:
+        pass
+    return base
+
+def _probe_vllm_models(base_url: str, timeout: float = 2.5) -> Dict[str, Any]:
+    """Call vLLM /v1/models to verify availability. Returns JSON on success.
+    Raises a requests.RequestException (or ValueError) on failure.
+    """
+    u = base_url.rstrip('/') + '/v1/models'
+    r = requests.get(u, timeout=timeout, headers={'accept': 'application/json'})
+    r.raise_for_status()
+    try:
+        return r.json()
+    except Exception as e:
+        raise ValueError(f"Ungültige vLLM-Antwort von {u}: {e}")
+
+def _select_vllm_base_for(model_name: str, preferred: Optional[str]) -> str:
+    """Try several base URLs and return the first that answers and (if possible) contains the model.
+
+    Candidates order: preferred, normalized(preferred), env VLLM_BASE_URL, normalized(env),
+    http://host.docker.internal:8000, http://localhost:8000
+    """
+    tried: list[tuple[str, str]] = []
+    cands = []
+    if preferred:
+        cands.append(preferred)
+        cands.append(_normalize_base_url(preferred))
+    env_base = os.getenv('VLLM_BASE_URL')
+    if env_base:
+        cands.append(env_base)
+        cands.append(_normalize_base_url(env_base))
+    cands.append('http://host.docker.internal:8000')
+    cands.append('http://localhost:8000')
+    seen = set()
+    for c in cands:
+        if not c or c in seen:
+            continue
+        seen.add(c)
+        try:
+            data = _probe_vllm_models(c)
+            # If models are listed, try to ensure the model exists; otherwise accept the base.
+            ids = [str(m.get('id')) for m in (data.get('data') or []) if isinstance(m, dict)]
+            if not ids or model_name in ids:
+                return c
+            tried.append((c, f"Modell '{model_name}' nicht gelistet"))
+        except Exception as e:
+            tried.append((c, str(e)))
+    # Nothing worked
+    detail = "; ".join([f"{u}: {err}" for u, err in tried]) or "keine Kandidaten"
+    raise RuntimeError(f"vLLM nicht erreichbar oder Modell fehlt – versucht: {detail}")
 
 def _update_progress_done(run_id: int, dataset_id: int) -> None:
     # Derive done personas = have all required attributes for this run
@@ -79,8 +143,12 @@ def _run_attrgen_background(run_id: int) -> None:
     if llm_backend == "fake":
         llm = LlmClientFake(batch_size=batch_size)
     else:
-        base = PROGRESS[run_id].get("vllm_base_url") or "http://localhost:8000"
-        llm = LlmClientVLLM(base_url=str(base), model=model_name, api_key=None, batch_size=batch_size, max_new_tokens_cap=int(rec.max_new_tokens or 192))
+        try:
+            sel = _select_vllm_base_for(model_name, PROGRESS.get(run_id, {}).get("vllm_base_url"))
+        except Exception as e:
+            PROGRESS[run_id] = {**PROGRESS.get(run_id, {}), "status": "failed", "error": str(e)}
+            return
+        llm = LlmClientVLLM(base_url=str(sel), model=model_name, api_key=None, batch_size=batch_size, max_new_tokens_cap=int(rec.max_new_tokens or 192))
 
     persist = PersisterPeewee()
 
@@ -202,7 +270,7 @@ def latest_attrgen_for_dataset(dataset_id: int) -> Dict[str, Any]:
         _update_progress_done(rid, ds_id)
         info = PROGRESS.get(rid, {})
         status = info.get("status") or "unknown"
-        return {"ok": True, "found": True, "run_id": rid, "status": status, "done": info.get("done", 0), "total": info.get("total", 0), "pct": info.get("pct", 0.0)}
+        return {"ok": True, "found": True, "run_id": rid, "status": status, "done": info.get("done", 0), "total": info.get("total", 0), "pct": info.get("pct", 0.0), "error": info.get("error")}
     except Exception:
         return {"ok": True, "found": False}
 
@@ -232,5 +300,60 @@ def list_attrgen_runs(dataset_id: int) -> Dict[str, Any]:
             "done": info.get("done", 0),
             "total": info.get("total", 0),
             "pct": info.get("pct", 0.0),
+            "error": info.get("error"),
         })
     return {"ok": True, "runs": out}
+
+
+@router.delete("/attrgen/{run_id}")
+def delete_attrgen_run(run_id: int) -> Dict[str, Any]:
+    """Delete an attribute-generation run if safe.
+
+    Safety rules:
+    - If the run is currently queued/running, block deletion.
+    - If there exists a benchmark run for the same dataset and model that was
+      created at or after this attrgen run, block deletion (likely dependent).
+    Otherwise, delete all AdditionalPersonaAttributes for this run and the run itself.
+    """
+    ensure_db()
+    try:
+        rec = AttrGenerationRun.get_by_id(int(run_id))
+    except Exception:
+        raise HTTPException(status_code=404, detail="AttrGen-Run nicht gefunden")
+
+    # In-memory job protection
+    state = PROGRESS.get(int(run_id), {}).get("status")
+    if state in {"queued", "running"}:
+        raise HTTPException(status_code=400, detail="Run läuft noch oder ist in der Warteschlange – Löschen nicht möglich")
+
+    # Heuristik: block if a benchmark for same dataset+model exists at/after run time
+    try:
+        ds_id = int(rec.dataset_id.id) if rec.dataset_id else None
+        model_id = int(rec.model_id.id) if rec.model_id else None
+        if ds_id is not None and model_id is not None:
+            conflict = (BenchmarkRun
+                        .select()
+                        .where(
+                            (BenchmarkRun.dataset_id == ds_id) &
+                            (BenchmarkRun.model_id == model_id) &
+                            (BenchmarkRun.created_at >= rec.created_at)
+                        )
+                        .limit(1)
+                        .exists())
+            if conflict:
+                raise HTTPException(status_code=400, detail="Es existieren Benchmarks für dieses Dataset/Modell nach diesem Attr-Run – Löschen gesperrt")
+    except HTTPException:
+        raise
+    except Exception:
+        # On any unexpected error during the check, fail safe and do not delete
+        raise HTTPException(status_code=400, detail="Konnte Abhängigkeiten nicht prüfen – Löschen abgebrochen")
+
+    # Delete attributes for this run, then the run itself
+    deleted_attrs = (AdditionalPersonaAttributes
+                     .delete()
+                     .where(AdditionalPersonaAttributes.attr_generation_run_id == int(run_id))
+                     .execute())
+    rec.delete_instance()
+    # Best-effort: cleanup any progress entry
+    PROGRESS.pop(int(run_id), None)
+    return {"ok": True, "deleted_attributes": int(deleted_attrs)}

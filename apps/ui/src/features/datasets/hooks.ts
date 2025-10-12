@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchDatasets, fetchDatasetComposition, fetchDataset, fetchRunsByDataset, createPool, buildBalanced, sampleReality, buildCounterfactuals, startAttrGen, fetchAttrgenStatus, fetchLatestAttrgen, fetchAttrgenRuns, startBenchmark, fetchBenchmarkStatus, deleteDataset } from './api';
+import { fetchDatasets, fetchDatasetComposition, fetchDataset, fetchRunsByDataset, createPool, buildBalanced, sampleReality, buildCounterfactuals, startAttrGen, fetchAttrgenStatus, fetchLatestAttrgen, fetchAttrgenRuns, startBenchmark, fetchBenchmarkStatus, deleteDataset, deleteAttrgenRun } from './api';
 
 export function useDatasets(q?: string) {
     return useQuery({ queryKey: ['datasets', q], queryFn: () => fetchDatasets(q ? { q } : undefined) });
@@ -63,6 +63,17 @@ export function useDeleteDataset() {
         mutationFn: (datasetId: number) => deleteDataset(datasetId),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['datasets'] });
+        },
+    });
+}
+
+export function useDeleteAttrgenRun(datasetId: number) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (runId: number) => deleteAttrgenRun(runId),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['attrgen-runs', datasetId] });
+            qc.invalidateQueries({ queryKey: ['attrgen-latest', datasetId] });
         },
     });
 }
