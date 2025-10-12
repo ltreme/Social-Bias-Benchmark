@@ -228,6 +228,7 @@ def list_personas(
     offset: int = 0,
     sort: str = "created_at",
     order: str = "desc",
+    attrgen_run_id: Optional[int] = None,
     gender: Optional[str] = None,
     religion: Optional[str] = None,
     sexuality: Optional[str] = None,
@@ -296,12 +297,12 @@ def list_personas(
 
     rows = list(q)
     uuids = [r.uuid for r in rows]
-    # Fetch latest additional attributes per persona+key
+    # Fetch additional attributes per persona+key scoped to a specific AttrGenerationRun when provided
     add_map: Dict[str, Dict[str, Any]] = {}
-    if uuids:
+    if uuids and attrgen_run_id is not None:
         sub = (AdditionalPersonaAttributes
                .select(AdditionalPersonaAttributes)
-               .where(AdditionalPersonaAttributes.persona_uuid_id.in_(uuids))
+               .where((AdditionalPersonaAttributes.persona_uuid_id.in_(uuids)) & (AdditionalPersonaAttributes.attr_generation_run_id == int(attrgen_run_id)))
                .order_by(AdditionalPersonaAttributes.persona_uuid_id, AdditionalPersonaAttributes.attribute_key, AdditionalPersonaAttributes.id.desc()))
         for a in sub:
             pid = str(a.persona_uuid_id)

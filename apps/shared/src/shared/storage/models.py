@@ -142,6 +142,8 @@ class AttrGenerationRun(BaseModel):
 class AdditionalPersonaAttributes(BaseModel):
     id = pw.AutoField()
     persona_uuid_id = pw.ForeignKeyField(Persona, field=Persona.uuid, backref="extra_attributes", on_delete="CASCADE")
+    # Note: We intend attributes to be unique per (run, persona, key). Keep nullable for
+    # legacy DBs, but writers should always provide a run id.
     attr_generation_run_id = pw.ForeignKeyField(AttrGenerationRun, backref="extra_attributes", on_delete="SET NULL", null=True)
     attempt = pw.IntegerField(null=False, default=1, constraints=[pw.Check('attempt >= 1')])
     attribute_key = pw.CharField(null=False)
@@ -150,8 +152,9 @@ class AdditionalPersonaAttributes(BaseModel):
 
     class Meta:
         indexes = (
-            # Unique per attribute per persona (allowing multiple runs)
-            (("persona_uuid_id", "attribute_key"), True),
+            # Unique per (run, persona, key). This enables enriching the same dataset
+            # with multiple models/runs without overwriting existing attributes.
+            (("attr_generation_run_id", "persona_uuid_id", "attribute_key"), True),
         )
 
 class BenchmarkResult(BaseModel):

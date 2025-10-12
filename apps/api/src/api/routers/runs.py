@@ -141,7 +141,8 @@ def _bench_run_background(run_id: int) -> None:
     scale_mode = getattr(rec, 'scale_mode', None) or _BENCH_PROGRESS.get(run_id, {}).get('scale_mode')
     dual_fraction = getattr(rec, 'dual_fraction', None) or _BENCH_PROGRESS.get(run_id, {}).get('dual_fraction')
 
-    persona_repo = FullPersonaRepositoryByDataset(dataset_id=ds_id, model_name=model_name)
+    attrgen_run_id = _BENCH_PROGRESS.get(run_id, {}).get('attrgen_run_id')
+    persona_repo = FullPersonaRepositoryByDataset(dataset_id=ds_id, model_name=model_name, attr_generation_run_id=attrgen_run_id)
     question_repo = CaseRepository()
     max_new_toks = int(_BENCH_PROGRESS.get(run_id, {}).get('max_new_tokens', 256))
     system_prompt = rec.system_prompt
@@ -198,8 +199,8 @@ def _bench_run_background(run_id: int) -> None:
 def start_benchmark(body: dict) -> dict:
     """Start a benchmark run for a dataset with a given model.
 
-    Body: { dataset_id:int, model_name:str, include_rationale?:bool, llm?:'vllm'|'fake', batch_size?:int, vllm_base_url?:str }
-    Requires that attr-gen with same model is complete (client-side should ensure).
+    Body: { dataset_id:int, model_name:str, include_rationale?:bool, llm?:'vllm'|'fake', batch_size?:int, vllm_base_url?:str, attrgen_run_id?:int }
+    If attrgen_run_id is provided, personas are enriched using attributes from that run.
     """
     ensure_db()
     ds_id = int(body['dataset_id'])
@@ -208,6 +209,7 @@ def start_benchmark(body: dict) -> dict:
     llm = body.get('llm', 'vllm')
     batch_size = int(body.get('batch_size', 2))
     vllm_base_url = body.get('vllm_base_url')
+    attrgen_run_id = body.get('attrgen_run_id')
 
     max_new_tokens = int(body.get('max_new_tokens', 256))
     max_attempts = int(body.get('max_attempts', 3))
@@ -249,13 +251,23 @@ def start_benchmark(body: dict) -> dict:
             'skip_completed': True,
             'scale_mode': scale_mode,
             'dual_fraction': float(dual_fraction) if isinstance(dual_fraction, (int,float)) else None,
+            'attrgen_run_id': int(attrgen_run_id) if attrgen_run_id is not None else None,
         }
     else:
         model_name = str(body['model_name'])
         model_entry, _ = Model.get_or_create(name=model_name)
         rec = BenchmarkRun.create(dataset_id=ds_id, model_id=model_entry.id, include_rationale=include_rationale, batch_size=batch_size, max_attempts=max_attempts, system_prompt=system_prompt, scale_mode=scale_mode, dual_fraction=float(dual_fraction) if isinstance(dual_fraction, (int,float)) else None)
         run_id = int(rec.id)
-        _BENCH_PROGRESS[run_id] = {'status': 'queued', 'llm': llm, 'batch_size': batch_size, 'vllm_base_url': vllm_base_url, 'vllm_api_key': vllm_api_key, 'max_new_tokens': max_new_tokens, 'scale_mode': scale_mode, 'dual_fraction': float(dual_fraction) if isinstance(dual_fraction, (int,float)) else None}
+        # Validate attrgen_run_id belongs to dataset when provided
+        if attrgen_run_id is not None:
+            try:
+                from shared.storage.models import AttrGenerationRun
+                r = AttrGenerationRun.get_by_id(int(attrgen_run_id))
+                if int(r.dataset_id.id) != ds_id:
+                    raise ValueError("attrgen_run_id gehört zu einem anderen Dataset")
+            except Exception as e:
+                return {'ok': False, 'error': str(e)}
+        _BENCH_PROGRESS[run_id] = {'status': 'queued', 'llm': llm, 'batch_size': batch_size, 'vllm_base_url': vllm_base_url, 'vllm_api_key': vllm_api_key, 'max_new_tokens': max_new_tokens, 'scale_mode': scale_mode, 'dual_fraction': float(dual_fraction) if isinstance(dual_fraction, (int,float)) else None, 'attrgen_run_id': int(attrgen_run_id) if attrgen_run_id is not None else None}
 
     t = threading.Thread(target=_bench_run_background, args=(run_id,), daemon=True)
     t.start()

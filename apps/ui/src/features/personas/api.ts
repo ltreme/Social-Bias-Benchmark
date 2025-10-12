@@ -22,10 +22,10 @@ export type PersonaQuery = {
   gender?: string; religion?: string; sexuality?: string; education?: string;
   marriage_status?: string; migration_status?: string; origin_subregion?: string;
   min_age?: number; max_age?: number;
+  attrgen_run_id?: number;
 };
 
 export async function fetchDatasetPersonas(datasetId: number, params: PersonaQuery) {
   const res = await api.get<{ ok: boolean; total: number; items: PersonaItem[] }>(`/datasets/${datasetId}/personas`, { params });
   return res.data;
 }
-

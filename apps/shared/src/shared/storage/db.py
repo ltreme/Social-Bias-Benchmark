@@ -51,7 +51,9 @@ def create_tables() -> None:
     _fix_legacy_indexes(db)
     _ensure_new_columns(db)
     _migrate_benchmarkresult_unique_index(db)
+    _migrate_additional_attrs_unique_index(db)
     _rebuild_benchmarkresult_if_legacy_unique(db)
+    _rebuild_additional_attrs_if_legacy_unique(db)
 
 
 def _fix_legacy_indexes(db: pw.Database) -> None:
@@ -150,6 +152,47 @@ def _migrate_benchmarkresult_unique_index(db: pw.Database) -> None:
     except Exception:
         pass
 
+
+def _migrate_additional_attrs_unique_index(db: pw.Database) -> None:
+    """Ensure AdditionalPersonaAttributes has UNIQUE(attr_generation_run_id, persona_uuid_id, attribute_key).
+
+    Drops any unique index exactly on (persona_uuid_id, attribute_key) and creates the
+    new unique index on the desired triple if missing. Safe to run multiple times.
+    """
+    try:
+        table = 'additionalpersonaattributes'
+        cur = db.execute_sql(f"PRAGMA index_list({table})")
+        idx_rows = cur.fetchall()
+        # Drop legacy two-column unique indexes
+        for row in idx_rows:
+            name = row[1]
+            is_unique = bool(row[2])
+            if not is_unique:
+                continue
+            info = db.execute_sql(f"PRAGMA index_info({name})").fetchall()
+            cols = [r[2] for r in info]
+            if set(cols) == {"persona_uuid_id", "attribute_key"}:
+                db.execute_sql(f"DROP INDEX IF EXISTS {name}")
+        # Check if target unique exists
+        cur = db.execute_sql(f"PRAGMA index_list({table})")
+        idx_rows = cur.fetchall()
+        has_target = False
+        for row in idx_rows:
+            name = row[1]
+            is_unique = bool(row[2])
+            info = db.execute_sql(f"PRAGMA index_info({name})").fetchall()
+            cols = [r[2] for r in info]
+            if is_unique and cols == ["attr_generation_run_id", "persona_uuid_id", "attribute_key"]:
+                has_target = True
+                break
+        if not has_target:
+            db.execute_sql(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uniq_attr_run_persona_key "
+                "ON additionalpersonaattributes (attr_generation_run_id, persona_uuid_id, attribute_key)"
+            )
+    except Exception:
+        pass
+
 def _rebuild_benchmarkresult_if_legacy_unique(db: pw.Database) -> None:
     """On SQLite, rebuild table if it still has a legacy UNIQUE(run,persona,case).
 
@@ -202,6 +245,68 @@ def _rebuild_benchmarkresult_if_legacy_unique(db: pw.Database) -> None:
             db.execute_sql("CREATE INDEX IF NOT EXISTS benchmarkresult_persona_uuid_id ON benchmarkresult(persona_uuid_id)")
             db.execute_sql(
                 "CREATE UNIQUE INDEX IF NOT EXISTS uniq_benchmarkresult_run_persona_case_order ON benchmarkresult (benchmark_run_id, persona_uuid_id, case_id, scale_order)"
+            )
+            db.execute_sql("COMMIT")
+        except Exception:
+            db.execute_sql("ROLLBACK")
+            raise
+        finally:
+            db.execute_sql("PRAGMA foreign_keys=ON")
+    except Exception:
+        # Don't block startup on migration failure
+        pass
+
+
+def _rebuild_additional_attrs_if_legacy_unique(db: pw.Database) -> None:
+    """Rebuild AdditionalPersonaAttributes if it still has legacy UNIQUE(persona_uuid_id, attribute_key).
+
+    When the legacy unique constraint was defined at table-level, SQLite creates
+    an internal sqlite_autoindex that cannot be dropped. Detect that shape and
+    rebuild the table with the desired UNIQUE(attr_generation_run_id, persona_uuid_id, attribute_key).
+    """
+    try:
+        if not isinstance(db, pw.SqliteDatabase):
+            return
+        rows = db.execute_sql("PRAGMA index_list(additionalpersonaattributes)").fetchall()
+        auto = [r for r in rows if r[1] == 'sqlite_autoindex_additionalpersonaattributes_1']
+        if not auto:
+            return
+        info = db.execute_sql("PRAGMA index_info('sqlite_autoindex_additionalpersonaattributes_1')").fetchall()
+        cols = [r[2] for r in info]
+        # legacy unique was exactly on (persona_uuid_id, attribute_key)
+        if set(cols) != {"persona_uuid_id", "attribute_key"}:
+            return
+        # Rebuild
+        db.execute_sql("PRAGMA foreign_keys=OFF")
+        try:
+            db.execute_sql("BEGIN")
+            db.execute_sql(
+                "CREATE TABLE additionalpersonaattributes_new (\n"
+                "  id INTEGER PRIMARY KEY AUTOINCREMENT,\n"
+                "  persona_uuid_id TEXT NOT NULL,\n"
+                "  attr_generation_run_id INTEGER,\n"
+                "  attempt INTEGER NOT NULL DEFAULT 1,\n"
+                "  attribute_key TEXT NOT NULL,\n"
+                "  value TEXT NOT NULL,\n"
+                "  created_at TEXT NOT NULL,\n"
+                "  FOREIGN KEY(persona_uuid_id) REFERENCES persona(uuid) ON DELETE CASCADE,\n"
+                "  FOREIGN KEY(attr_generation_run_id) REFERENCES attrgenerationrun(id) ON DELETE SET NULL\n"
+                ")"
+            )
+            # Copy data verbatim; legacy rows may have NULL run ids
+            db.execute_sql(
+                "INSERT INTO additionalpersonaattributes_new (id, persona_uuid_id, attr_generation_run_id, attempt, attribute_key, value, created_at)\n"
+                "SELECT id, persona_uuid_id, attr_generation_run_id, attempt, attribute_key, value, created_at FROM additionalpersonaattributes"
+            )
+            db.execute_sql("DROP TABLE additionalpersonaattributes")
+            db.execute_sql("ALTER TABLE additionalpersonaattributes_new RENAME TO additionalpersonaattributes")
+            # Helpful secondary indexes
+            db.execute_sql("CREATE INDEX IF NOT EXISTS add_attr_persona_uuid_id ON additionalpersonaattributes(persona_uuid_id)")
+            db.execute_sql("CREATE INDEX IF NOT EXISTS add_attr_run_id ON additionalpersonaattributes(attr_generation_run_id)")
+            # Desired unique index
+            db.execute_sql(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uniq_attr_run_persona_key "
+                "ON additionalpersonaattributes (attr_generation_run_id, persona_uuid_id, attribute_key)"
             )
             db.execute_sql("COMMIT")
         except Exception:

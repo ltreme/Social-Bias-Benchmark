@@ -88,7 +88,11 @@ def main(argv: list[str] | None = None) -> int:
         )
         attr_generation_run_id = run_entry.id
     except Exception as e:
-        print(f"[warn] failed to record AttrGenerationRun: {e}", file=sys.stderr)
+        print(f"[fatal] failed to record AttrGenerationRun: {e}", file=sys.stderr)
+        return 2
+    if attr_generation_run_id is None:
+        print("[fatal] attr_generation_run_id is required for run-scoped attributes", file=sys.stderr)
+        return 2
 
     run_attr_gen_pipeline(
         dataset_id=args.dataset_id,

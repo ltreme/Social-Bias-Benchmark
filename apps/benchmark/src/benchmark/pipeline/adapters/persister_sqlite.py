@@ -43,14 +43,17 @@ class PersisterPeewee(Persister):
         # Upsert and update column values to the incoming (EXCLUDED) values
         # Note: Peewee does not expose EXCLUDED directly; use raw SQL references.
         from peewee import SQL
+        # Sanity: require attr_generation_run_id for correct run-scoped uniqueness
+        if any(r.get('attr_generation_run_id') in (None, '') for r in payload):
+            raise ValueError("attr_generation_run_id missing for attribute upsert; required for run-scoped uniqueness")
+
         with self.db.atomic():
             (self._Attr
             .insert_many(payload)
             .on_conflict(
-                conflict_target=[self._Attr.persona_uuid_id, self._Attr.attribute_key],
+                conflict_target=[self._Attr.attr_generation_run_id, self._Attr.persona_uuid_id, self._Attr.attribute_key],
                 update={
                     self._Attr.value: SQL('excluded.value'),
-                    self._Attr.attr_generation_run_id: SQL('excluded.attr_generation_run_id'),
                     self._Attr.attempt: SQL('excluded.attempt'),
                     self._Attr.created_at: SQL('excluded.created_at'),
                 })

@@ -40,6 +40,7 @@ export function DatasetDetailPage() {
     const [resumeRunId, setResumeRunId] = useState<number | undefined>(undefined);
     const startBench = useStartBenchmark();
     const [benchRunId, setBenchRunId] = useState<number | undefined>(undefined);
+    const [attrgenRunForBenchmark, setAttrgenRunForBenchmark] = useState<number | undefined>(undefined);
     const [resumeBenchRunId, setResumeBenchRunId] = useState<number | undefined>(undefined);
     const [scaleMode, setScaleMode] = useState<'in'|'rev'|'random50'>('in');
     const [dualFrac, setDualFrac] = useState<number>(0.15);
@@ -151,9 +152,14 @@ export function DatasetDetailPage() {
                           </span>
                         )}
                         {isDone ? (
-                          <Button size="xs" style={{ marginLeft: 8 }} onClick={() => { setModelName(r.model_name || ''); setBenchModalOpen(true); }}>
-                            Benchmark starten
-                          </Button>
+                          <>
+                            <Button size="xs" style={{ marginLeft: 8 }} onClick={() => { setModelName(r.model_name || ''); setAttrgenRunForBenchmark(r.id); setBenchModalOpen(true); }}>
+                              Benchmark starten
+                            </Button>
+                            <Button size="xs" variant="light" style={{ marginLeft: 6 }} component={Link} to={'/datasets/$datasetId/personas'} params={{ datasetId: String(datasetId) }} search={{ attrgenRunId: r.id }}>
+                              Personas anzeigen
+                            </Button>
+                          </>
                         ) : null}
                       </li>
                     );
@@ -237,7 +243,7 @@ export function DatasetDetailPage() {
           </Group>
         </Modal>
         {/* Benchmark Modal */}
-        <Modal opened={benchModalOpen} onClose={() => setBenchModalOpen(false)} title="Benchmark starten" size="lg">
+        <Modal opened={benchModalOpen} onClose={() => { setBenchModalOpen(false); setAttrgenRunForBenchmark(undefined); }} title="Benchmark starten" size="lg">
           {(() => {
             const completedModels = Array.from(new Set((runsList.data?.runs || []).filter(r => (r.done ?? 0) > 0 && (r.total ?? 0) > 0 && r.done === r.total).map(r => r.model_name || ''))).filter(Boolean);
             return (
@@ -291,7 +297,7 @@ export function DatasetDetailPage() {
                   <Button variant="default" onClick={()=>setBenchModalOpen(false)}>Abbrechen</Button>
                   <Button loading={startBench.isPending} disabled={!modelName && !resumeBenchRunId} onClick={async ()=>{
                     try {
-                      const rs = await startBench.mutateAsync({ dataset_id: idNum, model_name: modelName || undefined, include_rationale: includeRationale, llm: 'vllm', batch_size: batchSize, max_new_tokens: maxNew, max_attempts: maxAttempts, system_prompt: systemPrompt || undefined, vllm_base_url: vllmBase, vllm_api_key: vllmApiKey || undefined, resume_run_id: resumeBenchRunId, scale_mode: resumeBenchRunId ? undefined : scaleMode, dual_fraction: resumeBenchRunId ? undefined : dualFrac });
+                      const rs = await startBench.mutateAsync({ dataset_id: idNum, model_name: modelName || undefined, include_rationale: includeRationale, llm: 'vllm', batch_size: batchSize, max_new_tokens: maxNew, max_attempts: maxAttempts, system_prompt: systemPrompt || undefined, vllm_base_url: vllmBase, vllm_api_key: vllmApiKey || undefined, resume_run_id: resumeBenchRunId, scale_mode: resumeBenchRunId ? undefined : scaleMode, dual_fraction: resumeBenchRunId ? undefined : dualFrac, attrgen_run_id: attrgenRunForBenchmark });
                       setBenchRunId(rs.run_id); setBenchModalOpen(false); setResumeBenchRunId(undefined);
                     } catch(e) {}
                   }}>Benchmark starten</Button>

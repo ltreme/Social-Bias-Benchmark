@@ -17,6 +17,7 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Run primary bias benchmark pipeline.")
     p.add_argument("--gen-id", type=int, required=False, help="DEPRECATED: Use --dataset-id instead. Persona generation run id (ignored when --dataset-id is set)")
     p.add_argument("--dataset-id", type=int, required=False, help="Use personas from a Dataset (DatasetPersona membership)")
+    p.add_argument("--attrgen-run-id", type=int, required=False, help="Use additional attributes from this AttrGenerationRun (ensures model-consistent enrichment)")
     # Optional: override the system prompt preamble
     p.add_argument("--system-prompt", type=str, help="Override system prompt/preamble")
     p.add_argument("--max-attempts", type=int, default=2)
@@ -85,12 +86,26 @@ def main(argv: list[str] | None = None) -> int:
         )
         model_name = args.vllm_model
 
-    # Instantiate persona repo after model_name is known so we can filter attributes by model
-    persona_repo = FullPersonaRepository(model_name=model_name)
+    # Instantiate persona repo after model_name is known; restrict by attrgen run if provided
+    persona_repo = FullPersonaRepository(model_name=model_name, attr_generation_run_id=args.attrgen_run_id)
     persona_count_override = None
     if args.dataset_id is not None:
         # Switch to dataset-backed repo
-        persona_repo = FullPersonaRepositoryByDataset(dataset_id=int(args.dataset_id), model_name=model_name)
+        persona_repo = FullPersonaRepositoryByDataset(dataset_id=int(args.dataset_id), model_name=model_name, attr_generation_run_id=args.attrgen_run_id)
+        # Validate that attrgen-run belongs to this dataset if provided
+        if args.attrgen_run_id is not None:
+            try:
+                from shared.storage.models import AttrGenerationRun
+                r = AttrGenerationRun.get_by_id(int(args.attrgen_run_id))
+                if int(r.dataset_id.id) != int(args.dataset_id):
+                    print("[fatal] --attrgen-run-id gehört zu einem anderen Dataset", file=sys.stderr)
+                    return 2
+                # Optional: warn if model mismatch
+                if getattr(r.model_id, 'name', None) and str(r.model_id.name) != str(model_name):
+                    print(f"[warn] attrgen model ({r.model_id.name}) != benchmark model ({model_name})", file=sys.stderr)
+            except Exception as e:
+                print(f"[fatal] could not validate --attrgen-run-id: {e}", file=sys.stderr)
+                return 2
         try:
             from shared.storage.models import DatasetPersona
             persona_count_override = DatasetPersona.select().where(DatasetPersona.dataset_id == int(args.dataset_id)).count()

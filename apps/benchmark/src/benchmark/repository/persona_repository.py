@@ -113,9 +113,12 @@ class FullPersonaRepository(BenchPersonaRepo):
     for the benchmark prompts. Avoids materialization via iterator().
     """
 
-    def __init__(self, *, model_name: str | None = None):
-        # Optional model_name to filter AdditionalPersonaAttributes per model
+    def __init__(self, *, model_name: str | None = None, attr_generation_run_id: int | None = None):
+        # Optional: historic parameter kept for compatibility
         self.model_name = model_name
+        # Attributes should be selected from a specific attr-gen run to ensure
+        # model-consistent enrichment.
+        self.attr_generation_run_id = attr_generation_run_id
 
     def iter_personas(self, dataset_id: int | None = None):
         _ = get_db()
@@ -145,10 +148,11 @@ class FullPersonaRepository(BenchPersonaRepo):
         for row in query.iterator():
             origin_name = getattr(row, "origin_name", None)
 
-            # fetch enriched attributes for this persona (optionally filter by model)
-            # NOTE: attr_generation_run_id is an integer FK. Filtering by model_name is incorrect.
-            # Until we thread the specific AttrGenerationRun.id to this repo, don't filter here.
+            # Fetch enriched attributes for this persona. If a specific
+            # attr_generation_run_id is provided, restrict to that run.
             attrs_query = Attr.select(Attr.attribute_key, Attr.value).where(Attr.persona_uuid_id == row.uuid)
+            if self.attr_generation_run_id is not None:
+                attrs_query = attrs_query.where(Attr.attr_generation_run_id == int(self.attr_generation_run_id))
             attrs = attrs_query
             attr_map = {a.attribute_key: a.value for a in attrs}
 
@@ -180,9 +184,10 @@ class FullPersonaRepositoryByDataset(BenchPersonaRepo):
     """
     Streams personas that are members of a Dataset (DatasetPersona).
     """
-    def __init__(self, dataset_id: int, *, model_name: str | None = None):
+    def __init__(self, dataset_id: int, *, model_name: str | None = None, attr_generation_run_id: int | None = None):
         self.dataset_id = int(dataset_id)
         self.model_name = model_name
+        self.attr_generation_run_id = attr_generation_run_id
 
     def iter_personas(self, dataset_id: int) -> Iterable[BenchWorkItem]:  # dataset_id unused, uses self.dataset_id
         _ = get_db()
@@ -205,8 +210,10 @@ class FullPersonaRepositoryByDataset(BenchPersonaRepo):
 
         for row in query.iterator():
             origin_name = getattr(row, "origin_name", None)
-            # See note above: do not filter by model_name here, the FK is a run id.
+            # Restrict attributes to the provided attr-generation run when specified
             attrs_query = Attr.select(Attr.attribute_key, Attr.value).where(Attr.persona_uuid_id == row.uuid)
+            if self.attr_generation_run_id is not None:
+                attrs_query = attrs_query.where(Attr.attr_generation_run_id == int(self.attr_generation_run_id))
             attr_map = {a.attribute_key: a.value for a in attrs_query}
 
             persona_ctx = {

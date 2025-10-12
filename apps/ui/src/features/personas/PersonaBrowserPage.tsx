@@ -1,13 +1,22 @@
-import { useMemo, useState } from 'react';
-import { useParams } from '@tanstack/react-router';
+import { useMemo, useState, useEffect } from 'react';
+import { useParams, useSearch, useNavigate } from '@tanstack/react-router';
 import { Card, Group, NumberInput, Select, TextInput, Title, Button } from '@mantine/core';
 import { DataTable } from '../../components/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useDatasetPersonas } from './hooks';
+import { useAttrgenRuns } from '../datasets/hooks';
 
 export function PersonaBrowserPage() {
   const { datasetId } = useParams({ from: '/datasets/$datasetId/personas' });
   const idNum = Number(datasetId);
+  const navigate = useNavigate();
+  const search = useSearch({ from: '/datasets/$datasetId/personas' }) as { attrgenRunId?: number } | undefined;
+  const [attrgenRunId, setAttrgenRunId] = useState<number | undefined>(search?.attrgenRunId);
+  const runsList = useAttrgenRuns(idNum);
+  useEffect(() => {
+    // keep URL in sync when selection changes
+    navigate({ to: '/datasets/$datasetId/personas', params: { datasetId: String(datasetId) }, search: prev => ({ ...prev, attrgenRunId }) });
+  }, [attrgenRunId]);
 
   // Query state
   const [page, setPage] = useState(1);
@@ -32,14 +41,15 @@ export function PersonaBrowserPage() {
     origin_subregion: originSubregion,
     min_age: minAge,
     max_age: maxAge,
-  }), [page, pageSize, sort, order, gender, education, religion, originSubregion, minAge, maxAge]);
+    attrgen_run_id: attrgenRunId,
+  }), [page, pageSize, sort, order, gender, education, religion, originSubregion, minAge, maxAge, attrgenRunId]);
 
   const { data, isLoading } = useDatasetPersonas(idNum, params);
   const total = data?.total || 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   type Row = NonNullable<typeof data>['items'][number];
-  const columns: ColumnDef<Row>[] = [
+  const baseColumns: ColumnDef<Row>[] = [
     { header: 'UUID', accessorKey: 'uuid' },
     { header: 'Erstellt', accessorKey: 'created_at' },
     { header: 'Alter', accessorKey: 'age' },
@@ -50,14 +60,32 @@ export function PersonaBrowserPage() {
     { header: 'Familienstand', accessorKey: 'marriage_status' },
     { header: 'Migration', accessorKey: 'migration_status' },
     { header: 'Herkunft Subregion', accessorKey: 'origin_subregion' },
+  ];
+  const attrColumns: ColumnDef<Row>[] = [
     { header: 'Zusatz: Name', accessorKey: 'additional_attributes.name', cell: ({ row }) => (row.original.additional_attributes?.['name'] || '') },
     { header: 'Zusatz: Aussehen', accessorKey: 'additional_attributes.appearance', cell: ({ row }) => (row.original.additional_attributes?.['appearance'] || '') },
     { header: 'Zusatz: Biografie', accessorKey: 'additional_attributes.biography', cell: ({ row }) => (row.original.additional_attributes?.['biography'] || '') },
   ];
+  const columns: ColumnDef<Row>[] = attrgenRunId ? [...baseColumns, ...attrColumns] : baseColumns;
 
   return (
     <Card>
       <Title order={2} mb="sm">Personas – Dataset {datasetId}</Title>
+      <Group grow mb="md">
+        <Select
+          label="Attr-Gen Run"
+          data={(runsList.data?.runs || []).map(r => ({ value: String(r.id), label: `#${r.id} · ${r.model_name || ''} · ${new Date(r.created_at).toLocaleString()}` }))}
+          value={attrgenRunId ? String(attrgenRunId) : null}
+          onChange={(v)=> setAttrgenRunId(v ? Number(v) : undefined)}
+          clearable
+          placeholder="Kein (ohne Zusatz-Attribute)"
+        />
+      </Group>
+      {attrgenRunId ? (
+        <div style={{ marginBottom: 8 }}>
+          Ausgewählter Run: #{attrgenRunId} – {(runsList.data?.runs || []).find(r=>r.id===attrgenRunId)?.model_name || 'Modell unbekannt'}
+        </div>
+      ) : null}
       <Group grow mb="md">
         <Select label="Sortierung" data={[{value:'created_at',label:'Erstellt'}, {value:'age',label:'Alter'}, {value:'gender',label:'Geschlecht'}, {value:'education',label:'Bildung'}, {value:'religion',label:'Religion'}, {value:'origin_subregion',label:'Herkunft Subregion'}]} value={sort} onChange={(v)=>setSort((v as any) || 'created_at')} />
         <Select label="Reihenfolge" data={[{value:'desc',label:'absteigend'}, {value:'asc',label:'aufsteigend'}]} value={order} onChange={(v)=>setOrder((v as any) || 'desc')} />
