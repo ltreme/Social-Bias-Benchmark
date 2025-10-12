@@ -5,6 +5,7 @@ import { DataTable } from '../../components/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useDatasetPersonas } from './hooks';
 import { useAttrgenRuns } from '../datasets/hooks';
+import { personasCsvUrl } from './api';
 
 export function PersonaBrowserPage() {
   const { datasetId } = useParams({ from: '/datasets/$datasetId/personas' });
@@ -86,6 +87,13 @@ export function PersonaBrowserPage() {
           Ausgewählter Run: #{attrgenRunId} – {(runsList.data?.runs || []).find(r=>r.id===attrgenRunId)?.model_name || 'Modell unbekannt'}
         </div>
       ) : null}
+      <Group mb="md" justify="right">
+        <Button disabled={!attrgenRunId} onClick={() => {
+          if (!attrgenRunId) return;
+          const url = personasCsvUrl(idNum, attrgenRunId);
+          window.open(url, '_blank');
+        }}>Als CSV herunterladen</Button>
+      </Group>
       <Group grow mb="md">
         <Select label="Sortierung" data={[{value:'created_at',label:'Erstellt'}, {value:'age',label:'Alter'}, {value:'gender',label:'Geschlecht'}, {value:'education',label:'Bildung'}, {value:'religion',label:'Religion'}, {value:'origin_subregion',label:'Herkunft Subregion'}]} value={sort} onChange={(v)=>setSort((v as any) || 'created_at')} />
         <Select label="Reihenfolge" data={[{value:'desc',label:'absteigend'}, {value:'asc',label:'aufsteigend'}]} value={order} onChange={(v)=>setOrder((v as any) || 'desc')} />

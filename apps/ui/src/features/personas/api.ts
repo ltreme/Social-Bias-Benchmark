@@ -29,3 +29,10 @@ export async function fetchDatasetPersonas(datasetId: number, params: PersonaQue
   const res = await api.get<{ ok: boolean; total: number; items: PersonaItem[] }>(`/datasets/${datasetId}/personas`, { params });
   return res.data;
 }
+
+export function personasCsvUrl(datasetId: number, attrgenRunId?: number) {
+  const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8765';
+  const p = new URL(`/datasets/${datasetId}/personas/export`, base);
+  if (attrgenRunId) p.searchParams.set('attrgen_run_id', String(attrgenRunId));
+  return p.toString();
+}

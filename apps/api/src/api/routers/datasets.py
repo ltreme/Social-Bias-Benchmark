@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Iterable
 import json
 
 from fastapi import APIRouter
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from ..utils import ensure_db
@@ -354,6 +355,104 @@ def api_build_balanced(body: Dict[str, Any]) -> CreateDsOut:
     ensure_db()
     ds = build_balanced_dataset_from_pool(dataset_id=int(body["dataset_id"]), axes=["gender", "age", "origin"], n_target=int(body.get("n", 2000)), seed=int(body.get("seed", 42)), name=body.get("name"))
     return CreateDsOut(id=int(ds.id), name=str(ds.name))
+
+
+# --------- Export personas (+ additional attributes) as CSV ---------
+
+@router.get("/datasets/{dataset_id}/personas/export")
+def export_personas_csv(dataset_id: int, attrgen_run_id: Optional[int] = None) -> StreamingResponse:
+    """Stream a CSV of personas in a dataset, optionally enriched with additional attributes of a specific run.
+
+    Columns:
+      - Base persona columns: uuid, created_at, age, gender, education, occupation, marriage_status, migration_status,
+        religion, sexuality, origin_country, origin_region, origin_subregion
+      - Additional attribute columns: one column per attribute key present for this run (sorted by key)
+    """
+    ensure_db()
+    import csv, io
+    from peewee import JOIN
+
+    # Determine dynamic attribute keys for the given run (if provided)
+    add_keys: List[str] = []
+    if attrgen_run_id is not None:
+        qk = (AdditionalPersonaAttributes
+              .select(AdditionalPersonaAttributes.attribute_key)
+              .join(DatasetPersona, on=(DatasetPersona.persona_id == AdditionalPersonaAttributes.persona_uuid_id))
+              .where((DatasetPersona.dataset_id == dataset_id) & (AdditionalPersonaAttributes.attr_generation_run_id == int(attrgen_run_id)))
+              .distinct())
+        add_keys = sorted({str(r.attribute_key) for r in qk})
+
+    base_cols = [
+        'uuid','created_at','age','gender','education','occupation','marriage_status','migration_status',
+        'religion','sexuality','origin_country','origin_region','origin_subregion'
+    ]
+    header = base_cols + add_keys
+
+    def row_iter() -> Iterable[bytes]:
+        # write header
+        buf = io.StringIO()
+        w = csv.writer(buf)
+        w.writerow(header)
+        yield buf.getvalue().encode('utf-8')
+        buf.seek(0); buf.truncate(0)
+
+        # Iterate personas in chunks to keep memory bounded
+        chunk = 1000
+        base_query = (Persona
+                      .select(Persona, Country)
+                      .join(DatasetPersona, on=(DatasetPersona.persona_id == Persona.uuid))
+                      .switch(Persona)
+                      .join(Country, JOIN.LEFT_OUTER, on=(Persona.origin_id == Country.id))
+                      .where(DatasetPersona.dataset_id == dataset_id)
+                      .order_by(Persona.created_at.asc()))
+
+        total = base_query.count()
+        fetched = 0
+        while fetched < total:
+            batch = list(base_query.limit(chunk).offset(fetched))
+            fetched += len(batch)
+            if not batch:
+                break
+            add_map: Dict[str, Dict[str, Any]] = {}
+            if attrgen_run_id is not None and add_keys:
+                uuids = [r.uuid for r in batch]
+                sub = (AdditionalPersonaAttributes
+                       .select(AdditionalPersonaAttributes)
+                       .where((AdditionalPersonaAttributes.persona_uuid_id.in_(uuids)) & (AdditionalPersonaAttributes.attr_generation_run_id == int(attrgen_run_id)))
+                       .order_by(AdditionalPersonaAttributes.persona_uuid_id, AdditionalPersonaAttributes.attribute_key, AdditionalPersonaAttributes.id.desc()))
+                for a in sub:
+                    pid = str(a.persona_uuid_id)
+                    d = add_map.setdefault(pid, {})
+                    # Keep first occurrence per key (latest by id desc)
+                    if a.attribute_key not in d:
+                        d[str(a.attribute_key)] = str(a.value)
+
+            for r in batch:
+                row = [
+                    str(r.uuid),
+                    str(r.created_at) if r.created_at else '',
+                    str(int(r.age)) if r.age is not None else '',
+                    r.gender or '',
+                    r.education or '',
+                    r.occupation or '',
+                    r.marriage_status or '',
+                    r.migration_status or '',
+                    r.religion or '',
+                    r.sexuality or '',
+                    getattr(r.origin_id, 'country_en', '') or '',
+                    getattr(r.origin_id, 'region', '') or '',
+                    getattr(r.origin_id, 'subregion', '') or '',
+                ]
+                if add_keys:
+                    vals = add_map.get(str(r.uuid), {})
+                    row.extend([str(vals.get(k, '')) for k in add_keys])
+                w.writerow(row)
+                # flush row
+                yield buf.getvalue().encode('utf-8')
+                buf.seek(0); buf.truncate(0)
+
+    fname = f"dataset_{int(dataset_id)}" + (f"_attrrun_{int(attrgen_run_id)}" if attrgen_run_id is not None else "") + ".csv"
+    return StreamingResponse(row_iter(), media_type='text/csv', headers={'Content-Disposition': f'attachment; filename="{fname}"'})
 
 
 @router.delete("/datasets/{dataset_id}")
