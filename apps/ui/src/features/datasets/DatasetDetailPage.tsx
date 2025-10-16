@@ -5,7 +5,7 @@ import { ChartPanel } from '../../components/ChartPanel';
 import { useDatasetComposition, useDataset, useDatasetRuns, useStartAttrgen, useAttrgenStatus, useLatestAttrgen, useAttrgenRuns, useStartBenchmark, useBenchmarkStatus, useDeleteAttrgenRun } from './hooks';
 import { useModels } from '../compare/hooks';
 import { useEffect, useState } from 'react';
-import { Modal, NumberInput, Select, TextInput, Checkbox, Textarea } from '@mantine/core';
+import { Modal, Select, TextInput, Checkbox, Textarea } from '@mantine/core';
 import { DataTable } from '../../components/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useDeleteRun } from '../runs/hooks';
@@ -34,6 +34,9 @@ export function DatasetDetailPage() {
     const [batchSize, setBatchSize] = useState<number>(8);
     const [maxNew, setMaxNew] = useState<number>(192);
     const [maxAttempts, setMaxAttempts] = useState<number>(3);
+    const [batchSizeStr, setBatchSizeStr] = useState<string>('8');
+    const [maxNewStr, setMaxNewStr] = useState<string>('192');
+    const [maxAttemptsStr, setMaxAttemptsStr] = useState<string>('3');
     const [systemPrompt, setSystemPrompt] = useState<string>('');
     const [vllmBase, setVllmBase] = useState<string>('http://host.docker.internal:8000');
     const [vllmApiKey, setVllmApiKey] = useState<string>('');
@@ -279,16 +282,40 @@ export function DatasetDetailPage() {
             <TextInput label="vLLM Base URL" value={vllmBase} onChange={(e)=>setVllmBase(e.currentTarget.value)} />
           ) : null}
           <Group grow mb="md">
-            <NumberInput label="Batch Size" value={batchSize} onChange={(v)=>setBatchSize(Number(v||0))} min={1} />
-            <NumberInput label="Max New Tokens" value={maxNew} onChange={(v)=>setMaxNew(Number(v||0))} min={32} />
-            <NumberInput label="Max Attempts" value={maxAttempts} onChange={(v)=>setMaxAttempts(Number(v||0))} min={1} />
+            <TextInput
+              label="Batch Size"
+              value={batchSizeStr}
+              onChange={(e)=>{ const v=e.currentTarget.value; if (/^\d*$/.test(v)) setBatchSizeStr(v); }}
+              onBlur={()=>{ const n = Math.max(1, parseInt(batchSizeStr || '0', 10) || 0); setBatchSize(n); setBatchSizeStr(String(n)); }}
+              placeholder="z.B. 8"
+            />
+            <TextInput
+              label="Max New Tokens"
+              value={maxNewStr}
+              onChange={(e)=>{ const v=e.currentTarget.value; if (/^\d*$/.test(v)) setMaxNewStr(v); }}
+              onBlur={()=>{ const n = Math.max(32, parseInt(maxNewStr || '0', 10) || 0); setMaxNew(n); setMaxNewStr(String(n)); }}
+              placeholder="z.B. 192"
+            />
+            <TextInput
+              label="Max Attempts"
+              value={maxAttemptsStr}
+              onChange={(e)=>{ const v=e.currentTarget.value; if (/^\d*$/.test(v)) setMaxAttemptsStr(v); }}
+              onBlur={()=>{ const n = Math.max(1, parseInt(maxAttemptsStr || '0', 10) || 0); setMaxAttempts(n); setMaxAttemptsStr(String(n)); }}
+              placeholder="z.B. 3"
+            />
           </Group>
           <TextInput label="System Prompt (optional)" value={systemPrompt} onChange={(e)=>setSystemPrompt(e.currentTarget.value)} />
           <Group justify="right" mt="md">
             <Button variant="default" onClick={()=>setModalOpen(false)}>Abbrechen</Button>
             <Button loading={startAttr.isPending} disabled={!modelName && !resumeRunId} onClick={async ()=>{
               try {
-                const r = await startAttr.mutateAsync({ dataset_id: idNum, model_name: modelName, llm, batch_size: batchSize, max_new_tokens: maxNew, max_attempts: maxAttempts, system_prompt: systemPrompt || undefined, vllm_base_url: llm==='vllm'? vllmBase: undefined, resume_run_id: resumeRunId });
+                const bs = Math.max(1, parseInt(batchSizeStr || String(batchSize), 10) || batchSize);
+                const mn = Math.max(32, parseInt(maxNewStr || String(maxNew), 10) || maxNew);
+                const ma = Math.max(1, parseInt(maxAttemptsStr || String(maxAttempts), 10) || maxAttempts);
+                setBatchSize(bs); setBatchSizeStr(String(bs));
+                setMaxNew(mn); setMaxNewStr(String(mn));
+                setMaxAttempts(ma); setMaxAttemptsStr(String(ma));
+                const r = await startAttr.mutateAsync({ dataset_id: idNum, model_name: modelName, llm, batch_size: bs, max_new_tokens: mn, max_attempts: ma, system_prompt: systemPrompt || undefined, vllm_base_url: llm==='vllm'? vllmBase: undefined, resume_run_id: resumeRunId });
                 setRunId(r.run_id); setModalOpen(false);
               } catch(e) {}
             }}>Starten</Button>
@@ -302,11 +329,29 @@ export function DatasetDetailPage() {
               <>
                 <Group grow mb="md">
                   <Select label="Model (aus fertigen AttrGen-Runs)" data={completedModels} value={modelName} onChange={(v)=>setModelName(v || '')} placeholder="Model wählen" searchable disabled={!!resumeBenchRunId} />
-                  <NumberInput label="Batch Size" value={batchSize} onChange={(v)=>setBatchSize(Number(v||0))} min={1} />
+                  <TextInput
+                    label="Batch Size"
+                    value={batchSizeStr}
+                    onChange={(e)=>{ const v=e.currentTarget.value; if (/^\d*$/.test(v)) setBatchSizeStr(v); }}
+                    onBlur={()=>{ const n = Math.max(1, parseInt(batchSizeStr || '0', 10) || 0); setBatchSize(n); setBatchSizeStr(String(n)); }}
+                    placeholder="z.B. 8"
+                  />
                 </Group>
                 <Group grow mb="md">
-                  <NumberInput label="Max New Tokens" value={maxNew} onChange={(v)=>setMaxNew(Number(v||0))} min={32} />
-                  <NumberInput label="Max Attempts" value={maxAttempts} onChange={(v)=>setMaxAttempts(Number(v||0))} min={1} />
+                  <TextInput
+                    label="Max New Tokens"
+                    value={maxNewStr}
+                    onChange={(e)=>{ const v=e.currentTarget.value; if (/^\d*$/.test(v)) setMaxNewStr(v); }}
+                    onBlur={()=>{ const n = Math.max(32, parseInt(maxNewStr || '0', 10) || 0); setMaxNew(n); setMaxNewStr(String(n)); }}
+                    placeholder="z.B. 192"
+                  />
+                  <TextInput
+                    label="Max Attempts"
+                    value={maxAttemptsStr}
+                    onChange={(e)=>{ const v=e.currentTarget.value; if (/^\d*$/.test(v)) setMaxAttemptsStr(v); }}
+                    onBlur={()=>{ const n = Math.max(1, parseInt(maxAttemptsStr || '0', 10) || 0); setMaxAttempts(n); setMaxAttemptsStr(String(n)); }}
+                    placeholder="z.B. 3"
+                  />
                 </Group>
                 <Checkbox label="Rationale inkludieren" checked={includeRationale} onChange={(e) => setIncludeRationale(e.currentTarget.checked)} />
                 <Select
@@ -321,9 +366,9 @@ export function DatasetDetailPage() {
                   label="Doppel-Befragung Anteil"
                   data={[
                     { value: '0', label: '0%' },
-                    { value: '0.10', label: '10%' },
+                    { value: '0.1', label: '10%' },
                     { value: '0.15', label: '15%' },
-                    { value: '0.20', label: '20%' },
+                    { value: '0.2', label: '20%' },
                   ]}
                   value={String(dualFrac)}
                   onChange={(v)=> setDualFrac(Number(v || '0'))}
@@ -349,7 +394,13 @@ export function DatasetDetailPage() {
                   <Button variant="default" onClick={()=>setBenchModalOpen(false)}>Abbrechen</Button>
                   <Button loading={startBench.isPending} disabled={!modelName && !resumeBenchRunId} onClick={async ()=>{
                     try {
-                      const rs = await startBench.mutateAsync({ dataset_id: idNum, model_name: modelName || undefined, include_rationale: includeRationale, llm: 'vllm', batch_size: batchSize, max_new_tokens: maxNew, max_attempts: maxAttempts, system_prompt: systemPrompt || undefined, vllm_base_url: vllmBase, vllm_api_key: vllmApiKey || undefined, resume_run_id: resumeBenchRunId, scale_mode: resumeBenchRunId ? undefined : scaleMode, dual_fraction: resumeBenchRunId ? undefined : dualFrac, attrgen_run_id: attrgenRunForBenchmark });
+                      const bs = Math.max(1, parseInt(batchSizeStr || String(batchSize), 10) || batchSize);
+                      const mn = Math.max(32, parseInt(maxNewStr || String(maxNew), 10) || maxNew);
+                      const ma = Math.max(1, parseInt(maxAttemptsStr || String(maxAttempts), 10) || maxAttempts);
+                      setBatchSize(bs); setBatchSizeStr(String(bs));
+                      setMaxNew(mn); setMaxNewStr(String(mn));
+                      setMaxAttempts(ma); setMaxAttemptsStr(String(ma));
+                      const rs = await startBench.mutateAsync({ dataset_id: idNum, model_name: modelName || undefined, include_rationale: includeRationale, llm: 'vllm', batch_size: bs, max_new_tokens: mn, max_attempts: ma, system_prompt: systemPrompt || undefined, vllm_base_url: vllmBase, vllm_api_key: vllmApiKey || undefined, resume_run_id: resumeBenchRunId, scale_mode: resumeBenchRunId ? undefined : scaleMode, dual_fraction: resumeBenchRunId ? undefined : dualFrac, attrgen_run_id: attrgenRunForBenchmark });
                       setBenchRunId(rs.run_id); setBenchModalOpen(false); setResumeBenchRunId(undefined);
                     } catch(e) {}
                   }}>Benchmark starten</Button>
