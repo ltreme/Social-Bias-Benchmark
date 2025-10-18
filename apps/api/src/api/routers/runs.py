@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
+import json
+from datetime import datetime
 import pandas as pd
 import numpy as np
 
@@ -12,6 +14,8 @@ from shared.storage.models import (
     BenchmarkResult,
     Model,
     Case,
+    BenchCache,
+    utcnow,
 )
 from analysis.benchmarks import analytics as bench_ana
 from analysis.benchmarks.analytics import BenchQuery, load_benchmark_dataframe
@@ -92,6 +96,57 @@ def _df_for_read(run_id: int):
     if info.get('status') in {'running', 'queued'}:
         return _load_run_df(run_id)
     return _load_run_df_cached(run_id)
+
+
+# ---------------- Persistent cache helpers ----------------
+def _result_row_count(run_id: int) -> int:
+    try:
+        return int(BenchmarkResult.select().where(BenchmarkResult.benchmark_run_id == run_id).count())
+    except Exception:
+        return 0
+
+
+def _cache_key(run_id: int, kind: str, params: Dict[str, Any]) -> str:
+    key = {"r": _result_row_count(run_id), **params}
+    try:
+        return json.dumps(key, sort_keys=True, ensure_ascii=False)
+    except Exception:
+        return json.dumps({"r": key.get("r"), "params": str(params)}, sort_keys=True, ensure_ascii=False)
+
+
+def _cache_get(run_id: int, kind: str, key: str) -> Optional[Dict[str, Any]]:
+    try:
+        rec = (
+            BenchCache
+            .select(BenchCache.data)
+            .where((BenchCache.run_id == run_id) & (BenchCache.kind == kind) & (BenchCache.key == key))
+            .first()
+        )
+        if not rec:
+            return None
+        return json.loads(rec.data)
+    except Exception:
+        return None
+
+
+def _cache_put(run_id: int, kind: str, key: str, payload: Dict[str, Any]) -> None:
+    try:
+        data = json.dumps(payload, ensure_ascii=False)
+        existing = (
+            BenchCache
+            .select()
+            .where((BenchCache.run_id == run_id) & (BenchCache.kind == kind) & (BenchCache.key == key))
+            .first()
+        )
+        if existing:
+            existing.data = data
+            existing.updated_at = utcnow()
+            existing.save()
+        else:
+            BenchCache.create(run_id=run_id, kind=kind, key=key, data=data)
+    except Exception:
+        # Never fail the request due to cache issues
+        pass
 
 
 # ---------------- Benchmark job control ----------------
@@ -343,9 +398,15 @@ def bench_status(run_id: int) -> dict:
 @router.get("/runs/{run_id}/metrics")
 def run_metrics(run_id: int) -> Dict[str, Any]:
     ensure_db()
+    ck = _cache_key(run_id, "metrics", {})
+    cached = _cache_get(run_id, "metrics", ck)
+    if cached:
+        return cached
     df = _df_for_read(run_id)
     if df.empty:
-        return {"ok": True, "n": 0, "hist": {"bins": [], "shares": []}, "attributes": {}}
+        payload = {"ok": True, "n": 0, "hist": {"bins": [], "shares": []}, "attributes": {}}
+        _cache_put(run_id, "metrics", ck, payload)
+        return payload
     s = df["rating"].dropna().astype(int)
     cats = list(range(int(s.min()), int(s.max()) + 1))
     counts = s.value_counts().reindex(cats, fill_value=0).sort_index()
@@ -367,7 +428,9 @@ def run_metrics(run_id: int) -> Dict[str, Any]:
         return {"categories": cats_meta, "baseline": base}
 
     attrs = {k: attr_meta(k) for k in ["gender","origin_region","religion","sexuality","marriage_status","education"]}
-    return {"ok": True, "n": int(len(df)), "hist": {"bins": [str(c) for c in cats], "shares": shares, "counts": [int(x) for x in counts.tolist()]}, "attributes": attrs}
+    payload = {"ok": True, "n": int(len(df)), "hist": {"bins": [str(c) for c in cats], "shares": shares, "counts": [int(x) for x in counts.tolist()]}, "attributes": attrs}
+    _cache_put(run_id, "metrics", ck, payload)
+    return payload
 
 
 @router.get("/runs/{run_id}/order-metrics")
@@ -378,9 +441,15 @@ def run_order_metrics(run_id: int) -> Dict[str, Any]:
     reversed answers are mapped to the normal direction already.
     """
     ensure_db()
+    ck = _cache_key(run_id, "order", {})
+    cached = _cache_get(run_id, "order", ck)
+    if cached:
+        return cached
     df = _df_for_read(run_id)
     if df.empty:
-        return {"ok": True, "n_pairs": 0, "rma": {}, "obe": {}, "usage": {}, "test_retest": {}, "correlation": {}, "by_case": []}
+        payload = {"ok": True, "n_pairs": 0, "rma": {}, "obe": {}, "usage": {}, "test_retest": {}, "correlation": {}, "by_case": []}
+        _cache_put(run_id, "order", ck, payload)
+        return payload
     # Keep only rows with explicit scale_order
     if "scale_order" not in df.columns:
         return {"ok": True, "n_pairs": 0, "rma": {}, "obe": {}, "usage": {}, "test_retest": {}, "correlation": {}, "by_case": []}
@@ -453,7 +522,7 @@ def run_order_metrics(run_id: int) -> Dict[str, Any]:
             "mae": float(g["abs_diff"].mean()) if len(g) else 0.0,
         })
 
-    return {
+    payload = {
         "ok": True,
         "n_pairs": int(len(pairs)),
         "rma": {"exact_rate": exact, "mae": mae, "cliffs_delta": cliffs},
@@ -463,6 +532,8 @@ def run_order_metrics(run_id: int) -> Dict[str, Any]:
         "correlation": {"pearson": pear, "spearman": spear, "kendall": kend},
         "by_case": rows,
     }
+    _cache_put(run_id, "order", ck, payload)
+    return payload
 
 
 @router.get("/runs/{run_id}/missing")
@@ -566,9 +637,15 @@ def run_deltas(
     alpha: float = 0.05,
 ) -> Dict[str, Any]:
     ensure_db()
+    ck = _cache_key(run_id, "deltas", {"attribute": attribute, "baseline": baseline, "n_perm": int(n_perm), "alpha": float(alpha)})
+    cached = _cache_get(run_id, "deltas", ck)
+    if cached:
+        return cached
     df = _df_for_read(run_id)
     if df.empty or attribute not in df.columns:
-        return {"ok": True, "n": 0, "rows": []}
+        payload = {"ok": True, "n": 0, "rows": []}
+        _cache_put(run_id, "deltas", ck, payload)
+        return payload
     # Compute table via analytics helper
     table = bench_ana.deltas_with_significance(df, attribute, baseline=baseline, n_perm=n_perm, alpha=alpha)
 
@@ -645,17 +722,25 @@ def run_deltas(
             "ci_low": ci_low,
             "ci_high": ci_high,
         })
-    return {"ok": True, "n": int(len(df)), "rows": rows, "baseline": base}
+    payload = {"ok": True, "n": int(len(df)), "rows": rows, "baseline": base}
+    _cache_put(run_id, "deltas", ck, payload)
+    return payload
 
 
 @router.get("/runs/{run_id}/means")
 def run_means(run_id: int, attribute: str, top_n: Optional[int] = None) -> Dict[str, Any]:
     """Mean rating and counts per category for a given attribute."""
     ensure_db()
+    ck = _cache_key(run_id, "means", {"attribute": attribute, "top_n": top_n})
+    cached = _cache_get(run_id, "means", ck)
+    if cached:
+        return cached
     import pandas as pd
     df = _df_for_read(run_id)
     if df.empty or attribute not in df.columns:
-        return {"ok": True, "rows": []}
+        payload = {"ok": True, "rows": []}
+        _cache_put(run_id, "means", ck, payload)
+        return payload
     work = df.copy()
     work[attribute] = work[attribute].fillna("Unknown").astype(str)
     s = pd.to_numeric(work["rating"], errors="coerce")
@@ -664,7 +749,9 @@ def run_means(run_id: int, attribute: str, top_n: Optional[int] = None) -> Dict[
     if top_n and top_n > 0:
         g = g.head(int(top_n))
     rows = [{"category": str(r[attribute]), "count": int(r["count"]), "mean": float(r["mean"])} for _, r in g.iterrows()]
-    return {"ok": True, "rows": rows}
+    payload = {"ok": True, "rows": rows}
+    _cache_put(run_id, "means", ck, payload)
+    return payload
 
 
 @router.get("/runs/{run_id}/forest")
@@ -676,9 +763,15 @@ def run_forest(
     min_n: int = 1,
 ) -> Dict[str, Any]:
     ensure_db()
+    ck = _cache_key(run_id, "forest", {"attribute": attribute, "baseline": baseline, "target": target, "min_n": int(min_n)})
+    cached = _cache_get(run_id, "forest", ck)
+    if cached:
+        return cached
     df = _df_for_read(run_id)
     if df.empty or attribute not in df.columns:
-        return {"ok": True, "n": 0, "rows": []}
+        payload = {"ok": True, "n": 0, "rows": []}
+        _cache_put(run_id, "forest", ck, payload)
+        return payload
 
     import pandas as pd
     import numpy as np
@@ -743,4 +836,6 @@ def run_forest(
         overall = {"mean": None, "ci_low": None, "ci_high": None}
 
     rows_list.sort(key=lambda r: (r["delta"] if (r["delta"] == r["delta"]) else float('inf'), (r.get("label") or r["case_id"])) )
-    return {"ok": True, "n": len(rows_list), "rows": rows_list, "overall": overall}
+    payload = {"ok": True, "n": len(rows_list), "rows": rows_list, "overall": overall}
+    _cache_put(run_id, "forest", ck, payload)
+    return payload

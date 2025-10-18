@@ -10,6 +10,7 @@ import { AttributeBaselineSelector } from './components/AttributeBaselineSelecto
 import { DeltaBarsPanel } from './components/DeltaBarsPanel';
 import { ForestPlotPanel } from './components/ForestPlotPanel';
 import { MeansSummary } from './components/MeansSummary';
+import { AsyncContent } from '../../components/AsyncContent';
 
 const ATTRS = [
   { value: 'gender', label: 'Geschlecht' },
@@ -24,8 +25,8 @@ export function RunDetailPage() {
   const { runId } = useParams({ from: '/runs/$runId' });
   const idNum = Number(runId);
   const { data: run, isLoading: isLoadingRun } = useRun(idNum);
-  const { data: metrics } = useRunMetrics(idNum);
-  const { data: missing } = useRunMissing(idNum);
+  const { data: metrics, isLoading: loadingMetrics, isError: errorMetrics, error: metricsError } = useRunMetrics(idNum);
+  const { data: missing, isLoading: loadingMissing } = useRunMissing(idNum);
   const startBench = useStartBenchmark();
   const order = useRunOrderMetrics(idNum);
 
@@ -41,8 +42,8 @@ export function RunDetailPage() {
     if (!baseline && defaultBaseline) setBaseline(defaultBaseline);
   }, [defaultBaseline]);
 
-  const { data: deltas } = useRunDeltas(idNum, attr, baseline);
-  const { data: forest } = useRunForest(idNum, attr, baseline, target);
+  const { data: deltas, isLoading: loadingDeltas, isError: errorDeltas, error: deltasError } = useRunDeltas(idNum, attr, baseline);
+  const { data: forest, isLoading: loadingForest, isError: errorForest, error: forestError } = useRunForest(idNum, attr, baseline, target);
   // Means for fixed attribute set (avoid calling hooks in loops)
   const meansGender = useRunMeans(idNum, 'gender');
   const meansSubregion = useRunMeans(idNum, 'origin_subregion');
@@ -109,7 +110,7 @@ export function RunDetailPage() {
           <div style={{ marginBottom: '1em' }}>
               <b>Datensatz:</b> <Link to={`/datasets/${run.dataset?.id}`}>{run.dataset?.id}: {run.dataset?.name}</Link> | <b>Modell:</b> {run.model_name} | {run.created_at ? (<><b>Erstellt:</b> {new Date(run.created_at).toLocaleDateString()} | <b>Ergebnisse:</b> {run.n_results} | </>) : null}
               {run.include_rationale ? (<><b>Mit Begründung (with_rational):</b> {run.include_rationale ? 'Ja' : 'Nein'} </>) : null}
-              {missing && typeof missing.missing === 'number' && typeof missing.total === 'number' ? (
+              {loadingMissing ? null : (missing && typeof missing.missing === 'number' && typeof missing.total === 'number' ? (
                 <>
                   <br />
                   <b>Status:</b> {missing.missing > 0 ? `partial ${missing.total - missing.missing}/${missing.total}` : `done ${missing.total}/${missing.total}`}
@@ -133,7 +134,7 @@ export function RunDetailPage() {
                     </>
                   ) : null}
                 </>
-              ) : null}
+              ) : null)}
           </div>
       ) : (
           <div style={{ marginBottom: '1em' }}>Run nicht gefunden.</div>
@@ -141,15 +142,19 @@ export function RunDetailPage() {
       <Grid>
 
         <Grid.Col span={{ base: 12 }}>
-          <OrderMetricsCard data={order.data} />
+          <AsyncContent isLoading={order.isLoading} isError={order.isError} error={order.error}>
+            <OrderMetricsCard data={order.data} />
+          </AsyncContent>
         </Grid.Col>
         <Grid.Col span={{ base: 12, md: 6 }}>
-          <ChartPanel title="Rating-Verteilung" data={histBars} layout={{
-            barmode: 'group',
-            yaxis: { tickformat: '.0%', rangemode: 'tozero', title: 'Anteil' },
-            yaxis2: { overlaying: 'y', side: 'right', title: 'Anzahl', rangemode: 'tozero', showgrid: false },
-          }} />
-          <Text size="sm" c="dimmed">Skala: 1 = gar nicht &lt;adjektiv&gt; … 5 = sehr &lt;adjektiv&gt;</Text>
+          <AsyncContent isLoading={loadingMetrics} isError={errorMetrics} error={metricsError}>
+            <ChartPanel title="Rating-Verteilung" data={histBars} layout={{
+              barmode: 'group',
+              yaxis: { tickformat: '.0%', rangemode: 'tozero', title: 'Anteil' },
+              yaxis2: { overlaying: 'y', side: 'right', title: 'Anzahl', rangemode: 'tozero', showgrid: false },
+            }} />
+            <Text size="sm" c="dimmed">Skala: 1 = gar nicht &lt;adjektiv&gt; … 5 = sehr &lt;adjektiv&gt;</Text>
+          </AsyncContent>
         </Grid.Col>
         <Grid.Col span={{ base: 12, md: 6 }}>
           <AttributeBaselineSelector
@@ -161,23 +166,33 @@ export function RunDetailPage() {
             defaultBaseline={defaultBaseline}
             onBaselineChange={setBaseline}
           />
-          <DeltaBarsPanel deltas={deltas as any} title={`Delta vs. Baseline (${baseline || defaultBaseline || 'auto'})`} />
+          <AsyncContent isLoading={loadingDeltas} isError={errorDeltas} error={deltasError}>
+            <DeltaBarsPanel deltas={deltas as any} title={`Delta vs. Baseline (${baseline || defaultBaseline || 'auto'})`} />
+          </AsyncContent>
         </Grid.Col>
         <Grid.Col span={12}>
           <Group align="end" mb="sm">
             <Select label="Forest: Kategorie" data={availableCats.map(c => ({ value: c.category, label: c.category })).filter(c => c.value !== (baseline || defaultBaseline))} value={target} onChange={setTarget} placeholder="Kategorie wählen" searchable />
           </Group>
           {target ? (
-            <ForestPlotPanel forest={forest as any} attr={attr} baseline={baseline} defaultBaseline={defaultBaseline} />
+            <AsyncContent isLoading={loadingForest} isError={errorForest} error={forestError}>
+              <ForestPlotPanel forest={forest as any} attr={attr} baseline={baseline} defaultBaseline={defaultBaseline} />
+            </AsyncContent>
           ) : (<div>Bitte Kategorie für Forest auswählen.</div>)}
         </Grid.Col>
         <Grid.Col span={12}>
           <Card withBorder padding="md" style={{ marginBottom: 12 }}>
             <Title order={4}>Mittelwerte pro Merkmal</Title>
-            <MeansSummary
-              items={meansData.map(({ a, q }) => ({ key: a, rows: q.data?.rows }))}
-              getLabel={(key) => ATTRS.find((x) => x.value === key)?.label || key}
-            />
+            <AsyncContent
+              isLoading={meansData.some(({ q }) => q.isLoading)}
+              isError={meansData.some(({ q }) => q.isError)}
+              error={meansData.find(({ q }) => q.isError)?.error}
+            >
+              <MeansSummary
+                items={meansData.map(({ a, q }) => ({ key: a, rows: q.data?.rows }))}
+                getLabel={(key) => ATTRS.find((x) => x.value === key)?.label || key}
+              />
+            </AsyncContent>
           </Card>
         </Grid.Col>
         <Grid.Col span={12}>
@@ -186,7 +201,9 @@ export function RunDetailPage() {
             {deltasData.map(({a,q}) => (
               <div key={a} style={{ marginTop: 12 }}>
                 <b>{ATTRS.find(x=>x.value===a)?.label || a}</b>
-                <SignificanceTable rows={q.data?.rows || []} />
+                <AsyncContent isLoading={q.isLoading} isError={q.isError} error={q.error}>
+                  <SignificanceTable rows={q.data?.rows || []} />
+                </AsyncContent>
               </div>
             ))}
           </Card>

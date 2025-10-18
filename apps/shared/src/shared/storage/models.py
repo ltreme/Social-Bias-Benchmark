@@ -126,6 +126,21 @@ class BenchmarkRun(BaseModel):
         )
 
 
+class BenchCache(BaseModel):
+    id = pw.AutoField()
+    run_id = pw.ForeignKeyField(BenchmarkRun, backref="caches", on_delete="CASCADE")
+    kind = pw.CharField(null=False)  # e.g. 'metrics' | 'deltas' | 'forest' | 'means' | 'order'
+    key = pw.TextField(null=False)   # canonicalized JSON key incl. params and current result count
+    data = pw.TextField(null=False)  # JSON payload returned by API
+    created_at = pw.DateTimeField(default=utcnow, null=False)
+    updated_at = pw.DateTimeField(default=utcnow, null=False)
+
+    class Meta:
+        indexes = (
+            (("run_id", "kind", "key"), True),  # unique per run + endpoint + param-key
+        )
+
+
 class AttrGenerationRun(BaseModel):
     id = pw.AutoField()
     created_at = pw.DateTimeField(default=utcnow, null=False)
@@ -305,6 +320,7 @@ ALL_MODELS = [
     DatasetPersona,
     CounterfactualLink,
     BenchmarkRun,
+    BenchCache,
     AttrGenerationRun,
     AdditionalPersonaAttributes,
     BenchmarkResult,
