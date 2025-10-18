@@ -6,6 +6,10 @@ import { useRunDeltas, useRunForest, useRunMetrics, useRun, useRunMissing, useRu
 import { useStartBenchmark } from '../datasets/hooks';
 import { OrderMetricsCard } from './components/OrderMetricsCard';
 import { SignificanceTable } from './components/SignificanceTable';
+import { AttributeBaselineSelector } from './components/AttributeBaselineSelector';
+import { DeltaBarsPanel } from './components/DeltaBarsPanel';
+import { ForestPlotPanel } from './components/ForestPlotPanel';
+import { MeansSummary } from './components/MeansSummary';
 
 const ATTRS = [
   { value: 'gender', label: 'Geschlecht' },
@@ -80,48 +84,7 @@ export function RunDetailPage() {
     { type: 'scatter', mode: 'markers', x: metrics.hist.bins, y: histCounts, yaxis: 'y2', opacity: 0, showlegend: false },
   ] : [];
 
-  // Compute an approximate global significance threshold: ±1.96 * sqrt(sd_b^2/n_b + median(sd_c^2/n_c))
-  const approxSigThreshold = (() => {
-    if (!deltas || !deltas.rows || deltas.rows.length === 0) return undefined;
-    const nB = deltas.rows.find(r => (r.n_base ?? 0) > 1)?.n_base ?? deltas.rows[0].n_base;
-    const sdB = deltas.rows.find(r => (r.sd_base ?? NaN) === (r.sd_base ?? NaN))?.sd_base ?? deltas.rows[0].sd_base;
-    if (!nB || !sdB || !Number.isFinite(sdB)) return undefined;
-    const ns = deltas.rows.map(r => r.n_cat ?? r.count).filter(n => (n ?? 0) > 1) as number[];
-    const sds = deltas.rows.map(r => r.sd_cat).filter(v => Number.isFinite(v as number)) as number[];
-    if (ns.length === 0 || sds.length === 0) return undefined;
-    const med = (arr: number[]) => { const a = [...arr].sort((x,y)=>x-y); const m = Math.floor(a.length/2); return a.length%2? a[m] : (a[m-1]+a[m])/2; };
-    const nC = med(ns);
-    const sdC = med(sds);
-    const se = Math.sqrt((Number(sdB) ** 2) / Number(nB) + (Number(sdC) ** 2) / Number(nC));
-    if (!Number.isFinite(se) || se <= 0) return undefined;
-    return 1.96 * se;
-  })();
-
-  const deltaBars: Partial<Plotly.Data>[] = deltas ? [{
-    type: 'bar',
-    x: deltas.rows.map(r => r.delta),
-    y: deltas.rows.map(r => r.category),
-    orientation: 'h',
-    marker: { color: '#3182bd' },
-    error_x: {
-      type: 'data',
-      symmetric: false,
-      array: deltas.rows.map(r => (r.ci_high != null && r.delta != null) ? Math.max(0, (r.ci_high as number) - (r.delta as number)) : 0),
-      arrayminus: deltas.rows.map(r => (r.ci_low != null && r.delta != null) ? Math.max(0, (r.delta as number) - (r.ci_low as number)) : 0),
-      thickness: 1.2,
-      width: 0,
-      color: '#555',
-    },
-    hovertemplate: deltas.rows.map(r => {
-      const p = (r.p_value ?? NaN);
-      const q = (r as any).q_value as number | undefined;
-      const nB = r.n_base ?? 0, nC = r.n_cat ?? r.count;
-      const sdB = r.sd_base ?? NaN, sdC = r.sd_cat ?? NaN;
-      const lo = r.ci_low, hi = r.ci_high;
-      return `${r.category}<br>Δ=%{x:.3f}${(lo!=null&&hi!=null)?` [${Number(lo).toFixed(3)}, ${Number(hi).toFixed(3)}]`:''}<br>p=${Number(p).toFixed(3)}${q!=null?`; q=${q.toFixed(3)}`:''}<br>n_base=${nB}, sd_base=${Number(sdB).toFixed(2)}<br>n_cat=${nC}, sd_cat=${Number(sdC).toFixed(2)}`;
-    }),
-    hoverinfo: 'text',
-  }] : [];
+  // delta bars moved into DeltaBarsPanel
 
   const forestLabels = forest?.rows?.map(r => `${r.label || r.case_id} (${r.case_id})`) || [];
   const forestTrace: Partial<Plotly.Data> | null = forest && forest.rows.length > 0 ? {
@@ -189,83 +152,32 @@ export function RunDetailPage() {
           <Text size="sm" c="dimmed">Skala: 1 = gar nicht &lt;adjektiv&gt; … 5 = sehr &lt;adjektiv&gt;</Text>
         </Grid.Col>
         <Grid.Col span={{ base: 12, md: 6 }}>
-          <Group align="end">
-            <Select label="Merkmal" data={ATTRS} value={attr} onChange={(v) => { setAttr(v || 'gender'); setBaseline(undefined); setTarget(undefined); }} />
-            <Select label="Baseline" data={availableCats.map(c => ({ value: c.category, label: c.category }))} value={baseline} onChange={setBaseline} clearable placeholder={defaultBaseline || 'auto'} />
-        </Group>
-          <ChartPanel title={`Delta vs. Baseline (${baseline || defaultBaseline || 'auto'})`} data={deltaBars} layout={{
-            shapes: [
-              { type: 'line', x0: 0, x1: 0, y0: 0, y1: 1, xref: 'x', yref: 'paper', line: { color: '#222', width: 1 } },
-              ...(approxSigThreshold ? [
-                { type: 'line', x0: approxSigThreshold, x1: approxSigThreshold, y0: 0, y1: 1, xref: 'x', yref: 'paper', line: { color: '#2ca25f', width: 1, dash: 'dot' } },
-                { type: 'line', x0: -approxSigThreshold, x1: -approxSigThreshold, y0: 0, y1: 1, xref: 'x', yref: 'paper', line: { color: '#2ca25f', width: 1, dash: 'dot' } },
-              ] : []),
-            ],
-          }} />
-          <Text size="sm" c="dimmed">Fehlerbalken: 95%-Konfidenzintervall der Mittelwertdifferenz; p nach Permutationstest. Grüne gestrichelte Linien: angenäherte Signifikanzgrenzen (±1.96·SE, global geschätzt).</Text>
+          <AttributeBaselineSelector
+            attributes={ATTRS}
+            attribute={attr}
+            onAttributeChange={(v) => { setAttr(v); setBaseline(undefined); setTarget(undefined); }}
+            categories={availableCats.map((c) => c.category)}
+            baseline={baseline}
+            defaultBaseline={defaultBaseline}
+            onBaselineChange={setBaseline}
+          />
+          <DeltaBarsPanel deltas={deltas as any} title={`Delta vs. Baseline (${baseline || defaultBaseline || 'auto'})`} />
         </Grid.Col>
         <Grid.Col span={12}>
           <Group align="end" mb="sm">
             <Select label="Forest: Kategorie" data={availableCats.map(c => ({ value: c.category, label: c.category })).filter(c => c.value !== (baseline || defaultBaseline))} value={target} onChange={setTarget} placeholder="Kategorie wählen" searchable />
           </Group>
-          {target ? (forestTrace ? (
-            <ChartPanel title={`Per-Question Forest – ${attr}`} data={[forestTrace]} height={Math.max(360, (forest?.rows.length || 1) * 60)}
-              layout={{
-                shapes: [
-                  { type: 'line', x0: 0, x1: 0, y0: 0, y1: 1, xref: 'x', yref: 'paper', line: { color: '#222', width: 1 } },
-                  ...(forest?.overall?.mean != null ? [
-                    { type: 'line', x0: forest.overall.mean, x1: forest.overall.mean, y0: 0, y1: 1, xref: 'x', yref: 'paper', line: { color: '#2ca25f', width: 2, dash: 'dash' } },
-                    ...(forest.overall.ci_low != null && forest.overall.ci_high != null ? [
-                      { type: 'rect', x0: forest.overall.ci_low, x1: forest.overall.ci_high, y0: 0, y1: 1, xref: 'x', yref: 'paper', line: { width: 0 }, fillcolor: 'rgba(44,162,95,0.15)' },
-                      { type: 'line', x0: forest.overall.ci_low, x1: forest.overall.ci_low, y0: 0, y1: 1, xref: 'x', yref: 'paper', line: { color: '#2ca25f', width: 1, dash: 'dot' } },
-                      { type: 'line', x0: forest.overall.ci_high, x1: forest.overall.ci_high, y0: 0, y1: 1, xref: 'x', yref: 'paper', line: { color: '#2ca25f', width: 1, dash: 'dot' } },
-                    ] : []),
-                  ] : []),
-                  // add symmetric significance threshold around 0 based on median SE across rows, if available
-                  ...( (() => {
-                      const ses = (forest?.rows || []).map(r => r.se).filter(v => typeof v === 'number' && isFinite(v as number)) as number[];
-                      if (!ses.length) return [] as any[];
-                      const a = [...ses].sort((x,y)=>x-y); const m = Math.floor(a.length/2); const med = a.length%2? a[m] : (a[m-1]+a[m])/2;
-                      const thr = 1.96 * med;
-                      if (!isFinite(thr) || thr <= 0) return [] as any[];
-                      return [
-                        { type: 'line', x0: thr, x1: thr, y0: 0, y1: 1, xref: 'x', yref: 'paper', line: { color: '#888', width: 1, dash: 'dot' } },
-                        { type: 'line', x0: -thr, x1: -thr, y0: 0, y1: 1, xref: 'x', yref: 'paper', line: { color: '#888', width: 1, dash: 'dot' } },
-                      ] as any[];
-                  })() ),
-                ],
-                margin: { l: 180, r: 40, t: 24, b: 40 },
-                yaxis: { title: 'Adjektiv', automargin: true, categoryorder: 'array', categoryarray: forestLabels },
-                xaxis: (() => {
-                  const vals = [
-                    ...(forest?.rows?.map(r => r.delta) || []),
-                    ...(forest?.rows?.map(r => r.ci_low || 0) || []),
-                    ...(forest?.rows?.map(r => r.ci_high || 0) || []),
-                    ...(forest?.overall ? [forest.overall.mean || 0, forest.overall.ci_low || 0, forest.overall.ci_high || 0] : []),
-                  ].filter((v) => v!=null && v===v) as number[];
-                  const M = vals.length ? Math.max(...vals.map(v => Math.abs(v))) : 1;
-                  const pad = Math.max(0.5, M * 0.1);
-                  return { title: `Delta vs Baseline (${baseline || defaultBaseline || ''})`, range: [-(M+pad), (M+pad)] };
-                })(),
-                showlegend: false,
-              }}
-            />
-          ) : (
-            <div>Keine Daten für Forest-Plot.</div>
-          )) : (<div>Bitte Kategorie für Forest auswählen.</div>)}
-          <Text size="sm" c="dimmed">Legende: 0-Linie (schwarz), Gesamtmittel (grün gestrichelt), 95%-CI (grün transparent). Beide Seiten um 0 werden angezeigt.</Text>
+          {target ? (
+            <ForestPlotPanel forest={forest as any} attr={attr} baseline={baseline} defaultBaseline={defaultBaseline} />
+          ) : (<div>Bitte Kategorie für Forest auswählen.</div>)}
         </Grid.Col>
         <Grid.Col span={12}>
           <Card withBorder padding="md" style={{ marginBottom: 12 }}>
             <Title order={4}>Mittelwerte pro Merkmal</Title>
-            {meansData.map(({a,q}) => (
-              <div key={a} style={{ marginTop: 8 }}>
-                <b>{ATTRS.find(x=>x.value===a)?.label || a}</b>
-                <div style={{ fontFamily:'monospace' }}>
-                  {q.data?.rows && q.data.rows.length>0 ? q.data.rows.map(r => `${r.category}: mean=${r.mean.toFixed(2)} (n=${r.count})`).join(' · ') : '—'}
-                </div>
-              </div>
-            ))}
+            <MeansSummary
+              items={meansData.map(({ a, q }) => ({ key: a, rows: q.data?.rows }))}
+              getLabel={(key) => ATTRS.find((x) => x.value === key)?.label || key}
+            />
           </Card>
         </Grid.Col>
         <Grid.Col span={12}>

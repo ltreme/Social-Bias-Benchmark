@@ -2,6 +2,7 @@ import { Button, Card, Grid, Group, Progress, Spoiler, Title } from '@mantine/co
 import { notifications } from '@mantine/notifications';
 import { useParams, Link } from '@tanstack/react-router';
 import { ChartPanel } from '../../components/ChartPanel';
+import { toBar } from '../../components/ChartUtils';
 import { useDatasetComposition, useDataset, useDatasetRuns, useAttrgenStatus, useLatestAttrgen, useAttrgenRuns, useBenchmarkStatus } from './hooks';
 import { useModels } from '../compare/hooks';
 import { useEffect, useState } from 'react';
@@ -10,12 +11,6 @@ import { AttrGenModal } from './components/AttrGenModal';
 import { BenchmarkModal } from './components/BenchmarkModal';
 import { AttrgenRunsTable } from './components/AttrgenRunsTable';
 import { DatasetRunsTable } from './components/DatasetRunsTable';
-
-function toBar(items: Array<{ value: string; count: number }>, opts?: { horizontal?: boolean }) {
-    const labels = items.map((d) => d.value);
-    const values = items.map((d) => d.count);
-    return [{ type: 'bar', x: opts?.horizontal ? values : labels, y: opts?.horizontal ? labels : values, orientation: opts?.horizontal ? 'h' : undefined } as Partial<Plotly.Data>];
-}
 
 export function DatasetDetailPage() {
     const { datasetId } = useParams({ from: '/datasets/$datasetId' });
