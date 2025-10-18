@@ -1,9 +1,11 @@
-import { Badge, Button, Card, Divider, Grid, Group, Select, Text, Title, Tooltip } from '@mantine/core';
+import { Button, Card, Grid, Group, Select, Text, Title } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from '@tanstack/react-router';
 import { ChartPanel } from '../../components/ChartPanel';
 import { useRunDeltas, useRunForest, useRunMetrics, useRun, useRunMissing, useRunOrderMetrics, useRunMeans } from './hooks';
 import { useStartBenchmark } from '../datasets/hooks';
+import { OrderMetricsCard } from './components/OrderMetricsCard';
+import { SignificanceTable } from './components/SignificanceTable';
 
 const ATTRS = [
   { value: 'gender', label: 'Geschlecht' },
@@ -23,52 +25,7 @@ export function RunDetailPage() {
   const startBench = useStartBenchmark();
   const order = useRunOrderMetrics(idNum);
 
-  function grade(color: 'green'|'yellow'|'red', text: string) {
-    return <Badge color={color} variant="filled" size="sm">{text}</Badge>;
-  }
-
-  function gradeRmaExact(v?: number) {
-    const x = Number(v ?? NaN);
-    if (!Number.isFinite(x)) return grade('yellow','n/a');
-    if (x >= 0.8) return grade('green', 'hoch');
-    if (x >= 0.6) return grade('yellow', 'mittel');
-    return grade('red', 'niedrig');
-  }
-  function gradeMae(v?: number) {
-    const x = Number(v ?? NaN);
-    if (!Number.isFinite(x)) return grade('yellow','n/a');
-    if (x <= 0.3) return grade('green','niedrig');
-    if (x <= 0.6) return grade('yellow','mittel');
-    return grade('red','hoch');
-  }
-  function gradeCliffs(v?: number) {
-    const a = Math.abs(Number(v ?? NaN));
-    if (!Number.isFinite(a)) return grade('yellow','n/a');
-    if (a <= 0.147) return grade('green','klein');
-    if (a <= 0.33) return grade('yellow','mittel');
-    return grade('red','groß');
-  }
-  function gradeObe(mean?: number, lo?: number, hi?: number) {
-    const m = Math.abs(Number(mean ?? NaN));
-    const ciCoversZero = Number.isFinite(lo ?? NaN) && Number.isFinite(hi ?? NaN) && (Number(lo) <= 0) && (Number(hi) >= 0);
-    if (ciCoversZero && m < 0.2) return grade('green','keine/kleine Verzerrung');
-    if (m < 0.5) return grade('yellow','mögliche Verzerrung');
-    return grade('red','klare Verzerrung');
-  }
-  function gradeWithin1(v?: number) {
-    const x = Number(v ?? NaN);
-    if (!Number.isFinite(x)) return grade('yellow','n/a');
-    if (x >= 0.9) return grade('green','stabil');
-    if (x >= 0.75) return grade('yellow','ok');
-    return grade('red','instabil');
-  }
-  function gradeCorr(v?: number) {
-    const a = Math.abs(Number(v ?? NaN));
-    if (!Number.isFinite(a)) return grade('yellow','n/a');
-    if (a >= 0.8) return grade('green','hoch');
-    if (a >= 0.6) return grade('yellow','mittel');
-    return grade('red','niedrig');
-  }
+  // grade helpers moved into ./components/Grades
   const [attr, setAttr] = useState<string>('gender');
   const availableCats = metrics?.attributes?.[attr]?.categories || [];
   const defaultBaseline = metrics?.attributes?.[attr]?.baseline || undefined;
@@ -221,58 +178,7 @@ export function RunDetailPage() {
       <Grid>
 
         <Grid.Col span={{ base: 12 }}>
-          {order.data && order.data.n_pairs > 0 ? (
-            <Card withBorder padding="md" style={{ marginBottom: 12 }}>
-              <Title order={4}>Order-Consistency</Title>
-              <Text c="dimmed" size="sm" mt={4}>
-                Doppel-befragte Paare (in vs. reversed). Ziel ist, dass die Antworten unabhängig von der Reihenfolge gleich sind. Grün = gut, Rot = problematisch.
-              </Text>
-              <Divider my={8} />
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 12 }}>
-                <div>
-                  <b>RMA (Agreement)</b> {gradeRmaExact(order.data.rma?.exact_rate)}<br/>
-                  <Text size="sm">Anteil exakt gleicher Bewertungen nach Umrechnung (x' = 6 − x). Ziel: ≥ 0.80.</Text>
-                  <Text size="sm">Wert: {(order.data.rma?.exact_rate ?? 0).toFixed(3)} · MAE {gradeMae(order.data.rma?.mae)} {(order.data.rma?.mae ?? 0).toFixed(3)}</Text>
-                </div>
-                <div>
-                  <b>Cliff’s δ</b> {gradeCliffs(order.data.rma?.cliffs_delta)}<br/>
-                  <Text size="sm">Effektstärke zwischen normaler und umgekehrter Reihenfolge. Ideal nahe 0 (|δ| ≤ 0.15).</Text>
-                  <Text size="sm">Wert: {Number.isFinite(order.data.rma?.cliffs_delta ?? NaN) ? (order.data.rma?.cliffs_delta as number).toFixed(3) : '–'}</Text>
-                </div>
-                <div>
-                  <b>Order-Bias (Δ)</b> {gradeObe(order.data.obe?.mean_diff, order.data.obe?.ci_low, order.data.obe?.ci_high)}<br/>
-                  <Text size="sm">Mittelwertdifferenz (in − rev) mit 95%-CI. Ziel: CI enthält 0 und |Δ| klein (&lt; 0.2).</Text>
-                  <Text size="sm">Δ {(order.data.obe?.mean_diff ?? 0).toFixed(3)} [{(order.data.obe?.ci_low ?? 0).toFixed(3)}, {(order.data.obe?.ci_high ?? 0).toFixed(3)}]</Text>
-                </div>
-                <div>
-                  <b>Test–Retest</b> {gradeWithin1(order.data.test_retest?.within1_rate)}<br/>
-                  <Text size="sm">Stabilität zwischen in/rev: Anteil |Δ| ≤ 1 (Ziel: ≥ 0.90) und mittleres |Δ| (Ziel: ≤ 0.3).</Text>
-                  <Text size="sm">Anteil {(order.data.test_retest?.within1_rate ?? 0).toFixed(3)} · |Δ| {(order.data.test_retest?.mean_abs_diff ?? 0).toFixed(3)}</Text>
-                </div>
-                <div>
-                  <b>Korrelation</b> {gradeCorr(order.data.correlation?.spearman)}<br/>
-                  <Text size="sm">Übereinstimmung der Rangfolge (Spearman) bzw. Linearität (Pearson). Ziel: ≥ 0.8.</Text>
-                  <Text size="sm">ρ={(order.data.correlation?.spearman ?? NaN).toFixed(3)}; r={(order.data.correlation?.pearson ?? NaN).toFixed(3)}; τ={Number.isFinite(order.data.correlation?.kendall ?? NaN) ? (order.data.correlation?.kendall as number).toFixed(3) : '–'}</Text>
-                </div>
-                <div>
-                  <b>Skalengebrauch</b><br/>
-                  <Text size="sm">EEI (Extremwerte 1/5), MNI (Mitte 3), SV (Streuung). Deskriptiv: sehr hohe EEI/MNI können auf Schiefen hinweisen.</Text>
-                  <Text size="sm">EEI {(order.data.usage?.eei ?? 0).toFixed(3)} · MNI {(order.data.usage?.mni ?? 0).toFixed(3)} · SV {(order.data.usage?.sv ?? 0).toFixed(3)}</Text>
-                </div>
-              </div>
-              {order.data.by_case && order.data.by_case.length > 0 ? (
-                <div style={{ marginTop: 10 }}>
-                  <Text fw={700}>Pro Frage (Beispiele)</Text>
-                  <Text size="sm">Exakte Übereinstimmung je Adjektiv. Hohe Abweichungen können auf text-/kontextabhängige Sensitivität hinweisen.</Text>
-                  <div style={{ marginTop: 6 }}>
-                    {order.data.by_case.slice(0, 12).map(r => (
-                      <div key={r.case_id}>{r.adjective || r.case_id}: {(r.exact_rate).toFixed(2)} (n={r.n_pairs})</div>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </Card>
-          ) : null}
+          <OrderMetricsCard data={order.data} />
         </Grid.Col>
         <Grid.Col span={{ base: 12, md: 6 }}>
           <ChartPanel title="Rating-Verteilung" data={histBars} layout={{
@@ -368,38 +274,7 @@ export function RunDetailPage() {
             {deltasData.map(({a,q}) => (
               <div key={a} style={{ marginTop: 12 }}>
                 <b>{ATTRS.find(x=>x.value===a)?.label || a}</b>
-                {q.data && q.data.rows && q.data.rows.length>0 ? (
-                  <div style={{ overflowX:'auto' }}>
-                    <table style={{ width:'100%', borderCollapse:'collapse' }}>
-                      <thead>
-                        <tr>
-                          <th style={{ textAlign:'left' }}>Kategorie</th>
-                          <th style={{ textAlign:'right' }}>n</th>
-                          <th style={{ textAlign:'right' }}>Mittel</th>
-                          <th style={{ textAlign:'right' }}>Delta</th>
-                          <th style={{ textAlign:'right' }}>p</th>
-                          <th style={{ textAlign:'right' }}>q</th>
-                          <th style={{ textAlign:'right' }}>Cliff’s δ</th>
-                          <th style={{ textAlign:'center' }}>Sig</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {q.data.rows.map(r => (
-                          <tr key={r.category}>
-                            <td>{r.category}</td>
-                            <td style={{ textAlign:'right' }}>{r.count}</td>
-                            <td style={{ textAlign:'right' }}>{Number.isFinite(r.mean) ? r.mean.toFixed(2) : '—'}</td>
-                            <td style={{ textAlign:'right' }}>{(r.delta ?? NaN)=== (r.delta ?? NaN) ? (r.delta as number).toFixed(2) : '—'}</td>
-                            <td style={{ textAlign:'right' }}>{(r.p_value ?? NaN)=== (r.p_value ?? NaN) ? (r.p_value as number).toFixed(3) : '—'}</td>
-                            <td style={{ textAlign:'right' }}>{(r as any).q_value != null && (r as any).q_value === (r as any).q_value ? (r as any).q_value.toFixed(3) : '—'}</td>
-                            <td style={{ textAlign:'right' }}>{(r as any).cliffs_delta != null && (r as any).cliffs_delta === (r as any).cliffs_delta ? (r as any).cliffs_delta.toFixed(2) : '—'}</td>
-                            <td style={{ textAlign:'center' }}>{r.significant ? 'yes' : ''}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (<div>—</div>)}
+                <SignificanceTable rows={q.data?.rows || []} />
               </div>
             ))}
           </Card>

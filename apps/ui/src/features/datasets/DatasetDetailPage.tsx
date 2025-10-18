@@ -10,8 +10,6 @@ import { AttrGenModal } from './components/AttrGenModal';
 import { BenchmarkModal } from './components/BenchmarkModal';
 import { AttrgenRunsTable } from './components/AttrgenRunsTable';
 import { DatasetRunsTable } from './components/DatasetRunsTable';
-// icons are used inside child components
-import type { AttrgenRun } from './api';
 
 function toBar(items: Array<{ value: string; count: number }>, opts?: { horizontal?: boolean }) {
     const labels = items.map((d) => d.value);
