@@ -7,6 +7,7 @@ import { createRouter } from '@tanstack/react-router';
 import { routeTree } from './routes';
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
+import '../print.css';
 
 const router = createRouter({ routeTree });
 

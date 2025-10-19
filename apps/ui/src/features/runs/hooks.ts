@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, useQueries } from '@tanstack/react-query';
 import { fetchRunDeltas, fetchRunForest, fetchRunMetrics, fetchRuns, startRun, fetchRun, deleteRun as apiDeleteRun, fetchRunMissing, fetchRunOrderMetrics, fetchRunMeans } from './api';
 
 export function useRuns(status?: string) {
@@ -27,6 +27,18 @@ export function useRunDeltas(runId: number, attribute: string, baseline?: string
 
 export function useRunForest(runId: number, attribute: string, baseline?: string, target?: string) {
     return useQuery({ queryKey: ['run-forest', runId, attribute, baseline, target], queryFn: () => fetchRunForest(runId, { attribute, baseline, target, min_n: 1 }), enabled: Number.isFinite(runId) && !!attribute && !!target, staleTime: 60 * 60 * 1000 });
+}
+
+export function useRunForests(runId: number, attribute: string, baseline: string | undefined, targets: string[]) {
+    const queries = useQueries({
+        queries: (targets || []).map((t) => ({
+            queryKey: ['run-forest', runId, attribute, baseline, t],
+            queryFn: () => fetchRunForest(runId, { attribute, baseline, target: t, min_n: 1 }),
+            enabled: Number.isFinite(runId) && !!attribute && !!t,
+            staleTime: 60 * 60 * 1000,
+        })),
+    });
+    return queries;
 }
 
 export function useDeleteRun() {
