@@ -1,6 +1,20 @@
-version: "3.9"
-
 services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: sbb
+      POSTGRES_USER: sbb
+      POSTGRES_PASSWORD: sbb
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    # No host port mapping needed; api reaches it via service name 'postgres'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sbb -d sbb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5432:5432"
   api:
     build:
       context: .
@@ -21,10 +35,15 @@ services:
       # If your vLLM runs on the host at localhost:8000, use host.docker.internal
       VLLM_BASE_URL: http://host.docker.internal:8000
       # Optionally override DB with: DB_URL=sqlite:////app/data/benchmark.db
+      # Use Peewee pooled connections for PostgreSQL (larger pool for concurrent UI queries)
+      DB_URL: postgresql+pool://sbb:sbb@postgres:5432/sbb?max_connections=80&stale_timeout=300
     volumes:
       - .:/app
     ports:
       - "8765:8765"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   ui:
     image: node:20
@@ -47,3 +66,4 @@ services:
 
 volumes:
   ui_node_modules:
+  pg_data:

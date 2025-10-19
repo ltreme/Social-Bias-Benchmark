@@ -1,6 +1,6 @@
 import { Button, Group, Modal, NumberInput, Select, TextInput } from '@mantine/core';
 import { useEffect, useMemo, useState } from 'react';
-import { useBuildBalanced, useBuildCounterfactuals, useCreatePool, useSampleReality } from './hooks';
+import { useBuildBalanced, useBuildCounterfactuals, useCreatePool, useSampleReality, usePoolStatus } from './hooks';
 
 type Props = {
   opened: boolean;
@@ -25,8 +25,9 @@ export function DatasetBuilderModal({ opened, onClose, defaultMode = 'pool', dat
   const buildBalanced = useBuildBalanced();
   const buildCF = useBuildCounterfactuals();
   const sampleReal = useSampleReality();
-
-  const creating = createPool.isPending || buildBalanced.isPending || buildCF.isPending || sampleReal.isPending;
+  const [poolJobId, setPoolJobId] = useState<number | undefined>(undefined);
+  const pool = usePoolStatus(poolJobId);
+  const creating = !!poolJobId || createPool.isPending || buildBalanced.isPending || buildCF.isPending || sampleReal.isPending;
 
   const canSubmit = useMemo(() => {
     if (mode === 'pool') return n > 0;
@@ -38,8 +39,9 @@ export function DatasetBuilderModal({ opened, onClose, defaultMode = 'pool', dat
   async function handleCreate() {
     try {
       if (mode === 'pool') {
-        const r = await createPool.mutateAsync({ n, temperature, age_from: ageFrom, age_to: ageTo, name: name || undefined });
-        onCreated?.(r.id); onClose();
+        const r = await createPool.mutateAsync({ n, temperature, age_from: ageFrom, age_to: ageTo, name: name || undefined }) as any;
+        setPoolJobId(Number(r.job_id));
+        return;
       } else if (mode === 'balanced') {
         if (!datasetId) return; const r = await buildBalanced.mutateAsync({ dataset_id: datasetId, n, seed, name: name || undefined });
         onCreated?.(r.id); onClose();
@@ -55,8 +57,39 @@ export function DatasetBuilderModal({ opened, onClose, defaultMode = 'pool', dat
     }
   }
 
+  // Auto-complete when pool job finishes
+  useEffect(() => {
+    if (poolJobId && pool.data?.status === 'done' && pool.data?.dataset_id) {
+      setPoolJobId(undefined);
+      onCreated?.(pool.data.dataset_id);
+      onClose();
+    }
+  }, [poolJobId, pool.data?.status, pool.data?.dataset_id]);
+
   return (
     <Modal opened={opened} onClose={onClose} title="Dataset erstellen" size="lg">
+      {poolJobId ? (
+        <>
+          <div style={{ marginBottom: 12 }}>
+            <b>Persona-Pool Generierung</b>
+          </div>
+          <div style={{ marginBottom: 8 }}>
+            Status: {pool.data?.status || '…'} {pool.data?.phase ? `(${pool.data?.phase})` : ''}
+          </div>
+          <div style={{ marginBottom: 8 }}>
+            Fortschritt: {pool.data?.done ?? 0}/{pool.data?.total ?? 0} ({(pool.data?.pct ?? 0).toFixed(1)}%)
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            {Number.isFinite(pool.data?.eta_sec as number) ? `ETA: ~${Math.max(0, Math.round((pool.data?.eta_sec as number)/60))} min` : ''}
+          </div>
+          {pool.data?.status === 'failed' && (
+            <div style={{ color: '#d32f2f', marginBottom: 12 }}>
+              Fehler: {String(pool.data?.error || 'Unbekannter Fehler')}
+            </div>
+          )}
+        </>
+      ) : (
+      <>
       <Group grow mb="md">
         <Select label="Modus" data={[
           { value: 'pool', label: 'Persona-Pool generieren' },
@@ -92,12 +125,13 @@ export function DatasetBuilderModal({ opened, onClose, defaultMode = 'pool', dat
           <NumberInput label="Seed" value={seed} onChange={(v) => setSeed(Number(v || 0))} />
         </Group>
       )}
+      </>
+      )}
 
       <Group justify="right">
         <Button variant="default" onClick={onClose}>Abbrechen</Button>
-        <Button onClick={handleCreate} disabled={!canSubmit} loading={creating}>Datensatz erstellen</Button>
+        {!poolJobId && <Button onClick={handleCreate} disabled={!canSubmit} loading={creating}>Datensatz erstellen</Button>}
       </Group>
     </Modal>
   );
 }
-

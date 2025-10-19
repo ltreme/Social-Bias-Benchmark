@@ -98,6 +98,7 @@ def run_benchmark_pipeline(
         return max(1, batch_size * k)
 
     progress_every = _compute_progress_every(getattr(llm, "batch_size", None), "BENCH_PROGRESS_EVERY", 10)
+    progress_log = os.getenv("BENCH_PROGRESS_LOG", "").lower() in ("1","true","yes")
     done_items: set[Tuple[str, str]] = set()  # (persona_uuid, case_id)
     t0 = time.perf_counter()
 
@@ -215,9 +216,7 @@ def run_benchmark_pipeline(
                     key = (str(a0.persona_uuid), str(a0.case_id))
                     if key not in done_items:
                         done_items.add(key)
-                        if (len(done_items) % progress_every == 0) or (
-                            total_items and len(done_items) == total_items
-                        ):
+                        if progress_log and ((len(done_items) % progress_every == 0) or (total_items and len(done_items) == total_items)):
                             pct = 100.0 * len(done_items) / total_items if total_items else 0.0
                             elapsed = _fmt_dur(time.perf_counter() - t0)
                             print(f"[Benchmark] progress: {len(done_items)}/{total_items or '?'} items ({pct:.1f}%), elapsed={elapsed}")
@@ -252,7 +251,7 @@ def run_benchmark_pipeline(
                 key = (str(spec.work.persona_uuid), str(spec.work.case_id))
                 if key not in done_items:
                     done_items.add(key)
-            if done_items:
+            if progress_log and done_items:
                 pct = 100.0 * len(done_items) / total_items if total_items else 0.0
                 elapsed = _fmt_dur(time.perf_counter() - t0)
                 print(f"[Benchmark] progress: {len(done_items)}/{total_items or '?'} items ({pct:.1f}%), elapsed={elapsed}")

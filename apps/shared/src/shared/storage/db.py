@@ -39,6 +39,20 @@ def init_database(db_url: str | None = None) -> pw.Database:
 
     db.connect(reuse_if_open=True)
 
+    try:
+        # Lightweight diagnostic to confirm backend in logs
+        if isinstance(db, pw.SqliteDatabase):
+            where = db.database or ":memory:"
+            print(f"[DB] Using SQLite at {where}")
+        elif isinstance(db, pw.PostgresqlDatabase):  # type: ignore[attr-defined]
+            # Avoid printing credentials; show db name and host
+            host = getattr(db, 'host', None) or 'localhost'
+            print(f"[DB] Using PostgreSQL db='{db.database}' host='{host}'")
+        else:
+            print(f"[DB] Using database backend: {db.__class__.__name__}")
+    except Exception:
+        pass
+
     db_proxy.initialize(db)
     return db
 
@@ -57,12 +71,10 @@ def create_tables() -> None:
 
 
 def _fix_legacy_indexes(db: pw.Database) -> None:
-    """Drop broken legacy indexes that can block inserts.
-
-    Specifically: benchmarkresult_persona_uuid_id_question_uuid_benchmark_run_id
-    which referenced a non-existent column (question_uuid) in older DBs and
-    effectively enforces a wrong uniqueness (persona_uuid_id, benchmark_run_id).
-    """
+    """Drop broken legacy indexes that can block inserts (SQLite only)."""
+    # Only relevant for SQLite; Postgres doesn't support PRAGMA and doesn't have these legacy indexes
+    if not isinstance(db, pw.SqliteDatabase):
+        return
     try:
         cur = db.execute_sql("PRAGMA index_list(benchmarkresult)")
         idx_rows = cur.fetchall()
@@ -71,24 +83,22 @@ def _fix_legacy_indexes(db: pw.Database) -> None:
             name = row[1]
             if name != target:
                 continue
-            # Verify it is problematic (contains a NULL column in PRAGMA index_info)
             info = db.execute_sql(f"PRAGMA index_info({name})").fetchall()
             has_null_col = any(col[2] is None for col in info)
             if has_null_col:
                 db.execute_sql(f"DROP INDEX IF EXISTS {name}")
     except Exception:
-        # Do not block startup on migration issues
         pass
 
 
 def _ensure_new_columns(db: pw.Database) -> None:
-    """Lightweight migrations to add newly introduced nullable columns.
+    """Lightweight migrations to add newly introduced nullable columns (SQLite only).
 
-    - benchmarkresult.scale_order TEXT NULL
-    - benchmarkrun.scale_mode TEXT NULL
+    On PostgreSQL we rely on Peewee's schema creation and explicit migrations.
     """
+    if not isinstance(db, pw.SqliteDatabase):
+        return
     try:
-        # benchmarkresult.scale_order
         cur = db.execute_sql("PRAGMA table_info(benchmarkresult)")
         cols = {row[1] for row in cur.fetchall()}
         if "scale_order" not in cols:
@@ -96,7 +106,6 @@ def _ensure_new_columns(db: pw.Database) -> None:
     except Exception:
         pass
     try:
-        # benchmarkrun.scale_mode
         cur = db.execute_sql("PRAGMA table_info(benchmarkrun)")
         cols = {row[1] for row in cur.fetchall()}
         if "scale_mode" not in cols:
@@ -104,7 +113,6 @@ def _ensure_new_columns(db: pw.Database) -> None:
     except Exception:
         pass
     try:
-        # benchmarkrun.dual_fraction
         cur = db.execute_sql("PRAGMA table_info(benchmarkrun)")
         cols = {row[1] for row in cur.fetchall()}
         if "dual_fraction" not in cols:
@@ -113,12 +121,9 @@ def _ensure_new_columns(db: pw.Database) -> None:
         pass
 
 def _migrate_benchmarkresult_unique_index(db: pw.Database) -> None:
-    """Ensure uniqueness for benchmarkresult includes scale_order.
-
-    Drops any unique index exactly on (benchmark_run_id, persona_uuid_id, case_id)
-    and creates a new unique index on (benchmark_run_id, persona_uuid_id, case_id, scale_order).
-    Safe to run multiple times.
-    """
+    """Ensure uniqueness for benchmarkresult includes scale_order (SQLite only)."""
+    if not isinstance(db, pw.SqliteDatabase):
+        return
     try:
         cur = db.execute_sql("PRAGMA index_list(benchmarkresult)")
         idx_rows = cur.fetchall()
@@ -131,8 +136,6 @@ def _migrate_benchmarkresult_unique_index(db: pw.Database) -> None:
             cols = [r[2] for r in info]
             if set(cols) == {"benchmark_run_id", "persona_uuid_id", "case_id"}:
                 db.execute_sql(f"DROP INDEX IF EXISTS {name}")
-        # Create desired unique index if missing
-        # Check if any index already covers the 4-tuple
         cur = db.execute_sql("PRAGMA index_list(benchmarkresult)")
         idx_rows = cur.fetchall()
         has_target = False
@@ -154,16 +157,13 @@ def _migrate_benchmarkresult_unique_index(db: pw.Database) -> None:
 
 
 def _migrate_additional_attrs_unique_index(db: pw.Database) -> None:
-    """Ensure AdditionalPersonaAttributes has UNIQUE(attr_generation_run_id, persona_uuid_id, attribute_key).
-
-    Drops any unique index exactly on (persona_uuid_id, attribute_key) and creates the
-    new unique index on the desired triple if missing. Safe to run multiple times.
-    """
+    """Ensure AdditionalPersonaAttributes unique index (SQLite only)."""
+    if not isinstance(db, pw.SqliteDatabase):
+        return
     try:
         table = 'additionalpersonaattributes'
         cur = db.execute_sql(f"PRAGMA index_list({table})")
         idx_rows = cur.fetchall()
-        # Drop legacy two-column unique indexes
         for row in idx_rows:
             name = row[1]
             is_unique = bool(row[2])
@@ -173,7 +173,6 @@ def _migrate_additional_attrs_unique_index(db: pw.Database) -> None:
             cols = [r[2] for r in info]
             if set(cols) == {"persona_uuid_id", "attribute_key"}:
                 db.execute_sql(f"DROP INDEX IF EXISTS {name}")
-        # Check if target unique exists
         cur = db.execute_sql(f"PRAGMA index_list({table})")
         idx_rows = cur.fetchall()
         has_target = False

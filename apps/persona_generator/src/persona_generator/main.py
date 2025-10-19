@@ -2,7 +2,7 @@ import argparse
 import csv
 import json
 import uuid
-from typing import Iterable, Mapping, Any
+from typing import Iterable, Mapping, Any, Callable, Optional
 
 import peewee as pw
 
@@ -19,7 +19,7 @@ from persona_generator.sampler.sexuality_sampler import SexualitySampler
 from shared.core_types import MigrationStatusEnum
 from shared.paths import PATH_PERSONAS_CSV
 
-from shared.storage.db import init_database, create_tables, transaction
+from shared.storage.db import init_database, create_tables, transaction, get_db
 from shared.storage.models import (
     Persona,
     Dataset,
@@ -80,24 +80,41 @@ def _resolve_country_id(origin) -> int | None:
     if not s:
         return None
 
-    # 1) exact DB matches first (fast path, no lower())
-    #    try German then English
-    cid = (Country
-        .select(Country.id)
-        .where((Country.country_de == _nfc(s)) | (Country.country_en == _nfc(s)))
-        .scalar())
-    if cid:
-        return cid
-
-    # 2) alpha2 case-insensitive (avoid LOWER in SQL)
+    # 1) alpha2 case-insensitive (avoid LOWER in SQL)
     if len(s) == 2:
         cid = maps["a2"].get(_normkey(s))
         if cid:
             return cid
 
-    # 3) Unicode-insensitive fallback via in-memory maps
+    # 2) Unicode-insensitive fallback via in-memory maps
     key = _normkey(s)
     return maps["de"].get(key) or maps["en"].get(key)
+
+
+def _resolve_origin_ids_bulk(origins: list) -> dict:
+    """Resolve a list of origin tokens to Country.id using in-memory maps only.
+
+    Returns a dict token->country_id (or None if unresolved). Tokens are used as-is.
+    """
+    maps = _country_lookup_maps()
+    out: dict = {}
+    for o in set(origins):
+        if o is None:
+            out[o] = None
+            continue
+        s = str(o).strip()
+        if not s:
+            out[o] = None
+            continue
+        # alpha2
+        if len(s) == 2:
+            cid = maps["a2"].get(_normkey(s))
+            if cid:
+                out[o] = cid
+                continue
+        key = _normkey(s)
+        out[o] = maps["de"].get(key) or maps["en"].get(key)
+    return out
 
 
 # --------- core sampling ---------
@@ -164,6 +181,7 @@ def persist_run_and_personas(
     sampled: Mapping[str, list],
     *,
     export_csv_path: str | None = None,
+    progress_cb: Optional[Callable[[int, int, str], None]] = None,
 ) -> int:
     """
     Create a Dataset and insert n Personas + DatasetPersona links in a single transaction.
@@ -179,40 +197,60 @@ def persist_run_and_personas(
     )
 
     with transaction():
+        # For PostgreSQL, speed up bulk insert by relaxing sync commit within tx
+        try:
+            db = get_db()
+            if isinstance(db, pw.PostgresqlDatabase):  # type: ignore[attr-defined]
+                db.execute_sql("SET LOCAL synchronous_commit = OFF")
+        except Exception:
+            pass
         dataset = Dataset.create(**dataset_row)
 
         # Build persona rows
         persona_rows = []
+        origin_tokens = sampled["origins"]
+        origin_id_map = _resolve_origin_ids_bulk(origin_tokens)
         for i in range(n):
-            origin_pk = _resolve_country_id(sampled["origins"][i])
+            origin_pk = origin_id_map.get(origin_tokens[i])
             if origin_pk is None:
-                raise ValueError(f"Unresolvable origin: {sampled['origins'][i]!r}")
-            persona_rows.append(dict(
-                uuid=uuid.uuid4(),
-                age=sampled["ages"][i],
-                gender=sampled["genders"][i],
-                education=sampled["educations"][i],
-                occupation=sampled["occupations"][i],
-                marriage_status=sampled["marriage_statuses"][i],
-                migration_status=sampled["migration_statuses"][i],
-                origin_id=origin_pk,
-                religion=sampled["religions"][i],
-                sexuality=sampled["sexualities"][i],
-            ))
+                raise ValueError(f"Unresolvable origin: {origin_tokens[i]!r}")
+            persona_rows.append({
+                "uuid": uuid.uuid4(),
+                "age": sampled["ages"][i],
+                "gender": sampled["genders"][i],
+                "education": sampled["educations"][i],
+                "occupation": sampled["occupations"][i],
+                "marriage_status": sampled["marriage_statuses"][i],
+                "migration_status": sampled["migration_statuses"][i],
+                "origin_id": origin_pk,
+                "religion": sampled["religions"][i],
+                "sexuality": sampled["sexualities"][i],
+            })
 
         # Helper: chunked insert to respect SQLite variable limit (~999 params)
         def _chunked(seq, size):
             for i in range(0, len(seq), size):
                 yield seq[i:i+size]
 
-        # Bulk insert personas in safe chunks
+        # Bulk insert personas in chunks (SQLite limit aware; use larger batches on Postgres)
+        inserted = 0
         if persona_rows:
             cols = len(persona_rows[0])
             # Keep a safety margin under 999 to account for SQLite limits
-            max_vars = 900
-            max_rows = max(1, max_vars // max(1, cols))
+            max_rows = 1000
+            try:
+                if isinstance(db, pw.PostgresqlDatabase):  # type: ignore[attr-defined]
+                    max_rows = 5000
+            except Exception:
+                pass
             for chunk in _chunked(persona_rows, max_rows):
                 Persona.insert_many(chunk).execute()
+                inserted += len(chunk)
+                if progress_cb:
+                    try:
+                        progress_cb(inserted, n, 'personas')
+                    except Exception:
+                        pass
 
         # Build DatasetPersona links using the UUIDs we just inserted (avoid huge IN())
         persona_uuids = [r['uuid'] for r in persona_rows]
@@ -223,11 +261,20 @@ def persist_run_and_personas(
 
         # Insert links in safe chunks (2 columns each)
         if dataset_persona_rows:
-            cols_links = len(dataset_persona_rows[0])
-            max_vars = 900
-            max_rows = max(1, max_vars // max(1, cols_links))
+            max_rows = 2000
+            try:
+                if isinstance(db, pw.PostgresqlDatabase):  # type: ignore[attr-defined]
+                    max_rows = 10000
+            except Exception:
+                pass
             for chunk in _chunked(dataset_persona_rows, max_rows):
                 DatasetPersona.insert_many(chunk).execute()
+                # Optional: report link progress too (same total n for simplicity)
+                if progress_cb:
+                    try:
+                        progress_cb(min(n, inserted), n, 'links')
+                    except Exception:
+                        pass
 
         # Optional CSV export for debugging/backups
         if export_csv_path:

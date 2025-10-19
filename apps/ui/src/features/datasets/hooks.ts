@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchDatasets, fetchDatasetComposition, fetchDataset, fetchRunsByDataset, createPool, buildBalanced, sampleReality, buildCounterfactuals, startAttrGen, fetchAttrgenStatus, fetchLatestAttrgen, fetchAttrgenRuns, startBenchmark, fetchBenchmarkStatus, deleteDataset, deleteAttrgenRun } from './api';
+import { fetchDatasets, fetchDatasetComposition, fetchDataset, fetchRunsByDataset, createPool, buildBalanced, sampleReality, buildCounterfactuals, startAttrGen, fetchAttrgenStatus, fetchLatestAttrgen, fetchAttrgenRuns, startBenchmark, fetchBenchmarkStatus, deleteDataset, deleteAttrgenRun, fetchPoolStatus, fetchBalancedStatus, fetchDeleteStatus } from './api';
 
 export function useDatasets(q?: string) {
     return useQuery({ queryKey: ['datasets', q], queryFn: () => fetchDatasets(q ? { q } : undefined) });
@@ -21,8 +21,16 @@ export function useCreatePool() {
     return useMutation({ mutationFn: createPool });
 }
 
+export function usePoolStatus(jobId?: number) {
+    return useQuery({ queryKey: ['pool-status', jobId], queryFn: () => fetchPoolStatus(jobId as number), enabled: Number.isFinite(jobId || NaN), refetchInterval: 1000 });
+}
+
 export function useBuildBalanced() {
     return useMutation({ mutationFn: buildBalanced });
+}
+
+export function useBalancedStatus(jobId?: number) {
+    return useQuery({ queryKey: ['balanced-status', jobId], queryFn: () => fetchBalancedStatus(jobId as number), enabled: Number.isFinite(jobId || NaN), refetchInterval: 1000 });
 }
 
 export function useSampleReality() {
@@ -65,6 +73,10 @@ export function useDeleteDataset() {
             qc.invalidateQueries({ queryKey: ['datasets'] });
         },
     });
+}
+
+export function useDeleteStatus(jobId?: number) {
+    return useQuery({ queryKey: ['delete-status', jobId], queryFn: () => fetchDeleteStatus(jobId as number), enabled: Number.isFinite(jobId || NaN), refetchInterval: 1000 });
 }
 
 export function useDeleteAttrgenRun(datasetId: number) {

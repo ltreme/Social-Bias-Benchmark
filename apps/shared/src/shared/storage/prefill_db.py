@@ -1,4 +1,4 @@
-import locale
+import re
 import os
 from typing import List, Dict
 
@@ -58,10 +58,51 @@ class DBFiller:
         return pd.read_csv(file_path, sep=sep)
 
     @staticmethod
-    def parse_number_locale(s):
-        """Parse locale-formatted integer strings (e.g., '1,234')."""
-        locale.setlocale(locale.LC_ALL, "en_US.UTF-8")
-        return locale.atoi(s)
+    def parse_int_robust(s):
+        """Parse integers from common formatted strings without relying on locales.
+
+        Handles: '36,134,864' -> 36134864, '1 234' -> 1234, '1234.0' -> 1234,
+        plain ints/floats, or returns 0 on failure.
+        """
+        if s is None:
+            return 0
+        try:
+            if isinstance(s, int):
+                return s
+            if isinstance(s, float):
+                return int(s)
+            txt = str(s).strip()
+            if txt == '' or txt.lower() in {'nan', 'none'}:
+                return 0
+            # Remove common thousand separators (commas, spaces, NBSP)
+            txt = txt.replace(',', '').replace(' ', '').replace('\u00A0', '')
+            # If there's a decimal part, drop it
+            if '.' in txt:
+                txt = txt.split('.', 1)[0]
+            # Keep optional leading minus
+            m = re.match(r"^-?\d+", txt)
+            if not m:
+                return 0
+            return int(m.group(0))
+        except Exception:
+            return 0
+
+    @staticmethod
+    def to_int_or_none(v):
+        """Convert value to int using parse_int_robust, but return None for empty/NaN."""
+        try:
+            if v is None:
+                return None
+            # Handle pandas NaN
+            if isinstance(v, float) and pd.isna(v):
+                return None
+            if isinstance(v, str) and v.strip() == "":
+                return None
+            x = DBFiller.parse_int_robust(v)
+            # If parsing yields 0 but original looked empty-ish, still return None
+            return x
+        except Exception:
+            return None
 
     @staticmethod
     def _bulk_insert_ignore(model, rows: List[Dict]) -> int:
@@ -107,11 +148,11 @@ class DBFiller:
         for row in df.itertuples():
             rows.append(
                 dict(
-                    age=row.age,
-                    male=row.male_adjusted,
-                    female=row.female_adjusted,
-                    diverse=row.diverse,
-                    total=row.total,
+                    age=self.parse_int_robust(row.age),
+                    male=self.parse_int_robust(row.male_adjusted),
+                    female=self.parse_int_robust(row.female_adjusted),
+                    diverse=self.parse_int_robust(row.diverse),
+                    total=self.parse_int_robust(row.total),
                 )
             )
         n = self._bulk_insert_ignore(Age, rows)
@@ -165,22 +206,28 @@ class DBFiller:
         # 1) Countries
         country_rows = []
         for _, row in df.iterrows():
+            alpha2_raw = row.get("country_code_alpha2")
+            alpha2 = None
+            if isinstance(alpha2_raw, str):
+                a = alpha2_raw.strip()
+                if a and a.lower() != 'nan' and len(a) == 2:
+                    alpha2 = a
             country_rows.append(
                 dict(
                     country_en=row["country"],
                     country_de=row.get("country_de"),
                     region=row.get("region_y"),
                     subregion=row.get("sub-region"),
-                    population=row.get("population"),
-                    country_code_alpha2=row.get("country_code_alpha2"),
-                    country_code_numeric=row.get("country-code"),
+                    population=self.to_int_or_none(row.get("population")),
+                    country_code_alpha2=alpha2,
+                    country_code_numeric=self.to_int_or_none(row.get("country-code")),
                 )
             )
         n_c = self._bulk_insert_ignore(Country, country_rows)
         print(f"Country inserted: {n_c} (duplicates ignored).")
 
         # Build mapping from unique key -> Country.id to attach FKs efficiently
-        code_to_country = {c.country_code_alpha2: c for c in Country.select()}
+        code_to_country = {c.country_code_alpha2: c for c in Country.select() if getattr(c, 'country_code_alpha2', None)}
 
         # 2) ForeignersPerCountry (optional per row)
         foreign_rows = []
@@ -191,7 +238,7 @@ class DBFiller:
             foreign_rows.append(
                 dict(
                     country=code_to_country[alpha2],
-                    total=int(row["foreigners"]),
+                    total=self.parse_int_robust(row["foreigners"]),
                 )
             )
         n_f = self._bulk_insert_ignore(ForeignersPerCountry, foreign_rows)
@@ -221,7 +268,7 @@ class DBFiller:
                     dict(
                         country=country,
                         religion=rel,
-                        total=self.parse_number_locale(val),
+                        total=self.parse_int_robust(val),
                     )
                 )
         n_r = self._bulk_insert_ignore(ReligionPerCountry, religion_rows)

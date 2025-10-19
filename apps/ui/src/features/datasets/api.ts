@@ -50,13 +50,18 @@ export async function fetchRunsByDataset(datasetId: number) {
 export type CreateDatasetResponse = { id: number; name: string };
 
 export async function createPool(body: { n: number; temperature: number; age_from: number; age_to: number; name?: string }) {
-    const res = await api.post<CreateDatasetResponse>('/datasets/generate-pool', body);
+    const res = await api.post<{ ok: boolean; job_id: number }>('/datasets/pool/start', body);
+    return res.data as any;
+}
+export type PoolStatus = { ok: boolean; status: string; done?: number; total?: number; pct?: number; eta_sec?: number; phase?: string; dataset_id?: number; error?: string };
+export async function fetchPoolStatus(jobId: number) {
+    const res = await api.get<PoolStatus>(`/datasets/pool/${jobId}/status`);
     return res.data;
 }
 
 export async function buildBalanced(body: { dataset_id: number; n: number; seed?: number; name?: string }) {
-    const res = await api.post<CreateDatasetResponse>('/datasets/build-balanced', body);
-    return res.data;
+    const res = await api.post<{ ok: boolean; job_id: number }>('/datasets/balanced/start', body);
+    return res.data as any;
 }
 
 export async function sampleReality(body: { dataset_id: number; n: number; seed?: number; name?: string }) {
@@ -70,7 +75,18 @@ export async function buildCounterfactuals(body: { dataset_id: number; seed?: nu
 }
 
 export async function deleteDataset(datasetId: number) {
-    const res = await api.delete<{ ok: boolean }>(`/datasets/${datasetId}`);
+    const res = await api.post<{ ok: boolean; job_id: number }>(`/datasets/${datasetId}/delete/start`);
+    return res.data as any;
+}
+
+export type BalancedStatus = { ok: boolean; status: string; done?: number; total?: number; pct?: number; eta_sec?: number; dataset_id?: number; error?: string };
+export async function fetchBalancedStatus(jobId: number) {
+    const res = await api.get<BalancedStatus>(`/datasets/balanced/${jobId}/status`);
+    return res.data;
+}
+export type DeleteStatus = { ok: boolean; status: string; done?: number; pct?: number; error?: string };
+export async function fetchDeleteStatus(jobId: number) {
+    const res = await api.get<DeleteStatus>(`/datasets/delete/${jobId}/status`);
     return res.data;
 }
 

@@ -35,10 +35,16 @@ class BenchQuery:
 
 
 
+_SCHEMA_READY = False
+
 def _ensure_db(db_url: str | None) -> None:
+    global _SCHEMA_READY
     if getattr(db_proxy, "obj", None) is None or db_url:
         init_database(db_url=db_url)
-    create_tables()
+        _SCHEMA_READY = False
+    if not _SCHEMA_READY:
+        create_tables()
+        _SCHEMA_READY = True
 
 
 def load_benchmark_dataframe(cfg: BenchQuery) -> pd.DataFrame:

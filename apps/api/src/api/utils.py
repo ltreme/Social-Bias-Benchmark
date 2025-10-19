@@ -26,8 +26,24 @@ for p in SRC_CANDIDATES:
 
 from shared.storage.db import init_database, create_tables  # noqa: E402
 
+_SEED_CHECKED = False
+_DB_INITED = False
+
 
 def ensure_db() -> None:
-    """Initialize and ensure tables exist (idempotent)."""
-    init_database(os.getenv("DB_URL"))
-    create_tables()
+    """Initialize DB once and ensure tables exist. Subsequent calls are no-op."""
+    global _DB_INITED
+    if not _DB_INITED:
+        init_database(os.getenv("DB_URL"))
+        create_tables()
+        _DB_INITED = True
+    global _SEED_CHECKED
+    if not _SEED_CHECKED and _DB_INITED:
+        # Auto-seed reference data once per process. Duplicate rows are ignored in bulk insert.
+        try:
+            from shared.storage.prefill_db import DBFiller  # type: ignore
+            DBFiller().fill_all()
+        except Exception:
+            # Never block API startup on seeding issues
+            pass
+        _SEED_CHECKED = True

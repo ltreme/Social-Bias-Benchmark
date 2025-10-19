@@ -30,7 +30,10 @@ class PersisterPeewee(Persister):
     def persist_attributes(self, rows: List[AttributeDto]) -> None:
         if not rows:
             return
-        print(f"PERSISTING {len(rows)} attributes")
+        import os
+        debug = os.getenv("ATTRGEN_DEBUG", "").lower() in ("1","true","yes")
+        if debug:
+            print(f"[AttrGenPersist] persisting {len(rows)} attributes")
         payload = [dict(
             persona_uuid_id=r.persona_uuid,
             attribute_key=r.attribute_key,
@@ -58,7 +61,8 @@ class PersisterPeewee(Persister):
                     self._Attr.created_at: SQL('excluded.created_at'),
                 })
             .execute())
-        print(f"PERSISTED {len(rows)} attributes successfully")
+        if debug:
+            print(f"[AttrGenPersist] wrote {len(rows)} attributes")
 
     def persist_failure(self, fail: FailureDto) -> None:
         with self.db.atomic():

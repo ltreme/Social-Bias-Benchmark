@@ -99,26 +99,7 @@ export function DatasetDetailPage() {
                 <Button onClick={() => setModalOpen(true)}>Additional Attributes generieren…</Button>
               </Group>
             </Group>
-            {/* Zeige Progress nur für aktive Läufe; abgeschlossene werden unten gelistet */}
-            {(runId && status.data && status.data.status === 'failed') ? (
-              <div style={{ marginBottom: '1em', color: '#d32f2f' }}>
-                <b>AttrGen Fehler:</b> {status.data.error || 'Unbekannter Fehler'}
-              </div>
-            ) : (runId && status.data && status.data.status !== 'done') ? (
-              <div style={{ marginBottom: '1em' }}>
-                <b>AttrGen Status:</b> {status.data.status} {status.data.done ?? 0}/{status.data.total ?? 0}
-                <Progress value={status.data.pct ?? 0} mt="xs" />
-              </div>
-            ) : ((latest.data && latest.data.found && latest.data.status === 'failed')) ? (
-              <div style={{ marginBottom: '1em', color: '#d32f2f' }}>
-                <b>AttrGen Fehler:</b> {latest.data.error || 'Unbekannter Fehler'}
-              </div>
-            ) : ((latest.data && latest.data.found && latest.data.status !== 'done')) ? (
-              <div style={{ marginBottom: '1em' }}>
-                <b>AttrGen Status:</b> {latest.data.status} {latest.data.done ?? 0}/{latest.data.total ?? 0}
-                <Progress value={latest.data.pct ?? 0} mt="xs" />
-              </div>
-            ) : null}
+            {/* Oberen AttrGen-Progress entfernt – Fortschritt nur in der Historien-Tabelle */}
 
             {/* Attribute-Generierung Runs als Tabelle */}
             {(runsList.data?.runs && runsList.data.runs.length > 0) ? (

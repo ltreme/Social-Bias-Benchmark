@@ -6,6 +6,7 @@ import { RunDetailPage } from '../features/runs/RunDetailPage';
 import { ComparePage } from '../features/compare/ComparePage';
 import { CasesPage } from '../features/cases/CasesPage';
 import { PersonaBrowserPage } from '../features/personas/PersonaBrowserPage';
+import { ModelsPage } from '../features/models/ModelsPage';
 
 export const rootRoute = createRootRoute({
     component: () => <PageShell />,
@@ -48,5 +49,11 @@ const datasetPersonasRoute = createRoute({
     component: PersonaBrowserPage,
 });
 
-export const routeTree = rootRoute.addChildren([datasetsRoute, datasetDetailRoute, runDetailRoute, compareRoute, casesRoute, datasetPersonasRoute]);
+const modelsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/models',
+    component: ModelsPage,
+});
+
+export const routeTree = rootRoute.addChildren([datasetsRoute, datasetDetailRoute, runDetailRoute, compareRoute, casesRoute, datasetPersonasRoute, modelsRoute]);
 export const router = createRouter({ routeTree });

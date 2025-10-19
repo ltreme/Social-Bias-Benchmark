@@ -34,13 +34,18 @@ class BenchPersisterPeewee(BenchPersister):
 
         # Detect legacy column 'question_uuid' (pre-rename of case_id) to stay backward compatible
         self._has_legacy_question_col = False
+        # Prefer model-field detection; PRAGMA is SQLite-specific
+        try:
+            self._has_scale_order_col = hasattr(self._Res, 'scale_order')
+        except Exception:
+            self._has_scale_order_col = False
+        # Legacy question_uuid detection (best-effort; safe if table missing)
         try:
             cur = self.db.execute_sql("PRAGMA table_info(benchmarkresult)")
             cols = {row[1] for row in cur.fetchall()}  # row[1] = name
             self._has_legacy_question_col = "question_uuid" in cols
-            self._has_scale_order_col = "scale_order" in cols
         except Exception:
-            pass
+            self._has_legacy_question_col = False
 
     def persist_results(self, rows: List[BenchAnswerDto]) -> None:
         if not rows:

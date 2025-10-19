@@ -10,11 +10,15 @@ from .routers.datasets import router as datasets_router
 from .routers.metrics import router as metrics_router
 from .routers.runs import router as runs_router
 from .routers.cases import router as cases_router
+from .routers.models_admin import router as models_admin_router
 from .routers.attrgen import router as attrgen_router
+from .utils import ensure_db
 
 
 def create_app() -> FastAPI:
     app = FastAPI(title="SBB API", version="0.2.0")
+    # Initialize database once at app startup
+    ensure_db()
 
     origins = [
         "http://localhost:5173",
@@ -37,6 +41,7 @@ def create_app() -> FastAPI:
     app.include_router(metrics_router)
     app.include_router(runs_router)
     app.include_router(attrgen_router)
+    app.include_router(models_admin_router)
     app.include_router(cases_router)
 
     return app

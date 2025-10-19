@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ActionIcon, Button, Card, Group, Menu, Title } from '@mantine/core';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { useDatasets, useDeleteDataset } from './hooks';
+import { useDatasets, useDeleteDataset, useDeleteStatus } from './hooks';
 import { DataTable } from '../../components/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { Dataset } from './api';
@@ -14,6 +14,8 @@ export function DatasetsPage() {
     const [rowBuilder, setRowBuilder] = useState<{ mode: 'balanced' | 'reality' | 'counterfactuals'; id: number } | null>(null);
     const navigate = useNavigate();
     const delDs = useDeleteDataset();
+    const [delJobId, setDelJobId] = useState<number | undefined>(undefined);
+    const delStatus = useDeleteStatus(delJobId);
 
     const columns: ColumnDef<Dataset>[] = [
         { header: 'ID', accessorKey: 'id' },
@@ -38,7 +40,8 @@ export function DatasetsPage() {
                 <Menu.Item color="red" onClick={async () => {
                   if (!confirm(`Dataset "${row.original.name}" (#${row.original.id}) wirklich löschen?`)) return;
                   try {
-                    await delDs.mutateAsync(row.original.id);
+                    const r = await delDs.mutateAsync(row.original.id) as any;
+                  setDelJobId(Number(r.job_id));
                   } catch (e) { /* handled globally */ }
                 }}>Löschen…</Menu.Item>
               </Menu.Dropdown>
@@ -47,6 +50,7 @@ export function DatasetsPage() {
     ];
 
     return (
+        <>
         <Card>
         <Group justify="space-between" mb="md">
           <Title order={2}>Datasets</Title>
@@ -71,5 +75,21 @@ export function DatasetsPage() {
           />
         )}
         </Card>
+        {delJobId && (
+          <Card style={{ position: 'fixed', bottom: 20, right: 20, width: 320, zIndex: 1000 }} shadow="sm">
+            <b>Dataset löschen…</b>
+            <div>Status: {delStatus.data?.status || '…'}</div>
+            {delStatus.data?.status === 'failed' && (<div style={{ color: '#d32f2f' }}>Fehler: {String(delStatus.data?.error || '')}</div>)}
+            {delStatus.data?.status !== 'done' && delStatus.data?.status !== 'failed' && (
+              <div style={{ fontSize: 12, color: '#666' }}>Bitte Tab offen lassen…</div>
+            )}
+            {(delStatus.data?.status === 'done' || delStatus.data?.status === 'failed') && (
+              <Group justify="right" mt="sm">
+                <Button size="xs" onClick={() => { setDelJobId(undefined); }}>Schließen</Button>
+              </Group>
+            )}
+          </Card>
+        )}
+        </>
     );
 }

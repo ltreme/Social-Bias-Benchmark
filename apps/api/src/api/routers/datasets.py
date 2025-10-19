@@ -15,6 +15,7 @@ from shared.datasets.builder import (
     build_random_subset_from_pool,
 )
 from persona_generator.main import sample_personas, persist_run_and_personas
+import threading, time
 from peewee import JOIN
 
 
@@ -552,3 +553,182 @@ def api_generate_pool(body: CreatePoolIn) -> CreateDsOut:
         ds.name = str(body.name)
         ds.save()
     return CreateDsOut(id=int(ds.id), name=str(ds.name))
+# --------- Pool generation background jobs ---------
+_POOL_PROGRESS: dict[int, dict] = {}
+_POOL_JOB_ID = 0
+_BAL_PROGRESS: dict[int, dict] = {}
+_BAL_JOB_ID = 0
+_DEL_PROGRESS: dict[int, dict] = {}
+_DEL_JOB_ID = 0
+
+class PoolStartIn(BaseModel):
+    n: int
+    temperature: float
+    age_from: int
+    age_to: int
+    name: Optional[str] = None
+
+@router.post('/datasets/pool/start')
+def start_pool_generation(body: PoolStartIn) -> Dict[str, Any]:
+    ensure_db()
+    global _POOL_JOB_ID
+    _POOL_JOB_ID += 1
+    job_id = _POOL_JOB_ID
+    _POOL_PROGRESS[job_id] = { 'status': 'queued', 'total': int(body.n), 'done': 0, 'pct': 0.0 }
+
+    def _run():
+        try:
+            _POOL_PROGRESS[job_id]['status'] = 'sampling'
+            params = dict(
+                age_min=body.age_from,
+                age_max=body.age_to,
+                age_temperature=body.temperature,
+                education_temperature=body.temperature,
+                education_exclude=None,
+                gender_temperature=body.temperature,
+                gender_exclude=None,
+                occupation_exclude=None,
+                marriage_status_temperature=body.temperature,
+                marriage_status_exclude=None,
+                migration_status_temperature=body.temperature,
+                migration_status_exclude=None,
+                origin_temperature=body.temperature,
+                origin_exclude=None,
+                religion_temperature=body.temperature,
+                religion_exclude=None,
+                sexuality_temperature=body.temperature,
+                sexuality_exclude=None,
+            )
+            t0 = time.time()
+            sampled = sample_personas(n=body.n, **params)
+            _POOL_PROGRESS[job_id]['status'] = 'inserting'
+            _POOL_PROGRESS[job_id]['started_at'] = t0
+
+            def _cb(done: int, total: int, phase: str):
+                now = time.time()
+                dt = max(1e-6, now - t0)
+                rate = done / dt
+                remaining = max(0, total - done)
+                eta = remaining / rate if rate > 0 else None
+                _POOL_PROGRESS[job_id].update({
+                    'done': int(done),
+                    'total': int(total),
+                    'pct': float(done / total * 100.0) if total else 0.0,
+                    'eta_sec': int(eta) if eta is not None else None,
+                    'phase': phase,
+                })
+
+            ds_id = persist_run_and_personas(n=body.n, params=params, sampled=sampled, export_csv_path=None, progress_cb=_cb)
+            ds = Dataset.get_by_id(ds_id)
+            if body.name:
+                ds.name = str(body.name)
+                ds.save()
+            _POOL_PROGRESS[job_id].update({'status': 'done', 'dataset_id': int(ds.id), 'pct': 100.0, 'done': int(body.n)})
+        except Exception as e:
+            _POOL_PROGRESS[job_id].update({'status': 'failed', 'error': str(e)})
+
+    threading.Thread(target=_run, daemon=True).start()
+    return {'ok': True, 'job_id': int(job_id)}
+
+
+@router.get('/datasets/pool/{job_id}/status')
+def pool_status(job_id: int) -> Dict[str, Any]:
+    ensure_db()
+    info = _POOL_PROGRESS.get(int(job_id)) or {'status': 'unknown'}
+    return {'ok': True, **info}
+
+
+# --------- Balanced generation background jobs ---------
+class BalancedStartIn(BaseModel):
+    dataset_id: int
+    n: int
+    seed: int = 42
+    name: Optional[str] = None
+
+@router.post('/datasets/balanced/start')
+def start_balanced_generation(body: BalancedStartIn) -> Dict[str, Any]:
+    ensure_db()
+    global _BAL_JOB_ID
+    _BAL_JOB_ID += 1
+    job_id = _BAL_JOB_ID
+    _BAL_PROGRESS[job_id] = { 'status': 'queued', 'total': int(body.n), 'done': 0, 'pct': 0.0 }
+
+    def _run():
+        try:
+            _BAL_PROGRESS[job_id]['status'] = 'selecting'
+            t0 = time.time()
+            # Selection performed inside builder (no fine-grained progress here)
+            from shared.datasets.builder import build_balanced_dataset_from_pool
+            ds = build_balanced_dataset_from_pool(dataset_id=int(body.dataset_id), axes=["gender","age","origin"], n_target=int(body.n), seed=int(body.seed), name=body.name)
+            _BAL_PROGRESS[job_id].update({'status': 'done', 'dataset_id': int(ds.id), 'pct': 100.0, 'done': int(body.n), 'eta_sec': 0, 'started_at': t0})
+        except Exception as e:
+            _BAL_PROGRESS[job_id].update({'status': 'failed', 'error': str(e)})
+
+    threading.Thread(target=_run, daemon=True).start()
+    return {'ok': True, 'job_id': int(job_id)}
+
+@router.get('/datasets/balanced/{job_id}/status')
+def balanced_status(job_id: int) -> Dict[str, Any]:
+    ensure_db()
+    info = _BAL_PROGRESS.get(int(job_id)) or {'status': 'unknown'}
+    return {'ok': True, **info}
+
+
+# --------- Dataset deletion background jobs ---------
+@router.post('/datasets/{dataset_id}/delete/start')
+def start_dataset_delete(dataset_id: int) -> Dict[str, Any]:
+    ensure_db()
+    global _DEL_JOB_ID
+    _DEL_JOB_ID += 1
+    job_id = _DEL_JOB_ID
+    _DEL_PROGRESS[job_id] = { 'status': 'queued', 'done': 0, 'total': None, 'pct': 0.0 }
+
+    def _run():
+        try:
+            _DEL_PROGRESS[job_id]['status'] = 'deleting'
+            # Measure total work roughly: number of links + personas potentially orphaned
+            from shared.storage.models import AttrGenerationRun, AdditionalPersonaAttributes
+            from shared.storage.db import transaction, get_db
+            t0 = time.time()
+            with transaction():
+                # 1) Additional attributes of runs for this dataset
+                run_ids = [int(r.id) for r in AttrGenerationRun.select(AttrGenerationRun.id).where(AttrGenerationRun.dataset_id == dataset_id)]
+                if run_ids:
+                    AdditionalPersonaAttributes.delete().where(AdditionalPersonaAttributes.attr_generation_run_id.in_(run_ids)).execute()
+                    AttrGenerationRun.delete().where(AttrGenerationRun.id.in_(run_ids)).execute()
+                # 2) Counterfactual links
+                CounterfactualLink.delete().where(CounterfactualLink.dataset_id == dataset_id).execute()
+                # 3) Delete dataset (cascades to DatasetPersona, BenchmarkRun, BenchmarkResult)
+                Dataset.delete().where(Dataset.id == dataset_id).execute()
+            # 4) Cleanup orphan personas in chunks
+            from shared.storage.db import get_db
+            db = get_db()
+            # Find orphan UUIDs via anti-join using a CTED query to avoid huge IN lists
+            # For chunking, fetch in batches
+            fetch_sql = (
+                "WITH c AS (SELECT p.uuid FROM persona p "
+                "LEFT JOIN datasetpersona dp ON dp.persona_id = p.uuid WHERE dp.persona_id IS NULL LIMIT 5000) "
+                "SELECT uuid FROM c"
+            )
+            deleted_total = 0
+            while True:
+                cur = db.execute_sql(fetch_sql)
+                rows = cur.fetchall()
+                if not rows:
+                    break
+                ids = [r[0] for r in rows]
+                Persona.delete().where(Persona.uuid.in_(ids)).execute()
+                deleted_total += len(ids)
+                _DEL_PROGRESS[job_id].update({'done': deleted_total})
+            _DEL_PROGRESS[job_id].update({'status': 'done', 'pct': 100.0, 'eta_sec': 0, 'started_at': t0})
+        except Exception as e:
+            _DEL_PROGRESS[job_id].update({'status': 'failed', 'error': str(e)})
+
+    threading.Thread(target=_run, daemon=True).start()
+    return {'ok': True, 'job_id': int(job_id)}
+
+@router.get('/datasets/delete/{job_id}/status')
+def delete_status(job_id: int) -> Dict[str, Any]:
+    ensure_db()
+    info = _DEL_PROGRESS.get(int(job_id)) or {'status': 'unknown'}
+    return {'ok': True, **info}

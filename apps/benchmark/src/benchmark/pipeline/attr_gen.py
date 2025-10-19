@@ -70,6 +70,7 @@ def run_attr_gen_pipeline(
         return max(1, batch_size * k)
 
     progress_every = _compute_progress_every(getattr(llm, "batch_size", None), "ATTR_PROGRESS_EVERY", 10)
+    progress_log = os.getenv("ATTRGEN_PROGRESS_LOG", "").lower() in ("1","true","yes")
     done_personas: set[str] = set()
     t0 = time.perf_counter()
 
@@ -108,13 +109,8 @@ def run_attr_gen_pipeline(
                 puid = str(spec.work.persona_uuid)
                 if puid not in done_personas:
                     done_personas.add(puid)
-                    if (len(done_personas) % progress_every == 0) or (
-                        total_personas and len(done_personas) == total_personas
-                    ):
-                        pct = (
-                            100.0 * len(done_personas) / total_personas
-                            if total_personas else 0.0
-                        )
+                    if progress_log and ((len(done_personas) % progress_every == 0) or (total_personas and len(done_personas) == total_personas)):
+                        pct = (100.0 * len(done_personas) / total_personas if total_personas else 0.0)
                         elapsed = _fmt_dur(time.perf_counter() - t0)
                         print(f"[AttrGen] progress: {len(done_personas)}/{total_personas or '?'} personas ({pct:.1f}%), elapsed={elapsed}")
                 if len(attr_buf) >= persist_buffer_size:
@@ -145,7 +141,7 @@ def run_attr_gen_pipeline(
                 puid = str(spec.work.persona_uuid)
                 if puid not in done_personas:
                     done_personas.add(puid)
-            if done_personas:
+            if progress_log and done_personas:
                 pct = 100.0 * len(done_personas) / total_personas if total_personas else 0.0
                 elapsed = _fmt_dur(time.perf_counter() - t0)
                 print(f"[AttrGen] progress: {len(done_personas)}/{total_personas or '?'} personas ({pct:.1f}%), elapsed={elapsed}")
