@@ -1,0 +1,44 @@
+@page {
+  size: A4;
+  margin: 12mm;
+}
+
+/* Screen defaults */
+.print-only { display: none; }
+
+@media print {
+  html, body { background: #ffffff !important; color: #000000 !important; }
+
+  /* Hide app chrome */
+  .mantine-AppShell-header,
+  .mantine-AppShell-navbar { display: none !important; }
+  .mantine-AppShell-main { padding: 0 !important; }
+
+  /* Hide interactive controls */
+  .mantine-Button-root,
+  .mantine-ActionIcon-root,
+  .mantine-Select-root,
+  .mantine-MultiSelect-root,
+  [data-print-hide] { display: none !important; }
+
+  /* Tweak cards and sections */
+  .mantine-Card-root {
+    box-shadow: none !important;
+    border: 1px solid #cccccc !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Avoid breaking charts and headings */
+  .js-plotly-plot,
+  .plot-container { page-break-inside: avoid; }
+  h1, h2, h3, h4 { color: #000 !important; break-after: avoid; }
+
+  /* Links: render as plain text */
+  a:link, a:visited { color: inherit !important; text-decoration: none !important; }
+
+  /* Utility: show only on print */
+  .print-only { display: block !important; }
+  .no-print { display: none !important; }
+}
+

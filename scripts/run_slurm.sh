@@ -24,8 +24,41 @@ else
     echo "Please set HF_TOKEN in your .env file for access to gated models like Llama."
 fi
 
-# Define variables
-JOB_ID="${SLURM_JOB_ID}"
+# RUN_ID erzeugen (bevor wir irgendwas starten)
+if [ -z "${RUN_ID:-}" ]; then
+    TS=$(date -u +%Y%m%dT%H%M%SZ)
+    # Nutze Slurm Job ID (falls vorhanden) plus kurzen Random Suffix
+    RAND=$(head -c4 /dev/urandom | LC_ALL=C tr -dc 'a-z0-9' | head -c4 || echo rnd)
+    if [ -n "${SLURM_JOB_ID:-}" ]; then
+        RUN_ID="${SLURM_JOB_ID}_${TS}_${RAND}"
+    else
+        RUN_ID="local_${TS}_${RAND}"
+    fi
+    export RUN_ID
+fi
+
+# Optionaler Prefix für Jobname
+DEFAULT_JOB_NAME="bias-benchmarks"
+USER_JOB_NAME=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --job-name|-J)
+            shift
+            USER_JOB_NAME="$1"; shift || true ;;
+        *)
+            # Stop parsing custom flags; rest sind Skript + Args
+            break ;;
+    esac
+done
+
+if [ -n "$USER_JOB_NAME" ]; then
+    export SLURM_JOB_NAME="${DEFAULT_JOB_NAME}-${USER_JOB_NAME}-${RUN_ID}" || true
+else
+    export SLURM_JOB_NAME="${DEFAULT_JOB_NAME}-${RUN_ID}" || true
+fi
+
+# Define variables (nach RUN_ID)
+JOB_ID="${SLURM_JOB_ID:-$RUN_ID}"
 LOGFILE="logs/slurm-${JOB_ID}.out"
 TELEMETRY_URL="https://s1335277.eu-nbg-2.betterstackdata.com"
 TELEMETRY_SECRET="$LOGTAIL_SECRET"
@@ -61,7 +94,7 @@ if ! source venv/bin/activate; then
 fi
 
 # GPU Setup and Diagnostics
-echo "🔧 Initial GPU Status (direkt nach Aktivierung venv):" | tee -a "$LOGFILE" | send_to_telemetry
+echo "🔧 Initial GPU Status (RUN_ID=$RUN_ID):" | tee -a "$LOGFILE" | send_to_telemetry
 echo "CUDA_VISIBLE_DEVICES (initial by Slurm): $CUDA_VISIBLE_DEVICES" | tee -a "$LOGFILE" | send_to_telemetry
 echo "SLURM_JOB_GPUS: $SLURM_JOB_GPUS" | tee -a "$LOGFILE" | send_to_telemetry
 echo "SLURM_GPUS_ON_NODE: $SLURM_GPUS_ON_NODE" | tee -a "$LOGFILE" | send_to_telemetry
@@ -102,10 +135,25 @@ echo "TORCH_USE_CUDA_DSA in bash is set to: $TORCH_USE_CUDA_DSA" | tee -a "$LOGF
 echo "🐍 Python GPU Detection:" | tee -a "$LOGFILE" | send_to_telemetry
 python scripts/gpu_diag.py 2>&1 | tee -a "$LOGFILE" | send_to_telemetry
 
+if [ $# -lt 1 ]; then
+    echo "❌ Kein Zielskript übergeben. Aufruf: scripts/run_slurm.sh <script> [args...]" | tee -a "$LOGFILE" | send_to_telemetry
+    exit 2
+fi
+
+TARGET_SCRIPT="$1"; shift
+if [ ! -f "$TARGET_SCRIPT" ]; then
+    echo "❌ Zielskript nicht gefunden: $TARGET_SCRIPT" | tee -a "$LOGFILE" | send_to_telemetry
+    exit 3
+fi
+if [ ! -x "$TARGET_SCRIPT" ]; then
+    # Versuchen ausführbar zu machen
+    chmod +x "$TARGET_SCRIPT" 2>/dev/null || true
+fi
+
 {
-   echo "🚀 Launching benchmark command: $*" | tee -a "$LOGFILE" | send_to_telemetry
-   # Call benchmark script (e.g. accelerate launch ...) directly
-   bash "$@"
+echo "🚀 Launching benchmark command (RUN_ID=$RUN_ID): $TARGET_SCRIPT $*" | tee -a "$LOGFILE" | send_to_telemetry
+export RUN_ID  # sicherstellen dass Subskripte es sehen
+   bash "$TARGET_SCRIPT" "$@"
 } 2>&1 | tee -a "$LOGFILE" | send_to_telemetry # Diesen Block für den Diagnoselauf auskommentieren
 
 exit_code=${PIPESTATUS[0]} # Nimmt den Exit-Code des Python-Skripts

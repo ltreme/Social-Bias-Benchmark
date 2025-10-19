@@ -1,0 +1,69 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: sbb
+      POSTGRES_USER: sbb
+      POSTGRES_PASSWORD: sbb
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    # No host port mapping needed; api reaches it via service name 'postgres'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sbb -d sbb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5432:5432"
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api.dev
+    working_dir: /app
+    command: >-
+      bash -lc "uvicorn api.main:app --host 0.0.0.0 --port 8765 --reload \
+      --app-dir apps/api/src \
+      --reload-dir apps/api/src \
+      --reload-dir apps/shared/src \
+      --reload-dir apps/analysis/src \
+      --reload-dir apps/benchmark/src \
+      --reload-dir apps/persona_generator/src"
+    environment:
+      # SQLite path defaults to ./data/benchmark.db (mounted via repo volume)
+      PYTHONUNBUFFERED: "1"
+      # Base URL for vLLM server reachable from inside the container
+      # If your vLLM runs on the host at localhost:8000, use host.docker.internal
+      VLLM_BASE_URL: http://host.docker.internal:8000
+      # Optionally override DB with: DB_URL=sqlite:////app/data/benchmark.db
+      # Use Peewee pooled connections for PostgreSQL (larger pool for concurrent UI queries)
+      DB_URL: postgresql+pool://sbb:sbb@postgres:5432/sbb?max_connections=80&stale_timeout=300
+    volumes:
+      - .:/app
+    ports:
+      - "8765:8765"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  ui:
+    image: node:20
+    working_dir: /app
+    command: >-
+      bash -lc "cd apps/ui && npm ci && npm run dev -- --host 0.0.0.0 --strictPort"
+    environment:
+      # Point browser-based API calls to the exposed API on localhost
+      VITE_API_BASE_URL: http://localhost:8765
+      # Increase Vite HMR stability in some environments (optional)
+      # VITE_PORT can be set here if you want a fixed port
+    volumes:
+      - .:/app
+      # Keep node_modules inside the container to avoid host/container OS mismatch
+      - ui_node_modules:/app/apps/ui/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+
+volumes:
+  ui_node_modules:
+  pg_data:

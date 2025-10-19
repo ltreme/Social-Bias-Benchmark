@@ -14,11 +14,15 @@ def get_likert_benchmark_results_path(model_name: str, timestamp: str) -> str:
     return f"out/likert/{model_name}/likert_5_results_{timestamp}.csv"
 
 
-def get_enriched_personas_path(model_name: str) -> str:
+def get_enriched_personas_path(model_name: str, run_id: str | None = None) -> str:
+    """Pfad zur Enriched-Personas CSV.
+
+    Wenn ein RUN_ID (z.B. Timestamp oder Slurm Job-ID) gesetzt ist, wird ein eigener
+    Unterordner erzeugt, sodass parallele Jobs nicht kollidieren.
+    Beispiel: out/enriched_personas/<model>/<run_id>/enriched_personas.csv
+    Ohne RUN_ID bleibt das alte Verhalten zur Abwärtskompatibilität.
     """
-    Returns the path to the enriched personas directory.
-    """
-    path = f"out/enriched_personas/{model_name}"
-    if not os.path.exists(path):
-        os.makedirs(path)
+    base = f"out/enriched_personas/{model_name}"
+    path = f"{base}/{run_id}" if run_id else base
+    os.makedirs(path, exist_ok=True)
     return f"{path}/enriched_personas.csv"

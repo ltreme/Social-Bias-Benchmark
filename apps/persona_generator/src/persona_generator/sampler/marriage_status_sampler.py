@@ -1,6 +1,6 @@
 import numpy as np
 
-from persona_generator.models.db import MarriageStatus
+from shared.storage.models import MarriageStatus
 
 from .sampler import Sampler
 

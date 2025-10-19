@@ -9,9 +9,7 @@ setup(
         "numpy",
         "requests",
         "python-dotenv",
-        "huggingface_hub",
-        "transformers",
-        "torch",
         "pandas",
+        "langchain-community",
     ],
 )

@@ -1,6 +1,6 @@
 import numpy as np
 
-from persona_generator.models.db import Occupation
+from shared.storage.models import Occupation
 from persona_generator.sampler.sampler import Sampler
 
 

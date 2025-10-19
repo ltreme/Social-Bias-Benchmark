@@ -7,3 +7,9 @@ venv_*
 # Python cache files
 __pycache__/
 *.egg-info/
+out/*
+*db
+*db-shm
+*db-wal
+*.sqlite3
+*.log

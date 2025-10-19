@@ -1,0 +1,12 @@
+fastapi==0.115.0
+uvicorn==0.30.6
+peewee==3.17.6
+pydantic==2.8.2
+numpy
+pandas
+seaborn
+matplotlib
+requests
+peewee
+psycopg2-binary>=2.9
+scipy

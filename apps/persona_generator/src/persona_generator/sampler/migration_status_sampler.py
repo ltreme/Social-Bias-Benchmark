@@ -1,6 +1,6 @@
 import numpy as np
 
-from persona_generator.models.db import MigrationStatus
+from shared.storage.models import MigrationStatus
 
 from .sampler import Sampler
 
