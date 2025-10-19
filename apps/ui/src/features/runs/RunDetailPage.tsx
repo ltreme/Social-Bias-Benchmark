@@ -42,6 +42,18 @@ export function RunDetailPage() {
     if (!baseline && defaultBaseline) setBaseline(defaultBaseline);
   }, [defaultBaseline]);
 
+  // Auto-select a sensible forest category whenever attribute/baseline changes
+  useEffect(() => {
+    const cats = availableCats.map((c) => c.category);
+    const base = baseline || defaultBaseline;
+    if (cats.length === 0) return;
+    const invalid = !target || !cats.includes(target) || target === base;
+    if (invalid) {
+      const candidate = cats.find((c) => c !== base) || cats[0];
+      if (candidate) setTarget(candidate);
+    }
+  }, [attr, baseline, defaultBaseline, availableCats.length]);
+
   const { data: deltas, isLoading: loadingDeltas, isError: errorDeltas, error: deltasError } = useRunDeltas(idNum, attr, baseline);
   const { data: forest, isLoading: loadingForest, isError: errorForest, error: forestError } = useRunForest(idNum, attr, baseline, target);
   // Means for fixed attribute set (avoid calling hooks in loops)
@@ -185,6 +197,41 @@ export function RunDetailPage() {
             <OrderMetricsCard data={order.data} />
           </AsyncContent>
         </Grid.Col>
+        
+        <Grid.Col span={{ base: 12 }}>
+          <Group align="end" mb="sm">
+            <AttributeBaselineSelector
+              attributes={ATTRS}
+              attribute={attr}
+              onAttributeChange={(v) => { setAttr(v); setBaseline(undefined); setTarget(undefined); }}
+              categories={availableCats.map((c) => c.category)}
+              baseline={baseline}
+              defaultBaseline={defaultBaseline}
+              onBaselineChange={setBaseline}
+            />
+            <Select
+              label="Forest: Kategorie"
+              data={availableCats.map(c => ({ value: c.category, label: c.category })).filter(c => c.value !== (baseline || defaultBaseline))}
+              value={target}
+              onChange={setTarget}
+              placeholder="Kategorie wählen"
+              searchable
+              style={{ minWidth: 220 }}
+            />
+          </Group>
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, md: 6 }}>
+          <AsyncContent isLoading={loadingDeltas} isError={errorDeltas} error={deltasError}>
+            <DeltaBarsPanel deltas={deltas as any} title={`Delta vs. Baseline (${baseline || defaultBaseline || 'auto'})`} />
+          </AsyncContent>
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, md: 6 }}>
+          {target ? (
+            <AsyncContent isLoading={loadingForest} isError={errorForest} error={forestError}>
+              <ForestPlotPanel forest={forest as any} attr={attr} baseline={baseline} defaultBaseline={defaultBaseline} />
+            </AsyncContent>
+          ) : (<div>Bitte Kategorie für Forest auswählen.</div>)}
+        </Grid.Col>
         <Grid.Col span={{ base: 12, md: 6 }}>
           <AsyncContent isLoading={loadingMetrics} isError={errorMetrics} error={metricsError}>
             <ChartPanel title="Rating-Verteilung" data={histBars} layout={{
@@ -194,30 +241,6 @@ export function RunDetailPage() {
             }} />
             <Text size="sm" c="dimmed">Skala: 1 = gar nicht &lt;adjektiv&gt; … 5 = sehr &lt;adjektiv&gt;</Text>
           </AsyncContent>
-        </Grid.Col>
-        <Grid.Col span={{ base: 12, md: 6 }}>
-          <AttributeBaselineSelector
-            attributes={ATTRS}
-            attribute={attr}
-            onAttributeChange={(v) => { setAttr(v); setBaseline(undefined); setTarget(undefined); }}
-            categories={availableCats.map((c) => c.category)}
-            baseline={baseline}
-            defaultBaseline={defaultBaseline}
-            onBaselineChange={setBaseline}
-          />
-          <AsyncContent isLoading={loadingDeltas} isError={errorDeltas} error={deltasError}>
-            <DeltaBarsPanel deltas={deltas as any} title={`Delta vs. Baseline (${baseline || defaultBaseline || 'auto'})`} />
-          </AsyncContent>
-        </Grid.Col>
-        <Grid.Col span={12}>
-          <Group align="end" mb="sm">
-            <Select label="Forest: Kategorie" data={availableCats.map(c => ({ value: c.category, label: c.category })).filter(c => c.value !== (baseline || defaultBaseline))} value={target} onChange={setTarget} placeholder="Kategorie wählen" searchable />
-          </Group>
-          {target ? (
-            <AsyncContent isLoading={loadingForest} isError={errorForest} error={forestError}>
-              <ForestPlotPanel forest={forest as any} attr={attr} baseline={baseline} defaultBaseline={defaultBaseline} />
-            </AsyncContent>
-          ) : (<div>Bitte Kategorie für Forest auswählen.</div>)}
         </Grid.Col>
         <Grid.Col span={12}>
           <Card withBorder padding="md" style={{ marginBottom: 12 }}>
