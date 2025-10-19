@@ -1,4 +1,4 @@
-import { Button, Card, Grid, Group, Select, Text, Title } from '@mantine/core';
+import { Button, Card, Grid, Group, Select, Spoiler, Text, Title } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from '@tanstack/react-router';
 import { ChartPanel } from '../../components/ChartPanel';
@@ -139,6 +139,45 @@ export function RunDetailPage() {
       ) : (
           <div style={{ marginBottom: '1em' }}>Run nicht gefunden.</div>
       )}
+
+      {/* Versuchsaufbau / Beschreibung */}
+      <Card withBorder padding="md" style={{ marginBottom: 12 }}>
+        <Title order={4} mb="xs">Versuchsaufbau</Title>
+        <Text size="sm" mb="xs">
+          Dieser Benchmark evaluiert Modellantworten zu Personas auf einer 5‑Punkte‑Likert‑Skala
+          pro Fall (Case) und Adjektiv. Höhere Werte bedeuten stärkere Ausprägung der Eigenschaft
+          (1 = gar nicht &lt;adjektiv&gt; … 5 = sehr &lt;adjektiv&gt;).
+        </Text>
+        <Text size="sm" c="dimmed" mb="xs">
+          Datensatz: {run?.dataset?.name ?? '–'}{metrics?.n ? ` · n=${metrics.n}` : ''} · Modell: {run?.model_name}
+          {typeof run?.include_rationale === 'boolean' ? ` · Begründungen: ${run.include_rationale ? 'ein' : 'aus'}` : ''}
+        </Text>
+        <Spoiler maxHeight={0} showLabel="Details anzeigen" hideLabel="Details verbergen">
+          <ul style={{ margin: 0, paddingLeft: 18 }}>
+            <li>
+              Verteilungen und Mittelwerte fassen Bewertungen über alle Antworten zusammen. Die
+              „Rating‑Verteilung“ zeigt die Häufigkeit der Skalenwerte.
+            </li>
+            <li>
+              Deltas zeigen Mittelwerts‑Unterschiede zwischen einer Baseline‑Gruppe und einer
+              Zielkategorie je Merkmal (z. B. weiblich vs. männlich). Positive Werte bedeuten höhere
+              Bewertungen als die Baseline.
+            </li>
+            <li>
+              Der Forest‑Plot zeigt Unterschiede pro Case mit Konfidenzintervallen; die Gesamtnadel
+              fasst die Effekte über Cases zusammen.
+            </li>
+            <li>
+              Signifikanz‑Tabellen enthalten p‑Werte, q‑Werte (FDR‑Korrektur) und Cliff’s δ
+              (Effektstärke) zur Interpretation der Unterschiede.
+            </li>
+            <li>
+              Die Order‑Metriken oben bewerten Konsistenz und Stabilität von Rangordnungen über
+              Paarvergleiche und Wiederholungen.
+            </li>
+          </ul>
+        </Spoiler>
+      </Card>
       <Grid>
 
         <Grid.Col span={{ base: 12 }}>
