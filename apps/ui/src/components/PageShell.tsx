@@ -15,7 +15,16 @@ export function PageShell() {
             <AppShell.Header>
                 <Group h="100%" px="md">
                     <Burger opened={opened} onClick={() => setOpened((v) => !v)} hiddenFrom="sm" size="sm" />
-                    <strong>Benchmark UI</strong>
+                    <Group gap="xs" align="center" wrap="nowrap">
+                        <img
+                            src="/equibench-icon-48x48.png"
+                            alt="EquiBench logo"
+                            width={32}
+                            height={32}
+                            style={{ display: 'block' }}
+                        />
+                        <strong>Equi-Bench</strong>
+                    </Group>
                 </Group>
             </AppShell.Header>
             <AppShell.Navbar p="md">
