@@ -1,8 +1,0 @@
-[project]
-name = "shared"
-version = "0.1"
-dependencies = [
-    "numpy",
-    "requests",
-    "python-dotenv",
-]

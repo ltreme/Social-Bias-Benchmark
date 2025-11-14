@@ -1,5 +1,6 @@
 venv
 venv_*
+.venv
 .env
 *.out
 .DS_Store

@@ -13,6 +13,7 @@ source venv/bin/activate
 PROJECT_ROOT=$(pwd)
 
 # Set PYTHONPATH directly for the command to ensure it's correctly applied
-echo "Running benchmark preprocessing script..."
-PYTHONPATH=$PROJECT_ROOT/apps/shared/src:$PROJECT_ROOT/apps/persona_generator/src:$PROJECT_ROOT/apps/benchmark/src python -m benchmark.cli.run_preprocessing "$@"
-echo "✅ Benchmark preprocessing completed"
+echo "[deprecated] Dieses Skript wurde vom neuen Backend-CLI ersetzt."
+echo "Nutze z. B.:"
+echo "  PYTHONPATH=$PROJECT_ROOT/apps/backend/src python -m backend.application.cli.run_attr_generation --help"
+exit 1

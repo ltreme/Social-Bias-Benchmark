@@ -1,5 +1,6 @@
 #!/bin/bash
 
-python apps/benchmark/src/benchmark/cli/run_preprocessing.py --model_name meta-llama/Llama-3.3-70B-Instruct
-
-echo "✅ Benchmark completed"
+echo "[deprecated] This helper was replaced by the layered backend CLI."
+echo "Run e.g.: PYTHONPATH=apps/backend/src \\"
+echo "  python apps/backend/src/backend/application/cli/run_attr_generation.py --help"
+exit 1

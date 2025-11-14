@@ -21,13 +21,9 @@ services:
       dockerfile: docker/Dockerfile.api.dev
     working_dir: /app
     command: >-
-      bash -lc "uvicorn api.main:app --host 0.0.0.0 --port 8765 --reload \
-      --app-dir apps/api/src \
-      --reload-dir apps/api/src \
-      --reload-dir apps/shared/src \
-      --reload-dir apps/analysis/src \
-      --reload-dir apps/benchmark/src \
-      --reload-dir apps/persona_generator/src"
+      bash -lc "uvicorn backend.application.api.main:app --host 0.0.0.0 --port 8765 --reload \
+      --app-dir apps/backend/src \
+      --reload-dir apps/backend/src"
     environment:
       # SQLite path defaults to ./data/benchmark.db (mounted via repo volume)
       PYTHONUNBUFFERED: "1"
@@ -37,6 +33,7 @@ services:
       # Optionally override DB with: DB_URL=sqlite:////app/data/benchmark.db
       # Use Peewee pooled connections for PostgreSQL (larger pool for concurrent UI queries)
       DB_URL: postgresql+pool://sbb:sbb@postgres:5432/sbb?max_connections=80&stale_timeout=300
+      PYTHONPATH: apps/backend/src
     volumes:
       - .:/app
     ports:

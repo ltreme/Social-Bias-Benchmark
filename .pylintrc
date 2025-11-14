@@ -1,6 +1,6 @@
 [MASTER]
 ignore=venv,.venv,__pycache__,build,dist,notebooks
-init-hook='import sys, os; sys.path[:0]=[os.path.abspath("apps/shared/src"), os.path.abspath("apps/benchmark/src"), os.path.abspath("apps/persona_generator/src"), os.path.abspath("apps/analysis/src")]'
+init-hook='import sys, os; sys.path[:0]=[os.path.abspath("apps/backend/src")]'
 
 [FORMAT]
 max-line-length=120
