@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Quick migrator: import legacy benchmark results from an old SQLite DB
-into the current schema. It copies personas (with demographics), cases,
+into the current schema. It copies personas (with demographics), traits,
 and benchmark results. It also ensures a placeholder Dataset and Model
 exist, and creates BenchmarkRun rows for legacy run IDs if missing.
 
@@ -35,10 +35,10 @@ from backend.infrastructure.storage.db import create_tables, get_db, init_databa
 from backend.infrastructure.storage.models import (
     BenchmarkResult,
     BenchmarkRun,
-    Case,
     Dataset,
     Model,
     Persona,
+    Trait,
 )
 from backend.infrastructure.storage.prefill_db import DBFiller
 
@@ -52,12 +52,12 @@ def read_legacy_rows(
 
 
 def ensure_lookup_data() -> None:
-    """Ensure cases table is populated (adjectives) and create placeholder dataset/model."""
-    # Populate cases from CSV; ignores duplicates
+    """Ensure traits table is populated (adjectives) and create placeholder dataset/model."""
+    # Populate traits from CSV; ignores duplicates
     try:
-        DBFiller().fill_cases()
+        DBFiller().fill_traits()
     except Exception as e:
-        print(f"[WARN] Could not prefill cases from CSV: {e}")
+        print(f"[WARN] Could not prefill traits from CSV: {e}")
 
     # Upsert placeholder Dataset + Model
     ds, _ = Dataset.get_or_create(name="legacy-import", defaults={"kind": "reality"})
@@ -67,18 +67,18 @@ def ensure_lookup_data() -> None:
     )
 
 
-def update_case_adjectives_from_csv() -> int:
-    """Ensure 'case.adjective' is filled for g* IDs using CSV.
+def update_trait_adjectives_from_csv() -> int:
+    """Ensure 'trait.adjective' is filled for g* IDs using CSV.
 
     If rows already exist with empty/NULL adjective, update them.
     """
     import pandas as pd
 
-    from backend.infrastructure.storage.prefill_db import cases_path
+    from backend.infrastructure.storage.prefill_db import traits_path
 
-    path = cases_path("simple_likert.csv")
+    path = traits_path("simple_likert.csv")
     if not path.exists():
-        print(f"[WARN] Cases CSV not found at {path}")
+        print(f"[WARN] Traits CSV not found at {path}")
         return 0
     df = pd.read_csv(path)
     mapping = {
@@ -88,15 +88,15 @@ def update_case_adjectives_from_csv() -> int:
     with get_db().atomic():
         for cid, adj in mapping.items():
             try:
-                q = Case.update(adjective=adj).where(
-                    (Case.id == cid)
-                    & ((Case.adjective.is_null(True)) | (Case.adjective == ""))
+                q = Trait.update(adjective=adj).where(
+                    (Trait.id == cid)
+                    & ((Trait.adjective.is_null(True)) | (Trait.adjective == ""))
                 )
                 updated += q.execute() or 0
             except Exception:
                 pass
     if updated:
-        print(f"Updated adjectives for {updated} cases from CSV.")
+        print(f"Updated adjectives for {updated} traits from CSV.")
     return updated
 
 
@@ -154,7 +154,7 @@ def upsert_personas(
     return inserted
 
 
-def upsert_cases_from_results(
+def upsert_traits_from_results(
     conn: sqlite3.Connection, run_ids: Optional[List[int]]
 ) -> int:
     where = ""
@@ -169,18 +169,18 @@ def upsert_cases_from_results(
     ids = [str(r["question_uuid"]) for r in rows if r["question_uuid"] is not None]
     if not ids:
         return 0
-    # Create missing cases with adjective=id (will be overwritten by prefill if available)
-    existing = {c.id for c in Case.select(Case.id).where(Case.id.in_(ids))}
+    # Create missing traits with adjective=id (will be overwritten by prefill if available)
+    existing = {c.id for c in Trait.select(Trait.id).where(Trait.id.in_(ids))}
     new_ids = [i for i in ids if i not in existing]
     with get_db().atomic():
         for cid in new_ids:
             try:
-                Case.insert(
+                Trait.insert(
                     {"id": cid, "adjective": cid, "case_template": None}
                 ).on_conflict_ignore().execute()
             except Exception:
                 pass
-    print(f"Cases ensured: {len(ids)} (new: {len(new_ids)})")
+    print(f"Traits ensured: {len(ids)} (new: {len(new_ids)})")
     return len(new_ids)
 
 
@@ -226,8 +226,8 @@ def import_results(
     used_personas = {str(r["persona_uuid_id"]) for r in rows if r["persona_uuid_id"]}
     upsert_personas(conn, used_personas)
 
-    # Ensure cases referenced exist
-    upsert_cases_from_results(conn, run_ids)
+    # Ensure traits referenced exist
+    upsert_traits_from_results(conn, run_ids)
 
     # Ensure runs exist
     if run_ids:
@@ -400,7 +400,7 @@ def main() -> None:
     ensure_lookup_data()
     # Ensure result unique constraint is correct before import
     ensure_benchmarkresult_unique_triple_sqlite()
-    update_case_adjectives_from_csv()
+    update_trait_adjectives_from_csv()
 
     # Connect legacy DB
     if not os.path.exists(args.src):

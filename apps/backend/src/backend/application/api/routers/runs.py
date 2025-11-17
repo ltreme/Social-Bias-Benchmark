@@ -27,18 +27,18 @@ from backend.domain.benchmarking.adapters.postprocess.postprocessor_likert impor
 from backend.domain.benchmarking.adapters.prompting import LikertPromptFactory
 from backend.domain.benchmarking.benchmark import run_benchmark_pipeline
 from backend.infrastructure.benchmark.persister_bench_sqlite import BenchPersisterPeewee
-from backend.infrastructure.benchmark.repository.case import CaseRepository
 from backend.infrastructure.benchmark.repository.persona_repository import (
     FullPersonaRepositoryByDataset,
 )
+from backend.infrastructure.benchmark.repository.trait import TraitRepository
 from backend.infrastructure.llm import LlmClientFakeBench, LlmClientVLLMBench
 from backend.infrastructure.storage.models import (
     BenchCache,
     BenchmarkResult,
     BenchmarkRun,
-    Case,
     DatasetPersona,
     Model,
+    Trait,
     utcnow,
 )
 
@@ -222,13 +222,13 @@ def _bench_update_progress(run_id: int, dataset_id: int) -> None:
         .count()
     )
     try:
-        cases = CaseRepository().count()
+        traits = TraitRepository().count()
     except Exception:
-        cases = 0
+        traits = 0
     total_personas = (
         DatasetPersona.select().where(DatasetPersona.dataset_id == dataset_id).count()
     )
-    base_total = total_personas * cases if cases and total_personas else 0
+    base_total = total_personas * traits if traits and total_personas else 0
     # Estimate duplicates by dual_fraction
     try:
         br = BenchmarkRun.get_by_id(run_id)
@@ -281,7 +281,7 @@ def _bench_run_background(run_id: int) -> None:
     persona_repo = FullPersonaRepositoryByDataset(
         dataset_id=ds_id, model_name=model_name, attr_generation_run_id=attrgen_run_id
     )
-    question_repo = CaseRepository()
+    trait_repo = TraitRepository()
     max_new_toks = int(_BENCH_PROGRESS.get(run_id, {}).get("max_new_tokens", 256))
     system_prompt = rec.system_prompt
     prompt_factory = LikertPromptFactory(
@@ -376,7 +376,7 @@ def _bench_run_background(run_id: int) -> None:
         persona_count = persona_repo.count(ds_id)
         run_benchmark_pipeline(
             dataset_id=ds_id,
-            question_repo=question_repo,
+            trait_repo=trait_repo,
             persona_repo=persona_repo,
             prompt_factory=prompt_factory,
             llm=llm,
@@ -774,15 +774,15 @@ def run_order_metrics(run_id: int) -> Dict[str, Any]:
     # Per-case breakdown
     rows: List[Dict[str, Any]] = []
     try:
-        case_map = {str(r.id): (r.adjective or str(r.id)) for r in Case.select()}
+        trait_map = {str(r.id): (r.adjective or str(r.id)) for r in Trait.select()}
     except Exception:
-        case_map = {}
+        trait_map = {}
     for k, g in pairs.groupby("case_id"):
         ad = float((g["abs_diff"] == 0).mean()) if len(g) else 0.0
         rows.append(
             {
                 "case_id": str(k),
-                "adjective": case_map.get(str(k)),
+                "adjective": trait_map.get(str(k)),
                 "n_pairs": int(len(g)),
                 "exact_rate": ad,
                 "mae": float(g["abs_diff"].mean()) if len(g) else 0.0,
@@ -807,7 +807,7 @@ def run_order_metrics(run_id: int) -> Dict[str, Any]:
 def run_missing(run_id: int) -> Dict[str, Any]:
     """Return count of missing BenchmarkResult pairs and a small sample.
 
-    Missing = all (persona in dataset) × (cases) that have no BenchmarkResult for this run.
+    Missing = all (persona in dataset) × (traits) that have no BenchmarkResult for this run.
     Uses a SQL anti-join for efficiency.
     """
     ensure_db()
@@ -820,13 +820,13 @@ def run_missing(run_id: int) -> Dict[str, Any]:
     dataset_id = int(rec.dataset_id.id)
 
     # Total expected pairs and done
-    cases_n = CaseRepository().count()
+    traits_n = TraitRepository().count()
     from backend.infrastructure.storage.models import DatasetPersona
 
     personas_n = (
         DatasetPersona.select().where(DatasetPersona.dataset_id == dataset_id).count()
     )
-    total = personas_n * cases_n
+    total = personas_n * traits_n
     done = (
         BenchmarkResult.select(BenchmarkResult.persona_uuid_id, BenchmarkResult.case_id)
         .where(BenchmarkResult.benchmark_run_id == run_id)
@@ -1201,7 +1201,7 @@ def run_forest(
                 }
             )
 
-    labels_map: Dict[str, str] = {str(c.id): str(c.adjective) for c in Case.select()}
+    labels_map: Dict[str, str] = {str(c.id): str(c.adjective) for c in Trait.select()}
     for r in rows_list:
         r["label"] = labels_map.get(r["case_id"], r["case_id"])
 

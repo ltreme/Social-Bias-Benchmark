@@ -6,11 +6,11 @@ from fastapi.middleware.cors import CORSMiddleware
 # Ensure repo src paths are on sys.path before importing routers
 from . import utils as _api_utils  # noqa: F401  (triggers sys.path setup)
 from .routers.attrgen import router as attrgen_router
-from .routers.cases import router as cases_router
 from .routers.datasets import router as datasets_router
 from .routers.metrics import router as metrics_router
 from .routers.models_admin import router as models_admin_router
 from .routers.runs import router as runs_router
+from .routers.traits import router as traits_router
 from .utils import ensure_db
 
 
@@ -41,6 +41,6 @@ def create_app() -> FastAPI:
     app.include_router(runs_router)
     app.include_router(attrgen_router)
     app.include_router(models_admin_router)
-    app.include_router(cases_router)
+    app.include_router(traits_router)
 
     return app

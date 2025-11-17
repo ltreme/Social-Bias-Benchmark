@@ -17,6 +17,8 @@ class BenchWorkItem:
     case_template: str | None
     # Likert scale order flag at item level (False=in-order, True=reversed)
     scale_reversed: bool = False
+    category: str | None = None
+    valence: int | None = None
 
 
 @dataclass(frozen=True, slots=True)

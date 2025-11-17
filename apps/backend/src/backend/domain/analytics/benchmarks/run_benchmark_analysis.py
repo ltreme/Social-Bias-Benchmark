@@ -42,11 +42,11 @@ def parse_args(argv=None) -> argparse.Namespace:
         help="Optional list of model names",
     )
     p.add_argument(
-        "--case-ids",
+        "--trait-ids",
         type=str,
         nargs="*",
         default=None,
-        help="Optional list of case IDs. If omitted, uses all cases.",
+        help="Optional list of trait IDs. If omitted, uses all traits.",
     )
     p.add_argument("--db-url", type=str, default=None)
     p.add_argument("--output-dir", type=Path, default=Path("out/analysis/benchmark"))
@@ -138,7 +138,7 @@ def main(argv=None) -> int:
     cfg = BenchQuery(
         dataset_ids=args.dataset_ids,
         model_names=args.models,
-        case_ids=args.case_ids,
+        trait_ids=args.trait_ids,
         run_ids=args.run_ids,
         include_rationale=(
             (True if args.rationale == "on" else False)
@@ -171,10 +171,10 @@ def main(argv=None) -> int:
         ds_ids = [str(i) for i in args.dataset_ids]
         ds_part = "ds-" + (ds_ids[0] if len(ds_ids) == 1 else f"n{len(ds_ids)}")
 
-    if args.case_ids is None or len(args.case_ids) == 0:
+    if args.trait_ids is None or len(args.trait_ids) == 0:
         q_part = "q-all"
-    elif len(args.case_ids) == 1:
-        q_part = f"q-{_sanitize(args.case_ids[0])}"
+    elif len(args.trait_ids) == 1:
+        q_part = f"q-{_sanitize(args.trait_ids[0])}"
     else:
         q_part = "q-multi"
 
@@ -196,7 +196,7 @@ def main(argv=None) -> int:
             {
                 "models": args.models,
                 "dataset_ids": sorted(set(df["dataset_id"])),
-                "case_ids": args.case_ids,
+                "trait_ids": args.trait_ids,
                 "alpha": args.alpha,
                 "permutations": args.permutations,
                 "run_ids": args.run_ids,
@@ -234,8 +234,8 @@ def main(argv=None) -> int:
         ctx_bits.append("datasets=" + ",".join(map(str, args.dataset_ids)))
     if args.rationale:
         ctx_bits.append("rationale=" + args.rationale)
-    if args.case_ids:
-        ctx_bits.append("cases=" + ",".join(args.case_ids))
+    if args.trait_ids:
+        ctx_bits.append("traits=" + ",".join(args.trait_ids))
     context = " | ".join(ctx_bits) if ctx_bits else "(all results)"
 
     ax = plot_rating_distribution(df)
@@ -446,13 +446,13 @@ def main(argv=None) -> int:
         title_bits.append(f"models={','.join(args.models)}")
     if args.dataset_ids:
         title_bits.append(f"datasets={','.join(map(str,args.dataset_ids))}")
-    if args.case_ids:
-        title_bits.append(f"cases={','.join(args.case_ids)}")
+    if args.trait_ids:
+        title_bits.append(f"traits={','.join(args.trait_ids)}")
     title = "Benchmark Report – " + " | ".join(title_bits)
     method_meta = {
         "dataset_ids": sorted(set(df["dataset_id"])),
         "models": args.models or "all",
-        "cases": args.case_ids or "all",
+        "traits": args.trait_ids or "all",
         "rationale": args.rationale,
         "alpha": args.alpha,
         "permutations": args.permutations,

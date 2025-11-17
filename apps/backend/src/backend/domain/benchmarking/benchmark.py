@@ -47,7 +47,7 @@ def _persist_fail(
 def run_benchmark_pipeline(
     *,
     dataset_id: int | None,
-    question_repo,
+    trait_repo,
     persona_repo: BenchPersonaRepo,
     prompt_factory: BenchPromptFactory,
     llm: LLMClient,
@@ -75,8 +75,8 @@ def run_benchmark_pipeline(
             "completed_keys must be provided when skip_completed_run_id is set"
         )
 
-    # 1) Load cases once (small and stable)
-    cases = list(question_repo.iter_all())
+    # 1) Load traits/questions once (small and stable)
+    traits = list(trait_repo.iter_all())
     # Persona count for total work estimation
     if persona_count_override is not None:
         persona_count = int(persona_count_override)
@@ -88,7 +88,7 @@ def run_benchmark_pipeline(
                 persona_count = int(count_method(dataset_id))
             except Exception:
                 persona_count = 0
-    total_items = persona_count * len(cases) if cases else 0
+    total_items = persona_count * len(traits) if traits else 0
 
     # Determine progress frequency based on batch size with sensible defaults.
     def _compute_progress_every(
@@ -147,7 +147,7 @@ def run_benchmark_pipeline(
 
     def iter_items() -> Iterable[BenchWorkItem]:
         for p in persona_repo.iter_personas(dataset_id):
-            for c in cases:
+            for c in traits:
                 persona_s = str(p.persona_uuid)
                 case_s = str(c.id)
                 scale_rev = _decide_reversed(persona_s, case_s)
@@ -181,6 +181,8 @@ def run_benchmark_pipeline(
                         adjective=c.adjective,
                         case_template=c.case_template,
                         scale_reversed=scale_rev,
+                        category=getattr(c, "category", None),
+                        valence=getattr(c, "valence", None),
                     )
                 # Opposite direction for duplicated subset
                 if dup:
@@ -198,6 +200,8 @@ def run_benchmark_pipeline(
                             adjective=c.adjective,
                             case_template=c.case_template,
                             scale_reversed=opp_rev,
+                            category=getattr(c, "category", None),
+                            valence=getattr(c, "valence", None),
                         )
 
     attempt = 1

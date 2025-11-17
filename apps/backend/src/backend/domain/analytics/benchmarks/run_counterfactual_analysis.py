@@ -35,7 +35,7 @@ def parse_args(argv=None) -> argparse.Namespace:
         "--models", type=str, nargs="*", default=None, help="Model names to include"
     )
     p.add_argument(
-        "--case-ids", type=str, nargs="*", default=None, help="Case IDs to include"
+        "--trait-ids", type=str, nargs="*", default=None, help="Trait IDs to include"
     )
     p.add_argument(
         "--rationale",
@@ -131,9 +131,9 @@ def main(argv=None) -> int:
     if args.models:
         br_src = br_src.where(Model.name.in_(list(args.models)))
         br_cf = br_cf.where(Model.name.in_(list(args.models)))
-    if args.case_ids:
-        br_src = br_src.where(BenchmarkResult.case_id.in_(list(args.case_ids)))
-        br_cf = br_cf.where(BenchmarkResult.case_id.in_(list(args.case_ids)))
+    if args.trait_ids:
+        br_src = br_src.where(BenchmarkResult.case_id.in_(list(args.trait_ids)))
+        br_cf = br_cf.where(BenchmarkResult.case_id.in_(list(args.trait_ids)))
     if args.run_ids:
         br_src = br_src.where(BenchmarkResult.benchmark_run_id.in_(list(args.run_ids)))
         br_cf = br_cf.where(BenchmarkResult.benchmark_run_id.in_(list(args.run_ids)))
@@ -142,7 +142,7 @@ def main(argv=None) -> int:
         br_src = br_src.where(BenchmarkRun.include_rationale == want)
         br_cf = br_cf.where(BenchmarkRun.include_rationale == want)
 
-    # Materialize into dicts keyed by (persona, case, run, model)
+    # Materialize into dicts keyed by (persona, trait, run, model)
     src_map: Dict[Tuple[str, str, int, str], float] = {}
     for r in br_src.dicts():
         key = (
@@ -163,7 +163,7 @@ def main(argv=None) -> int:
         )
         cf_map[key] = float(r["rating"]) if r["rating"] is not None else float("nan")
 
-    # Pair by links and exact (case,run,model)
+    # Pair by links and exact (trait,run,model)
     rows: List[dict] = []
     for l in links:
         src_uuid = str(l.source_persona_id)
@@ -193,7 +193,7 @@ def main(argv=None) -> int:
 
     if not rows:
         print(
-            "No paired results found (check that both source and cf have results under same run/model/case)."
+            "No paired results found (check that both source and cf have results under same run/model/trait)."
         )
         return 2
 
@@ -208,14 +208,14 @@ def main(argv=None) -> int:
     n = int(overall.size)
     p_wil = _wilcoxon_signed_rank(overall)
 
-    # By case
-    per_case = (
+    # By trait
+    per_trait = (
         df.groupby("case_id")["delta"].agg(["count", "mean", "std"]).reset_index()
     )
-    per_case["p_wilcoxon"] = (
+    per_trait["p_wilcoxon"] = (
         df.groupby("case_id")["delta"]
         .apply(_wilcoxon_signed_rank)
-        .reindex(per_case["case_id"])
+        .reindex(per_trait["case_id"])
         .values
     )
 
@@ -229,7 +229,7 @@ def main(argv=None) -> int:
 
     # Save CSVs
     df.to_csv(outdir / "pairs.csv", index=False)
-    per_case.to_csv(outdir / "per_case.csv", index=False)
+    per_trait.to_csv(outdir / "per_trait.csv", index=False)
     per_dir.to_csv(outdir / "per_direction.csv", index=False)
 
     # Plots
@@ -245,8 +245,8 @@ def main(argv=None) -> int:
     fig.savefig(outdir / "delta_hist.png", dpi=200)
     plt.close(fig)
 
-    # Forest per case
-    fc = per_case.copy()
+    # Forest per trait
+    fc = per_trait.copy()
     fc = fc.dropna(subset=["mean"])
     fc = fc.sort_values("mean")
     y = np.arange(len(fc))
@@ -263,10 +263,10 @@ def main(argv=None) -> int:
     ax2.set_yticklabels(fc["case_id"])
     ax2.set_xlabel("Delta (cf - src)")
     ax2.set_title(
-        f"Per-case paired delta (±95% CI)\nDS={args.dataset_id} | models={','.join(args.models) if args.models else 'all'} | rationale={args.rationale or 'all'}"
+        f"Per-trait paired delta (±95% CI)\nDS={args.dataset_id} | models={','.join(args.models) if args.models else 'all'} | rationale={args.rationale or 'all'}"
     )
     fig2.tight_layout()
-    fig2.savefig(outdir / "per_case_forest.png", dpi=200)
+    fig2.savefig(outdir / "per_trait_forest.png", dpi=200)
     plt.close(fig2)
 
     # Markdown summary
@@ -284,10 +284,10 @@ def main(argv=None) -> int:
     lines.append("")
     lines.append("![Delta histogram](delta_hist.png)")
     lines.append("")
-    lines.append("## Per case")
-    lines.append("![Per-case forest](per_case_forest.png)")
+    lines.append("## Per trait")
+    lines.append("![Per-trait forest](per_trait_forest.png)")
     lines.append("")
-    lines.append("Top per-case effects (by |mean|):")
+    lines.append("Top per-trait effects (by |mean|):")
     if not fc.empty:
         top = fc.reindex(fc["mean"].abs().sort_values(ascending=False).index).head(10)
         for _, r in top.iterrows():

@@ -145,7 +145,7 @@ export function RunDetailPage() {
         <Title order={4} mb="xs">Versuchsaufbau</Title>
         <Text size="sm" mb="xs">
           Dieser Benchmark evaluiert Modellantworten zu Personas auf einer 5‑Punkte‑Likert‑Skala
-          pro Fall (Case) und Adjektiv. Höhere Werte bedeuten stärkere Ausprägung der Eigenschaft
+          pro Trait (Adjektiv). Höhere Werte bedeuten stärkere Ausprägung der Eigenschaft
           (1 = gar nicht &lt;adjektiv&gt; … 5 = sehr &lt;adjektiv&gt;).
         </Text>
         <Text size="sm" c="dimmed" mb="xs">
@@ -164,8 +164,8 @@ export function RunDetailPage() {
               Bewertungen als die Baseline.
             </li>
             <li>
-              Der Forest‑Plot zeigt Unterschiede pro Case mit Konfidenzintervallen; die Gesamtnadel
-              fasst die Effekte über Cases zusammen.
+              Der Forest‑Plot zeigt Unterschiede pro Trait mit Konfidenzintervallen; die Gesamtnadel
+              fasst die Effekte über Traits zusammen.
             </li>
             <li>
               Signifikanz‑Tabellen enthalten p‑Werte, q‑Werte (FDR‑Korrektur) und Cliff’s δ

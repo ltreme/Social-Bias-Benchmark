@@ -4,7 +4,7 @@ import { DatasetsPage } from '../features/datasets/DatasetsPage';
 import { DatasetDetailPage } from '../features/datasets/DatasetDetailPage';
 import { RunDetailPage } from '../features/runs/RunDetailPage';
 import { ComparePage } from '../features/compare/ComparePage';
-import { CasesPage } from '../features/cases/CasesPage';
+import { TraitsPage } from '../features/traits/TraitsPage';
 import { PersonaBrowserPage } from '../features/personas/PersonaBrowserPage';
 import { ModelsPage } from '../features/models/ModelsPage';
 
@@ -37,10 +37,10 @@ const compareRoute = createRoute({
     component: ComparePage,
 });
 
-const casesRoute = createRoute({
+const traitsRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: '/cases',
-    component: CasesPage,
+    path: '/traits',
+    component: TraitsPage,
 });
 
 const datasetPersonasRoute = createRoute({
@@ -55,5 +55,5 @@ const modelsRoute = createRoute({
     component: ModelsPage,
 });
 
-export const routeTree = rootRoute.addChildren([datasetsRoute, datasetDetailRoute, runDetailRoute, compareRoute, casesRoute, datasetPersonasRoute, modelsRoute]);
+export const routeTree = rootRoute.addChildren([datasetsRoute, datasetDetailRoute, runDetailRoute, compareRoute, traitsRoute, datasetPersonasRoute, modelsRoute]);
 export const router = createRouter({ routeTree });

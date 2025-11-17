@@ -74,7 +74,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--persist", choices=["print", "peewee"], default="peewee")
     p.add_argument("--max-new-tokens", type=int, default=256)
     p.add_argument(
-        "--case-file", type=str, help="Path to Likert case CSV (headers: id,adjective)"
+        "--trait-file",
+        type=str,
+        help="Path to Likert trait CSV (headers: id,adjective,...)",
     )
     p.add_argument(
         "--with-rational",
@@ -91,19 +93,19 @@ def main(argv: list[str] | None = None) -> int:
     create_tables()
 
     # Persona + Question repositories
-    from backend.infrastructure.benchmark.repository.case import CaseRepository
     from backend.infrastructure.benchmark.repository.persona_repository import (
         FullPersonaRepository,
         FullPersonaRepositoryByDataset,
     )
+    from backend.infrastructure.benchmark.repository.trait import TraitRepository
 
-    if args.case_file:
-        if not args.case_file.endswith(".csv") or not os.path.isfile(args.case_file):
-            print("[fatal] --case-file must be a CSV file", file=sys.stderr)
+    if args.trait_file:
+        if not args.trait_file.endswith(".csv") or not os.path.isfile(args.trait_file):
+            print("[fatal] --trait-file must be a CSV file", file=sys.stderr)
             return 2
-        case_repo = CaseRepository(path=args.case_file)
+        trait_repo = TraitRepository(path=args.trait_file)
     else:
-        case_repo = CaseRepository()
+        trait_repo = TraitRepository()
 
     include_rationale = args.with_rational == "on"
 
@@ -212,7 +214,7 @@ def main(argv: list[str] | None = None) -> int:
 
     run_benchmark_pipeline(
         dataset_id=args.dataset_id,
-        question_repo=case_repo,
+        trait_repo=trait_repo,
         persona_repo=persona_repo,
         prompt_factory=prompt_factory,
         llm=llm,

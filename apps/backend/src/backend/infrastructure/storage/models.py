@@ -39,10 +39,19 @@ class Model(BaseModel):
     created_at = pw.DateTimeField(default=utcnow, null=False)
 
 
-class Case(BaseModel):
+class Trait(BaseModel):
     id = pw.CharField(primary_key=True)
     adjective = pw.CharField(null=False)
     case_template = pw.TextField(null=True)
+    category = pw.CharField(null=True)
+    valence = pw.IntegerField(
+        null=True,
+        constraints=[pw.Check("valence IS NULL OR (valence >= -1 AND valence <= 1)")],
+    )
+    is_active = pw.BooleanField(null=False, default=True)
+
+    class Meta:
+        table_name = "case"
 
 
 class Country(BaseModel):
@@ -212,7 +221,7 @@ class BenchmarkResult(BaseModel):
         Persona, field=Persona.uuid, backref="benchmark_results", on_delete="CASCADE"
     )
     case_id = pw.ForeignKeyField(
-        Case, field=Case.id, backref="benchmark_results", on_delete="RESTRICT"
+        Trait, field=Trait.id, backref="benchmark_results", on_delete="RESTRICT"
     )
     benchmark_run_id = pw.ForeignKeyField(
         BenchmarkRun, backref="results", on_delete="CASCADE"
@@ -369,7 +378,7 @@ class CounterfactualLink(BaseModel):
 # ---------- Table creation helper ----------
 ALL_MODELS = [
     Model,
-    Case,
+    Trait,
     Country,
     Persona,
     Dataset,

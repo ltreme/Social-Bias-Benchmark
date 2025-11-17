@@ -671,15 +671,15 @@ def export_benchmark_report(
         ds = method_meta.get("dataset_ids") or method_meta.get("datasets")
         rat = method_meta.get("rationale")
         models = method_meta.get("models")
-        cases = method_meta.get("cases")
+        traits = method_meta.get("traits")
         if ds:
             lines.append(f"- Datasets: {ds}")
         if models:
             lines.append(f"- Models: {models}")
         if rat is not None:
             lines.append(f"- Rationale: {rat}")
-        if cases:
-            lines.append(f"- Cases: {cases}")
+        if traits:
+            lines.append(f"- Traits: {traits}")
         lines.append("")
     total = len(df)
     lines.append(f"N Ergebnisse: **{total}**")

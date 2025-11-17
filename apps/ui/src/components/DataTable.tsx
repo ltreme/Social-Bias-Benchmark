@@ -1,13 +1,32 @@
-import { useReactTable, type ColumnDef, getCoreRowModel, flexRender } from '@tanstack/react-table';
+import {
+    useReactTable,
+    type ColumnDef,
+    getCoreRowModel,
+    flexRender,
+    type RowData,
+} from '@tanstack/react-table';
 import { Table } from '@mantine/core';
 
-type DataTableProps<T extends object> = {
+type DataTableProps<T extends RowData> = {
     data: T[];
     columns: ColumnDef<T, any>[];
+    getRowId?: (originalRow: T, index: number, parent?: any) => string;
 };
 
-export function DataTable<T extends object>({ data, columns }: DataTableProps<T>) {
-    const table = useReactTable({ data, columns, getCoreRowModel: getCoreRowModel() });
+export function DataTable<T extends RowData>({ data, columns, getRowId }: DataTableProps<T>) {
+    const table = useReactTable({
+        data,
+        columns,
+        getCoreRowModel: getCoreRowModel(),
+        getRowId: getRowId
+            ? getRowId
+            : (row: T, index: number) => {
+                  if (typeof (row as any)?.id === 'string' || typeof (row as any)?.id === 'number') {
+                      return String((row as any).id);
+                  }
+                  return String(index);
+              },
+    });
     return (
         <Table striped withTableBorder>
         <Table.Thead>

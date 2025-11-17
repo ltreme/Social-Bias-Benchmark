@@ -8,7 +8,6 @@ from peewee import IntegrityError
 
 from .models import (
     Age,
-    Case,
     Country,
     Education,
     ForeignersPerCountry,
@@ -16,6 +15,7 @@ from .models import (
     MigrationStatus,
     Occupation,
     ReligionPerCountry,
+    Trait,
 )
 
 
@@ -33,8 +33,8 @@ def raw_path(filename: str) -> str:
     return repo_root / "data" / "persona" / "raw" / filename
 
 
-def cases_path(filename: str) -> str:
-    """Returns the full path to a cases CSV file."""
+def traits_path(filename: str) -> str:
+    """Returns the full path to a traits CSV file."""
     # Get the repository root by going up from this file's location
     repo_root = Path(__file__).parent.parent.parent.parent.parent.parent
     return repo_root / "data" / "cases" / filename
@@ -77,7 +77,7 @@ class DBFiller:
             if txt == "" or txt.lower() in {"nan", "none"}:
                 return 0
             # Remove common thousand separators (commas, spaces, NBSP)
-            txt = txt.replace(",", "").replace(" ", "").replace("\u00A0", "")
+            txt = txt.replace(",", "").replace(" ", "").replace("\u00a0", "")
             # If there's a decimal part, drop it
             if "." in txt:
                 txt = txt.split(".", 1)[0]
@@ -321,10 +321,10 @@ class DBFiller:
         n = self._bulk_insert_ignore(Occupation, rows)
         print(f"Occupation inserted: {n} (duplicates ignored).")
 
-    def fill_cases(self):
-        # Read cases from CSV file
-        case_csv_path = cases_path("simple_likert.csv")
-        df = self.read_csv(case_csv_path, sep=",")
+    def fill_traits(self):
+        # Read traits from CSV file
+        trait_csv_path = traits_path("simple_likert.csv")
+        df = self.read_csv(trait_csv_path, sep=",")
         rows = []
         for _, row in df.iterrows():
             rows.append(
@@ -334,8 +334,8 @@ class DBFiller:
                     case_template=None,
                 )
             )
-        n = self._bulk_insert_ignore(Case, rows)
-        print(f"Cases inserted: {n} (duplicates ignored).")
+        n = self._bulk_insert_ignore(Trait, rows)
+        print(f"Traits inserted: {n} (duplicates ignored).")
 
     def fill_all(self):
         self.fill_ages()
@@ -344,4 +344,4 @@ class DBFiller:
         self.fill_countries_religion_foreigner()
         self.fill_education()
         self.fill_jobs()
-        self.fill_cases()
+        self.fill_traits()

@@ -30,7 +30,7 @@ export function PageShell() {
             <AppShell.Navbar p="md">
                 <NavLink label="Datasets" component={Link} to="/" active={state.location.pathname === '/'} />
                 <NavLink label="Compare" component={Link} to="/compare" active={state.location.pathname === '/compare'} />
-                <NavLink label="Cases" component={Link} to="/cases" active={state.location.pathname === '/cases'} />
+                <NavLink label="Traits" component={Link} to="/traits" active={state.location.pathname === '/traits'} />
                 <NavLink label="Models" component={Link} to="/models" active={state.location.pathname === '/models'} />
             </AppShell.Navbar>
             <AppShell.Main>

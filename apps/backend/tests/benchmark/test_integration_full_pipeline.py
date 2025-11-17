@@ -160,10 +160,10 @@ class TestEndToEndPipeline(unittest.TestCase):
             .where(DatasetPersona.dataset_id == dataset_id)
             .count()
         )
-        # Get total number of cases from database
-        from backend.infrastructure.storage.models import Case
+        # Get total number of traits (adjectives) from database
+        from backend.infrastructure.storage.models import Trait
 
-        question_count = Case.select().count()
+        question_count = Trait.select().count()
 
         # Expect exactly 3 attributes per persona
         self.assertGreaterEqual(persona_count, n)
@@ -177,7 +177,7 @@ class TestEndToEndPipeline(unittest.TestCase):
             # Provide helpful context before failing
             msg = (
                 f"Unexpected number of benchmark results: got={bench_count} expected={expected} "
-                f"personas={persona_count} questions={question_count} fails={fail_count}"
+                f"personas={persona_count} traits={question_count} fails={fail_count}"
             )
             self.fail(msg)
 

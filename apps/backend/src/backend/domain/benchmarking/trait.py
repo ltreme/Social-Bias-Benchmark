@@ -3,8 +3,8 @@ from typing import Optional
 
 
 @dataclass(frozen=True)
-class CaseDto:
-    """Minimal case in the benchmark: id + adjective.
+class TraitDto:
+    """Minimal trait in the benchmark: id + adjective.
 
     case_template is optional and can be used later to add situational context.
     """
@@ -12,3 +12,6 @@ class CaseDto:
     id: str
     adjective: str
     case_template: Optional[str] = None
+    category: Optional[str] = None
+    valence: Optional[int] = None
+    is_active: bool = True
