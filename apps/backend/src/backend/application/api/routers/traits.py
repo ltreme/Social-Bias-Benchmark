@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import csv
+import io
 import re
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
 from peewee import fn
 from pydantic import BaseModel, conint
 
+from backend.infrastructure.storage.db import get_db
 from backend.infrastructure.storage.models import BenchmarkResult, Trait
 
 from ..utils import ensure_db
@@ -62,6 +66,29 @@ def list_traits() -> List[TraitOut]:
             )
         )
     return out
+
+
+@router.get("/traits/export")
+def export_traits() -> StreamingResponse:
+    ensure_db()
+    buffer = io.StringIO()
+    fieldnames = ["id", "adjective", "category", "valence"]
+    writer = csv.DictWriter(buffer, fieldnames=fieldnames)
+    writer.writeheader()
+    for trait in Trait.select().order_by(Trait.id.asc()):
+        writer.writerow(
+            {
+                "id": str(trait.id),
+                "adjective": str(trait.adjective),
+                "category": str(trait.category) if trait.category is not None else "",
+                "valence": trait.valence if trait.valence is not None else "",
+            }
+        )
+    buffer.seek(0)
+    headers = {"Content-Disposition": 'attachment; filename="traits.csv"'}
+    return StreamingResponse(
+        iter([buffer.getvalue()]), media_type="text/csv", headers=headers
+    )
 
 
 def _next_generated_id() -> str:
@@ -202,3 +229,78 @@ def set_trait_active(trait_id: str, body: TraitActiveIn) -> TraitOut:
         is_active=bool(trait.is_active),
         linked_results_n=int(linked),
     )
+
+
+def _parse_valence(raw: str | None, row: int) -> int | None:
+    if raw is None or raw == "":
+        return None
+    try:
+        val = int(raw)
+    except (TypeError, ValueError):
+        raise ValueError(f"Zeile {row}: valence '{raw}' ist ungültig")
+    if val < -1 or val > 1:
+        raise ValueError(f"Zeile {row}: valence muss zwischen -1 und 1 liegen")
+    return val
+
+
+@router.post("/traits/import")
+async def import_traits(file: UploadFile = File(...)) -> Dict[str, Any]:
+    ensure_db()
+    content = await file.read()
+    try:
+        text = content.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = content.decode("latin-1")
+    reader = csv.DictReader(io.StringIO(text))
+    if not reader.fieldnames:
+        raise HTTPException(status_code=400, detail="CSV ohne Header")
+    inserted = updated = skipped = 0
+    errors: List[str] = []
+    db = get_db()
+    for idx, row in enumerate(reader, start=2):
+        try:
+            adjective = _normalize_adjective(row.get("adjective"))
+            if not adjective:
+                raise ValueError(f"Zeile {idx}: 'adjective' fehlt")
+            row_id = (row.get("id") or "").strip() or None
+            category = (row.get("category") or "").strip() or None
+            valence = _parse_valence((row.get("valence") or "").strip(), idx)
+            with db.atomic():
+                target = Trait.get_or_none(Trait.id == row_id) if row_id else None
+                if target:
+                    if _adjective_exists(adjective, exclude_id=target.id):
+                        raise ValueError(f"Zeile {idx}: Adjektiv existiert bereits")
+                    target.adjective = adjective
+                    target.category = category
+                    target.valence = valence
+                    target.save()
+                    updated += 1
+                else:
+                    if _adjective_exists(adjective):
+                        raise ValueError(f"Zeile {idx}: Adjektiv existiert bereits")
+                    new_id = row_id or _next_generated_id()
+                    if Trait.get_or_none(Trait.id == new_id):
+                        raise ValueError(f"Zeile {idx}: ID '{new_id}' bereits vergeben")
+                    Trait.create(
+                        id=new_id,
+                        adjective=adjective,
+                        category=category,
+                        case_template=None,
+                        valence=valence,
+                        is_active=True,
+                    )
+                    inserted += 1
+        except ValueError as exc:
+            errors.append(str(exc))
+            skipped += 1
+        except Exception as exc:
+            errors.append(f"Zeile {idx}: {exc}")
+            skipped += 1
+    return {
+        "ok": True,
+        "inserted": inserted,
+        "updated": updated,
+        "skipped": skipped,
+        "errors": errors,
+        "total_rows": inserted + updated + skipped,
+    }

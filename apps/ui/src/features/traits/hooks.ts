@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchTraits, createTrait, updateTrait, deleteTrait, fetchTraitCategories, setTraitActive, type TraitItem, type TraitPayload } from './api';
+import { fetchTraits, createTrait, updateTrait, deleteTrait, fetchTraitCategories, setTraitActive, exportTraitsCsv, importTraitsCsv, type TraitItem, type TraitPayload, type TraitImportResult } from './api';
 
 export function useTraits() {
   return useQuery({ queryKey: ['traits'], queryFn: fetchTraits });
@@ -73,3 +73,28 @@ export function useToggleTraitActive() {
     },
   });
 }
+
+export function useImportTraitsCsv() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => importTraitsCsv(file),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['traits'] });
+      qc.invalidateQueries({ queryKey: ['trait-categories'] });
+    },
+  });
+}
+
+export async function triggerTraitsExport(): Promise<void> {
+  const blob = await exportTraitsCsv();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'traits.csv';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export type { TraitImportResult };

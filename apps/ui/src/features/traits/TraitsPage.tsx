@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { ActionIcon, Button, Card, Group, Menu, MultiSelect, Switch, Title } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import type { ColumnDef } from '@tanstack/react-table';
 import { DataTable } from '../../components/DataTable';
-import { useTraits, useCreateTrait, useDeleteTrait, useUpdateTrait, useTraitCategories, useToggleTraitActive } from './hooks';
+import { useTraits, useCreateTrait, useDeleteTrait, useUpdateTrait, useTraitCategories, useToggleTraitActive, useImportTraitsCsv, triggerTraitsExport } from './hooks';
 import { TraitModal } from './TraitModal';
 import type { TraitItem } from './api';
 
@@ -13,6 +14,8 @@ export function TraitsPage() {
   const updateM = useUpdateTrait();
   const deleteM = useDeleteTrait();
   const toggleActiveM = useToggleTraitActive();
+  const importCsvM = useImportTraitsCsv();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [modal, setModal] = useState<null | { mode: 'create' } | { mode: 'edit'; row: TraitItem }>(null);
   const [pendingToggleId, setPendingToggleId] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
@@ -140,8 +143,41 @@ export function TraitsPage() {
     <Card>
       <Group justify="space-between" mb="md">
         <Title order={2}>Traits</Title>
-        <Button onClick={() => setModal({ mode: 'create' })}>Trait hinzufügen</Button>
+        <Group gap="xs">
+          <Button variant="light" onClick={async () => {
+            try {
+              await triggerTraitsExport();
+              notifications.show({ color: 'green', title: 'Export erstellt', message: 'traits.csv wurde heruntergeladen.' });
+            } catch (err) {
+              notifications.show({ color: 'red', title: 'Export fehlgeschlagen', message: String(err) });
+            }
+          }}>CSV exportieren</Button>
+          <Button variant="light" onClick={() => fileInputRef.current?.click()} loading={importCsvM.isPending}>CSV importieren</Button>
+          <Button onClick={() => setModal({ mode: 'create' })}>Trait hinzufügen</Button>
+        </Group>
       </Group>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".csv,text/csv"
+        style={{ display: 'none' }}
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          try {
+            const result = await importCsvM.mutateAsync(file);
+            notifications.show({
+              color: 'green',
+              title: 'Import abgeschlossen',
+              message: `Neu: ${result.inserted}, aktualisiert: ${result.updated}, übersprungen: ${result.skipped}`,
+            });
+          } catch (err) {
+            notifications.show({ color: 'red', title: 'Import fehlgeschlagen', message: String(err) });
+          } finally {
+            e.target.value = '';
+          }
+        }}
+      />
       <Group mb="md" gap="md" align="flex-end" wrap="wrap">
         <MultiSelect
           label="Kategorie filtern"

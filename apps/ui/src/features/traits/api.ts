@@ -46,3 +46,19 @@ export async function setTraitActive(id: string, is_active: boolean): Promise<Tr
   const res = await api.post<TraitItem>(`/traits/${id}/active`, { is_active });
   return res.data;
 }
+
+export async function exportTraitsCsv(): Promise<Blob> {
+  const res = await api.get<Blob>('/traits/export', { responseType: 'blob' });
+  return res.data;
+}
+
+export type TraitImportResult = { ok: boolean; inserted: number; updated: number; skipped: number; errors: string[] };
+
+export async function importTraitsCsv(file: File): Promise<TraitImportResult> {
+  const form = new FormData();
+  form.append('file', file);
+  const res = await api.post<TraitImportResult>('/traits/import', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return res.data;
+}
