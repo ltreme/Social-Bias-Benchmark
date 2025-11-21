@@ -120,3 +120,34 @@ export async function fetchRunMeans(runId: number, attribute: string, top_n?: nu
   const res = await api.get<{ ok: boolean; rows: MeansRow[] }>(`/runs/${runId}/means`, { params: { attribute, top_n } });
   return res.data;
 }
+
+export type WarmCacheStep = {
+  name: string;
+  status: 'running' | 'done' | 'error';
+  ok?: boolean | null;
+  duration_ms?: number | null;
+  started_at?: string | null;
+  finished_at?: string | null;
+  error?: string | null;
+};
+export type RunWarmupStatus = {
+  ok: boolean;
+  run_id?: number;
+  status: 'idle' | 'running' | 'done' | 'done_with_errors' | 'error';
+  started_at?: string | null;
+  updated_at?: string | null;
+  finished_at?: string | null;
+  duration_ms?: number | null;
+  current_step?: string | null;
+  steps: WarmCacheStep[];
+  had_errors?: boolean;
+  error?: string | null;
+};
+export async function startRunWarmup(runId: number) {
+  const res = await api.post<RunWarmupStatus>(`/runs/${runId}/warm-cache`);
+  return res.data;
+}
+export async function fetchRunWarmupStatus(runId: number) {
+  const res = await api.get<RunWarmupStatus>(`/runs/${runId}/warm-cache`);
+  return res.data;
+}

@@ -2,14 +2,15 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from backend.infrastructure.storage.models import Model
 
+from ..deps import db_session
 from ..utils import ensure_db
 
-router = APIRouter(tags=["models-admin"])
+router = APIRouter(tags=["models-admin"], dependencies=[Depends(db_session)])
 
 
 class ModelOut(BaseModel):

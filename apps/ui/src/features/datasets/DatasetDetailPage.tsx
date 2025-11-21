@@ -3,7 +3,7 @@ import { notifications } from '@mantine/notifications';
 import { useParams, Link } from '@tanstack/react-router';
 import { ChartPanel } from '../../components/ChartPanel';
 import { toBar } from '../../components/ChartUtils';
-import { useDatasetComposition, useDataset, useDatasetRuns, useAttrgenStatus, useLatestAttrgen, useAttrgenRuns, useBenchmarkStatus } from './hooks';
+import { useDatasetComposition, useDataset, useDatasetRuns, useAttrgenStatus, useLatestAttrgen, useAttrgenRuns, useBenchmarkStatus, useCancelBenchmark, useActiveBenchmark } from './hooks';
 import { useModels } from '../compare/hooks';
 import { useEffect, useState } from 'react';
 // no modal inputs here; forms live in child components
@@ -27,6 +27,8 @@ export function DatasetDetailPage() {
     const [attrgenRunForBenchmark, setAttrgenRunForBenchmark] = useState<number | undefined>(undefined);
     const [benchInitialModelName, setBenchInitialModelName] = useState<string | undefined>(undefined);
     const benchStatus = useBenchmarkStatus(benchRunId);
+    const activeBenchmark = useActiveBenchmark(idNum);
+    const cancelBench = useCancelBenchmark();
     const status = useAttrgenStatus(runId);
     const latest = useLatestAttrgen(idNum);
     useEffect(() => {
@@ -44,6 +46,15 @@ export function DatasetDetailPage() {
             notifications.show({ color: 'red', title: 'AttrGen fehlgeschlagen', message: String(err) });
         }
     }, [status.data?.status, latest.data?.status]);
+
+    // Sync benchRunId with active benchmark info
+    useEffect(() => {
+        if (activeBenchmark.data?.active && activeBenchmark.data.run_id) {
+            setBenchRunId(activeBenchmark.data.run_id);
+        } else if (!activeBenchmark.data?.active && benchStatus.data?.status && ['done', 'failed', 'cancelled'].includes(benchStatus.data.status)) {
+            setBenchRunId(undefined);
+        }
+    }, [activeBenchmark.data?.active, activeBenchmark.data?.run_id, benchStatus.data?.status]);
 
     // Notify user on failed benchmark status
     useEffect(() => {
@@ -110,17 +121,40 @@ export function DatasetDetailPage() {
                   runs={runsList.data.runs}
                   onRequestBenchmark={(modelName, runId) => { setBenchInitialModelName(modelName || undefined); setAttrgenRunForBenchmark(runId); setBenchModalOpen(true); }}
                 />
-                {benchRunId && benchStatus.data ? (
-                  benchStatus.data.status === 'failed' ? (
+                {benchRunId && (benchStatus.data || activeBenchmark.data?.active) ? (
+                  (benchStatus.data?.status || activeBenchmark.data?.status) === 'failed' ? (
                     <div style={{ marginTop: 8, color: '#d32f2f' }}>
-                      <b>Benchmark-Fehler:</b> {(benchStatus.data as any).error || 'Unbekannter Fehler'}
+                      <b>Benchmark-Fehler:</b> {(benchStatus.data as any)?.error || (activeBenchmark.data as any)?.error || 'Unbekannter Fehler'}
                     </div>
                   ) : (
                     <div style={{ marginTop: 8 }}>
-                      <b>Benchmark-Status:</b> {benchStatus.data.status} {benchStatus.data.done ?? 0}/{benchStatus.data.total ?? 0}
-                      <div style={{ width: 320 }}>
-                        <Progress value={benchStatus.data.pct ?? 0} mt="xs" />
-                      </div>
+                      <Group gap="sm" align="center">
+                        <div>
+                          <b>Benchmark-Status:</b> {(benchStatus.data?.status || activeBenchmark.data?.status || 'unknown')} {(benchStatus.data?.done ?? activeBenchmark.data?.done ?? 0)}/{(benchStatus.data?.total ?? activeBenchmark.data?.total ?? 0)}
+                          <div style={{ width: 320 }}>
+                            <Progress value={benchStatus.data?.pct ?? activeBenchmark.data?.pct ?? 0} mt="xs" />
+                          </div>
+                        </div>
+                        {['running', 'queued', 'partial', 'cancelling'].includes((benchStatus.data?.status || activeBenchmark.data?.status || '').toLowerCase()) ? (
+                          <Button
+                            variant="light"
+                            size="xs"
+                            color="red"
+                            loading={cancelBench.isPending}
+                            onClick={async () => {
+                              if (!benchRunId) return;
+                              if (!confirm('Benchmark wirklich abbrechen?')) return;
+                              try {
+                                await cancelBench.mutateAsync(benchRunId);
+                              } catch {
+                                /* notification via interceptor */
+                              }
+                            }}
+                          >
+                            {(benchStatus.data?.status || activeBenchmark.data?.status || '').toLowerCase() === 'cancelling' ? 'Abbruch läuft…' : 'Benchmark abbrechen'}
+                          </Button>
+                        ) : null}
+                      </Group>
                     </div>
                   )
                 ) : null}

@@ -1,4 +1,4 @@
-import { ActionIcon, Group } from '@mantine/core';
+import { ActionIcon, Group, Progress } from '@mantine/core';
 import { Link } from '@tanstack/react-router';
 import { DataTable } from '../../../components/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -9,7 +9,7 @@ import { IconExternalLink, IconTrash } from '@tabler/icons-react';
 
 type Props = {
   datasetId: number;
-  runs: Array<{ id: number; model_name: string; include_rationale: boolean; created_at: string }>;
+  runs: Run[];
 };
 
 export function DatasetRunsTable({ datasetId, runs }: Props) {
@@ -22,18 +22,52 @@ export function DatasetRunsTable({ datasetId, runs }: Props) {
     { header: 'Rationale', accessorKey: 'include_rationale', cell: ({ row }) => (row.original.include_rationale ? 'Ja' : 'Nein') },
     { header: 'Erstellt', accessorKey: 'created_at', cell: ({ row }) => (row.original.created_at ? new Date(row.original.created_at).toLocaleString() : '') },
     {
+      header: 'Status',
+      accessorKey: 'status',
+      cell: ({ row }) => {
+        const r = row.original;
+        const stateRaw = (r.status || 'done').toLowerCase();
+        const isDone = ['done', 'failed', 'cancelled'].includes(stateRaw);
+        return (
+          <div style={{ minWidth: 160 }}>
+            {isDone ? (
+              <span style={{ color: stateRaw === 'failed' ? '#d32f2f' : '#2ca25f' }}>
+                {stateRaw === 'failed' ? 'Fehlgeschlagen' : stateRaw === 'cancelled' ? 'Abgebrochen' : 'Fertig'}
+              </span>
+            ) : (
+              <>
+                <span>
+                  {r.status || 'unknown'} {r.done ?? 0}/{r.total ?? 0}
+                </span>
+                <div style={{ width: 140 }}>
+                  <Progress value={r.pct ?? 0} mt="xs" />
+                </div>
+              </>
+            )}
+          </div>
+        );
+      },
+    },
+    {
       header: 'Aktionen',
       accessorKey: 'actions',
       cell: ({ row }) => (
         <Group gap="xs">
-          <ActionIcon
-            title="Run ansehen"
-            variant="light"
-            component={Link as any}
-            to={`/runs/${row.original.id}`}
-          >
-            <IconExternalLink size={16} />
-          </ActionIcon>
+          {(() => {
+            const state = (row.original.status || '').toLowerCase();
+            const isActive = ['queued', 'running', 'partial', 'cancelling'].includes(state);
+            return (
+            <ActionIcon
+              title="Run ansehen"
+              variant="light"
+              component={isActive ? undefined : (Link as any)}
+              to={isActive ? undefined : `/runs/${row.original.id}`}
+              disabled={isActive}
+            >
+              <IconExternalLink size={16} />
+            </ActionIcon>
+            );
+          })()}
           <ActionIcon
             variant="subtle"
             color="red"

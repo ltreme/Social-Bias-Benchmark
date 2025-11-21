@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
 from backend.domain.analytics.benchmarks.analytics import (
     BenchQuery,
@@ -15,9 +15,10 @@ from backend.infrastructure.storage.models import (
     Model,
 )
 
+from ..deps import db_session
 from ..utils import ensure_db
 
-router = APIRouter(tags=["metrics"])
+router = APIRouter(tags=["metrics"], dependencies=[Depends(db_session)])
 
 
 @router.get("/metrics/benchmark-distribution")

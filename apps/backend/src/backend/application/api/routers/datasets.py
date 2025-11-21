@@ -5,7 +5,7 @@ import threading
 import time
 from typing import Any, Dict, Iterable, List, Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from peewee import JOIN
 from pydantic import BaseModel
@@ -29,9 +29,11 @@ from backend.infrastructure.storage.models import (
     Persona,
 )
 
+from ..deps import db_session
 from ..utils import ensure_db
+from .runs import _BENCH_PROGRESS, _bench_update_progress
 
-router = APIRouter(tags=["datasets"])
+router = APIRouter(tags=["datasets"], dependencies=[Depends(db_session)])
 
 
 class DatasetOut(BaseModel):
@@ -137,12 +139,33 @@ def dataset_runs(dataset_id: int) -> List[Dict[str, Any]]:
         .where(BenchmarkRun.dataset_id == dataset_id)
         .order_by(BenchmarkRun.id.desc())
     ):
+        info = _BENCH_PROGRESS.get(int(r.id))
+        if info and info.get("dataset_id") != dataset_id:
+            info = None
+        if info is None:
+            info = {
+                "status": "done",
+                "dataset_id": dataset_id,
+            }
+            _BENCH_PROGRESS[int(r.id)] = info
+        try:
+            _bench_update_progress(int(r.id), dataset_id)
+        except Exception:
+            pass
+        status = info.get("status", "unknown")
+        done = info.get("done")
+        total = info.get("total")
+        pct = info.get("pct")
         out.append(
             {
                 "id": int(r.id),
                 "model_name": str(r.model_id.name),
                 "include_rationale": bool(r.include_rationale),
                 "created_at": str(r.created_at),
+                "status": status,
+                "done": done,
+                "total": total,
+                "pct": pct,
             }
         )
     return out

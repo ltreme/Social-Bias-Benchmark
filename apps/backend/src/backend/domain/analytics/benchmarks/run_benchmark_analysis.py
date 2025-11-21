@@ -19,6 +19,7 @@ from backend.domain.analytics.benchmarks.analytics import (
     plot_fixed_effects_forest,
     plot_rating_distribution,
     plot_rating_distribution_by_genid,
+    summarise_rating_by,
 )
 from backend.domain.analytics.persona.analytics import set_default_theme
 
@@ -253,9 +254,20 @@ def main(argv=None) -> int:
         except Exception:
             pass
         save(axg, out / "rating_distribution_by_dataset_id.png")
+    if "trait_valence_label" in df.columns:
+        valence_summary = summarise_rating_by(
+            df, "trait_valence_label", weight_col=weight_col
+        )
+        if not valence_summary.empty:
+            try:
+                valence_summary.to_csv(out / "summary_trait_valence.csv", index=False)
+            except Exception:
+                pass
 
     # Per-category means + CI and deltas for a few key demographics
     categories = [
+        "trait_category",
+        "trait_valence_label",
         "gender",
         "origin_region",
         "religion",
@@ -463,6 +475,7 @@ def main(argv=None) -> int:
         ),
         "forest_min_n": args.forest_min_n,
         "baselines": baseline_map if "baseline_map" in locals() else {},
+        "valence_aligned": True,
     }
     export_benchmark_report(
         df,

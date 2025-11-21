@@ -5,7 +5,7 @@ import io
 import re
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from peewee import fn
 from pydantic import BaseModel, conint
@@ -13,9 +13,10 @@ from pydantic import BaseModel, conint
 from backend.infrastructure.storage.db import get_db
 from backend.infrastructure.storage.models import BenchmarkResult, Trait
 
+from ..deps import db_session
 from ..utils import ensure_db
 
-router = APIRouter(tags=["traits"])
+router = APIRouter(tags=["traits"], dependencies=[Depends(db_session)])
 
 
 class TraitOut(BaseModel):

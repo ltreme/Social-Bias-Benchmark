@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import copy
 import json
+import logging
 import os
 import threading
 import time
 import traceback
+from contextlib import nullcontext
 from datetime import datetime
 from functools import lru_cache
 from typing import Any, Dict, List, Optional
@@ -14,7 +17,7 @@ import numpy as np
 import pandas as pd
 import peewee as pw
 import requests
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from backend.domain.analytics.benchmarks import analytics as bench_ana
 from backend.domain.analytics.benchmarks.analytics import (
@@ -25,13 +28,17 @@ from backend.domain.benchmarking.adapters.postprocess.postprocessor_likert impor
     LikertPostProcessor,
 )
 from backend.domain.benchmarking.adapters.prompting import LikertPromptFactory
-from backend.domain.benchmarking.benchmark import run_benchmark_pipeline
+from backend.domain.benchmarking.benchmark import (
+    BenchmarkCancelledError,
+    run_benchmark_pipeline,
+)
 from backend.infrastructure.benchmark.persister_bench_sqlite import BenchPersisterPeewee
 from backend.infrastructure.benchmark.repository.persona_repository import (
     FullPersonaRepositoryByDataset,
 )
 from backend.infrastructure.benchmark.repository.trait import TraitRepository
 from backend.infrastructure.llm import LlmClientFakeBench, LlmClientVLLMBench
+from backend.infrastructure.storage.db import get_db
 from backend.infrastructure.storage.models import (
     BenchCache,
     BenchmarkResult,
@@ -42,9 +49,20 @@ from backend.infrastructure.storage.models import (
     utcnow,
 )
 
+from ..deps import db_session
 from ..utils import ensure_db
 
-router = APIRouter(tags=["runs"])
+router = APIRouter(tags=["runs"], dependencies=[Depends(db_session)])
+
+_DEFAULT_ANALYSIS_ATTRIBUTES: List[str] = [
+    "gender",
+    "origin_subregion",
+    "religion",
+    "migration_status",
+    "sexuality",
+    "marriage_status",
+    "education",
+]
 
 
 @router.get("/runs")
@@ -125,6 +143,20 @@ def _df_for_read(run_id: int):
     return _load_run_df_cached(run_id)
 
 
+def _progress_status(info: Dict[str, Any]) -> str:
+    try:
+        done = int(info.get("done") or 0)
+        total = int(info.get("total") or 0)
+    except Exception:
+        done = 0
+        total = 0
+    if total and done >= total:
+        return "done"
+    if done > 0:
+        return "partial"
+    return info.get("status") or "queued"
+
+
 # ---------------- Persistent cache helpers ----------------
 def _result_row_count(run_id: int) -> int:
     try:
@@ -192,11 +224,20 @@ def _cache_put(run_id: int, kind: str, key: str, payload: Dict[str, Any]) -> Non
 
 # ---------------- Benchmark job control ----------------
 _BENCH_PROGRESS: dict[int, dict] = {}
+_WARM_CACHE_JOBS: Dict[int, Dict[str, Any]] = {}
+_WARM_CACHE_LOCK = threading.Lock()
+_LOG = logging.getLogger(__name__)
 
 
 def _bench_progress_poller(run_id: int, dataset_id: int) -> None:
     try:
-        while _BENCH_PROGRESS.get(run_id, {}).get("status") in {"queued", "running"}:
+        while _BENCH_PROGRESS.get(run_id, {}).get("status") in {
+            "queued",
+            "running",
+            "cancelling",
+        }:
+            if _BENCH_PROGRESS.get(run_id, {}).get("cancel_requested"):
+                _BENCH_PROGRESS[run_id]["status"] = "cancelling"
             _bench_update_progress(run_id, dataset_id)
             time.sleep(2.0)
     except Exception:
@@ -241,7 +282,10 @@ def _bench_update_progress(run_id: int, dataset_id: int) -> None:
         total = done
     pct = (100.0 * done / total) if total else 0.0
     _BENCH_PROGRESS.setdefault(run_id, {})
-    _BENCH_PROGRESS[run_id].update({"done": done, "total": total, "pct": pct})
+    entry = _BENCH_PROGRESS[run_id]
+    entry.update({"done": done, "total": total, "pct": pct})
+    if entry.get("status") in (None, "unknown"):
+        entry["status"] = _progress_status(entry)
 
 
 def _completed_keys_for_run(run_id: int) -> set[tuple[str, str, str]]:
@@ -270,6 +314,13 @@ def _bench_run_background(run_id: int) -> None:
     ds_id = int(rec.dataset_id.id)
     model_name = str(rec.model_id.name)
     include_rationale = bool(rec.include_rationale)
+    if _BENCH_PROGRESS.get(run_id, {}).get("cancel_requested"):
+        _BENCH_PROGRESS[run_id] = {
+            **_BENCH_PROGRESS.get(run_id, {}),
+            "status": "cancelled",
+            "error": "Benchmark wurde abgebrochen",
+        }
+        return
     scale_mode = getattr(rec, "scale_mode", None) or _BENCH_PROGRESS.get(
         run_id, {}
     ).get("scale_mode")
@@ -367,7 +418,17 @@ def _bench_run_background(run_id: int) -> None:
         )
 
     persist = BenchPersisterPeewee()
-    _BENCH_PROGRESS[run_id] = {**_BENCH_PROGRESS.get(run_id, {}), "status": "running"}
+    _BENCH_PROGRESS[run_id] = {
+        **_BENCH_PROGRESS.get(run_id, {}),
+        "status": "running",
+        "cancel_requested": _BENCH_PROGRESS.get(run_id, {}).get(
+            "cancel_requested", False
+        ),
+    }
+
+    def _cancel_check() -> bool:
+        return bool(_BENCH_PROGRESS.get(run_id, {}).get("cancel_requested"))
+
     try:
         skip_completed = bool(
             _BENCH_PROGRESS.get(run_id, {}).get("skip_completed", False)
@@ -394,6 +455,7 @@ def _bench_run_background(run_id: int) -> None:
             ),
             persona_count_override=persona_count,
             completed_keys=completed_keys,
+            cancel_check=_cancel_check,
         )
         _bench_update_progress(run_id, ds_id)
         info = _BENCH_PROGRESS.get(run_id, {})
@@ -406,6 +468,9 @@ def _bench_run_background(run_id: int) -> None:
         _BENCH_PROGRESS[run_id]["status"] = (
             "done" if (total == 0 or done >= total) else "partial"
         )
+    except BenchmarkCancelledError:
+        _BENCH_PROGRESS[run_id]["status"] = "cancelled"
+        _BENCH_PROGRESS[run_id]["error"] = "Benchmark wurde abgebrochen"
     except Exception as e:
         _BENCH_PROGRESS[run_id]["status"] = "failed"
         _BENCH_PROGRESS[run_id]["error"] = str(e)
@@ -468,6 +533,7 @@ def start_benchmark(body: dict) -> dict:
         _BENCH_PROGRESS[run_id] = {
             **_BENCH_PROGRESS.get(run_id, {}),
             "status": "queued",
+            "dataset_id": ds_id,
             "llm": llm,
             "batch_size": batch_size,
             "vllm_base_url": vllm_base_url,
@@ -483,6 +549,7 @@ def start_benchmark(body: dict) -> dict:
             "attrgen_run_id": (
                 int(attrgen_run_id) if attrgen_run_id is not None else None
             ),
+            "cancel_requested": False,
         }
     else:
         model_name = str(body["model_name"])
@@ -514,6 +581,7 @@ def start_benchmark(body: dict) -> dict:
                 return {"ok": False, "error": str(e)}
         _BENCH_PROGRESS[run_id] = {
             "status": "queued",
+            "dataset_id": ds_id,
             "llm": llm,
             "batch_size": batch_size,
             "vllm_base_url": vllm_base_url,
@@ -528,6 +596,7 @@ def start_benchmark(body: dict) -> dict:
             "attrgen_run_id": (
                 int(attrgen_run_id) if attrgen_run_id is not None else None
             ),
+            "cancel_requested": False,
         }
 
     t = threading.Thread(target=_bench_run_background, args=(run_id,), daemon=True)
@@ -554,8 +623,8 @@ def bench_status(run_id: int) -> dict:
             ds_id = int(rec.dataset_id.id)
             _bench_update_progress(run_id, ds_id)
             info = _BENCH_PROGRESS.get(run_id)
-            if "status" not in info:
-                info["status"] = "unknown"
+            if info:
+                info.setdefault("status", _progress_status(info))
         except Exception:
             info = {"status": "unknown"}
     # Normalize status if incomplete
@@ -566,7 +635,56 @@ def bench_status(run_id: int) -> dict:
             info["status"] = "partial"
     except Exception:
         pass
+    if info and info.get("status") in (None, "unknown"):
+        info["status"] = _progress_status(info)
     return {"ok": True, **(info or {})}
+
+
+@router.post("/benchmarks/{run_id}/cancel")
+def bench_cancel(run_id: int) -> dict:
+    ensure_db()
+    info = _BENCH_PROGRESS.get(run_id)
+    if not info:
+        raise HTTPException(
+            status_code=404, detail="Benchmark-Run unbekannt oder bereits beendet"
+        )
+    state = info.get("status")
+    if state not in {"queued", "running", "partial", "cancelling"}:
+        raise HTTPException(
+            status_code=400, detail=f"Benchmark ist nicht aktiv (Status: {state})"
+        )
+    if state == "cancelling":
+        return {"ok": True}
+    info["cancel_requested"] = True
+    info["status"] = "cancelling"
+    return {"ok": True}
+
+
+@router.get("/datasets/{dataset_id}/benchmarks/active")
+def active_benchmark(dataset_id: int) -> dict:
+    ensure_db()
+    ds_id = int(dataset_id)
+    for run_id, info in list(_BENCH_PROGRESS.items()):
+        if info.get("dataset_id") != ds_id:
+            continue
+        status = info.get("status", "unknown")
+        if status not in {"queued", "running", "partial", "cancelling"}:
+            continue
+        try:
+            _bench_update_progress(run_id, ds_id)
+        except Exception:
+            pass
+        return {
+            "ok": True,
+            "active": True,
+            "run_id": run_id,
+            "status": info.get("status"),
+            "done": info.get("done"),
+            "total": info.get("total"),
+            "pct": info.get("pct"),
+            "error": info.get("error"),
+        }
+    return {"ok": True, "active": False}
 
 
 @router.get("/runs/{run_id}/metrics")
@@ -834,48 +952,71 @@ def run_missing(run_id: int) -> Dict[str, Any]:
         .count()
     )
 
-    # Count missing via anti-join
-    cnt_sql = (
-        "SELECT COUNT(1) AS missing "
-        "FROM datasetpersona dp "
-        'JOIN "case" c ON 1=1 '
-        "LEFT JOIN benchmarkresult br "
-        "  ON br.benchmark_run_id = ? AND br.persona_uuid_id = dp.persona_id AND br.case_id = c.id "
-        "WHERE dp.dataset_id = ? AND br.id IS NULL"
-    )
-    missing = 0
-    try:
-        cur = db.execute_sql(cnt_sql, (run_id, dataset_id))
-        row = cur.fetchone()
-        if row:
-            missing = int(row[0] or 0)
-    except Exception:
-        # Fallback: derive from total-done
-        missing = max(0, (total or 0) - (done or 0))
-
-    # Sample a few missing pairs with labels
-    sample_sql = (
-        "SELECT dp.persona_id, c.id AS case_id, c.adjective "
-        "FROM datasetpersona dp "
-        'JOIN "case" c ON 1=1 '
-        "LEFT JOIN benchmarkresult br "
-        "  ON br.benchmark_run_id = ? AND br.persona_uuid_id = dp.persona_id AND br.case_id = c.id "
-        "WHERE dp.dataset_id = ? AND br.id IS NULL "
-        "LIMIT 20"
-    )
-    samples = []
-    try:
-        cur = db.execute_sql(sample_sql, (run_id, dataset_id))
-        for pid, cid, adj in cur.fetchall():
-            samples.append(
-                {
-                    "persona_uuid": str(pid),
-                    "case_id": str(cid),
-                    "adjective": str(adj) if adj is not None else None,
-                }
+    MAX_DIRECT_SCAN = 500_000
+    skip_heavy_scan = bool(total and total > MAX_DIRECT_SCAN)
+    missing = max(0, (total or 0) - (done or 0))
+    samples: List[Dict[str, Any]] = []
+    sampling_limited = skip_heavy_scan
+    if not skip_heavy_scan:
+        trait_alias = Trait.alias()
+        try:
+            cnt_query = (
+                DatasetPersona.select(pw.fn.COUNT(1))
+                .join(trait_alias, pw.JOIN.CROSS)
+                .switch(DatasetPersona)
+                .join(
+                    BenchmarkResult,
+                    pw.JOIN.LEFT_OUTER,
+                    on=(
+                        (BenchmarkResult.benchmark_run_id == run_id)
+                        & (BenchmarkResult.persona_uuid_id == DatasetPersona.persona_id)
+                        & (BenchmarkResult.case_id == trait_alias.id)
+                    ),
+                )
+                .where(
+                    (DatasetPersona.dataset_id == dataset_id)
+                    & (BenchmarkResult.id.is_null(True))
+                )
             )
-    except Exception:
-        samples = []
+            missing = int(cnt_query.scalar() or 0)
+        except Exception:
+            missing = max(0, (total or 0) - (done or 0))
+
+        try:
+            sample_query = (
+                DatasetPersona.select(
+                    DatasetPersona.persona_id,
+                    trait_alias.id.alias("case_id"),
+                    trait_alias.adjective.alias("adjective"),
+                )
+                .join(trait_alias, pw.JOIN.CROSS)
+                .switch(DatasetPersona)
+                .join(
+                    BenchmarkResult,
+                    pw.JOIN.LEFT_OUTER,
+                    on=(
+                        (BenchmarkResult.benchmark_run_id == run_id)
+                        & (BenchmarkResult.persona_uuid_id == DatasetPersona.persona_id)
+                        & (BenchmarkResult.case_id == trait_alias.id)
+                    ),
+                )
+                .where(
+                    (DatasetPersona.dataset_id == dataset_id)
+                    & (BenchmarkResult.id.is_null(True))
+                )
+                .limit(20)
+                .tuples()
+            )
+            for pid, cid, adj in sample_query:
+                samples.append(
+                    {
+                        "persona_uuid": str(pid),
+                        "case_id": str(cid),
+                        "adjective": str(adj) if adj is not None else None,
+                    }
+                )
+        except Exception:
+            samples = []
 
     return {
         "ok": True,
@@ -884,6 +1025,7 @@ def run_missing(run_id: int) -> Dict[str, Any]:
         "done": done,
         "missing": missing,
         "samples": samples,
+        "sampling_limited": sampling_limited,
     }
 
 
@@ -940,129 +1082,10 @@ def run_deltas(
         payload = {"ok": True, "n": 0, "rows": []}
         _cache_put(run_id, "deltas", ck, payload)
         return payload
-    # Compute table via analytics helper
-    table = bench_ana.deltas_with_significance(
+    result = bench_ana.build_deltas_payload(
         df, attribute, baseline=baseline, n_perm=n_perm, alpha=alpha
     )
-
-    # Add BH q-values
-    try:
-        qvals = bench_ana.benjamini_hochberg(table["p_value"].tolist())
-        table = table.assign(q_value=qvals)
-    except Exception:
-        table = table.assign(q_value=[float("nan")] * len(table))
-
-    # Add Cliff's delta per category vs baseline
-    try:
-        import pandas as _pd
-
-        from backend.domain.analytics.benchmarks.analytics import (
-            mann_whitney_cliffs as _mw,
-        )
-
-        work = df.copy()
-        work[attribute] = work[attribute].fillna("Unknown").astype(str)
-        base = (
-            str(table["baseline"].iloc[0])
-            if "baseline" in table.columns and not table.empty
-            else None
-        )
-        if base is not None:
-            base_vals = _pd.to_numeric(
-                work.loc[work[attribute] == base, "rating"], errors="coerce"
-            ).dropna()
-            cliffs = []
-            for _, r in table.iterrows():
-                cat = str(r[attribute])
-                vals = _pd.to_numeric(
-                    work.loc[work[attribute] == cat, "rating"], errors="coerce"
-                ).dropna()
-                _, _, cd = _mw(base_vals, vals)
-                cliffs.append(float(cd))
-            table = table.assign(cliffs_delta=cliffs)
-    except Exception:
-        table = table.assign(cliffs_delta=[float("nan")] * len(table))
-
-    # Enrich with spread/CI based on SDs of baseline and category
-    import pandas as _pd
-
-    work = df.copy()
-    work[attribute] = work[attribute].fillna("Unknown").astype(str)
-    base = (
-        str(table["baseline"].iloc[0])
-        if "baseline" in table.columns and not table.empty
-        else None
-    )
-    base_vals = (
-        _pd.to_numeric(
-            work.loc[work[attribute] == base, "rating"], errors="coerce"
-        ).dropna()
-        if base is not None
-        else _pd.Series([], dtype=float)
-    )
-    n_base = int(base_vals.shape[0]) if base is not None else 0
-    mean_base = float(base_vals.mean()) if n_base > 0 else float("nan")
-    sd_base = float(base_vals.std(ddof=1)) if n_base > 1 else float("nan")
-
-    rows = []
-    for _, r in table.iterrows():
-        cat = str(r[attribute])
-        vals = _pd.to_numeric(
-            work.loc[work[attribute] == cat, "rating"], errors="coerce"
-        ).dropna()
-        n_cat = int(vals.shape[0])
-        sd_cat = float(vals.std(ddof=1)) if n_cat > 1 else float("nan")
-        delta = float(r["delta"]) if r["delta"] == r["delta"] else float("nan")
-        # Standard error and CI of difference of means
-        import math as _math
-
-        if (
-            n_base > 1
-            and n_cat > 1
-            and _math.isfinite(sd_base)
-            and _math.isfinite(sd_cat)
-        ):
-            se = float(_math.sqrt((sd_base**2) / n_base + (sd_cat**2) / n_cat))
-            ci_low = float(delta - 1.96 * se) if _math.isfinite(delta) else None
-            ci_high = float(delta + 1.96 * se) if _math.isfinite(delta) else None
-        else:
-            se = float("nan")
-            ci_low = None
-            ci_high = None
-        rows.append(
-            {
-                "category": cat,
-                "count": int(round(r["count"])),
-                "mean": float(r["mean"]),
-                "delta": delta if delta == delta else None,
-                "p_value": (
-                    float(r["p_value"]) if r["p_value"] == r["p_value"] else None
-                ),
-                "q_value": (
-                    float(r.get("q_value", float("nan")))
-                    if r.get("q_value", float("nan")) == r.get("q_value", float("nan"))
-                    else None
-                ),
-                "cliffs_delta": (
-                    float(r.get("cliffs_delta", float("nan")))
-                    if r.get("cliffs_delta", float("nan"))
-                    == r.get("cliffs_delta", float("nan"))
-                    else None
-                ),
-                "significant": bool(r.get("significant", False)),
-                "baseline": base,
-                "n_base": n_base,
-                "sd_base": sd_base if sd_base == sd_base else None,
-                "mean_base": mean_base if mean_base == mean_base else None,
-                "n_cat": n_cat,
-                "sd_cat": sd_cat if sd_cat == sd_cat else None,
-                "mean_cat": float(vals.mean()) if n_cat > 0 else None,
-                "se_delta": se if se == se else None,
-                "ci_low": ci_low,
-                "ci_high": ci_high,
-            }
-        )
-    payload = {"ok": True, "n": int(len(df)), "rows": rows, "baseline": base}
+    payload = {"ok": True, **result}
     _cache_put(run_id, "deltas", ck, payload)
     return payload
 
@@ -1149,55 +1172,76 @@ def run_forest(
         )
         target = str(s2.index[0]) if not s2.empty else None
 
+    agg = (
+        work.groupby(["case_id", attribute])["rating"]
+        .agg(count="count", mean="mean", std="std")
+        .reset_index()
+    )
+    agg = agg.loc[agg["case_id"].astype(str).str.startswith("g")]
+    if agg.empty:
+        payload = {"ok": True, "n": 0, "rows": []}
+        _cache_put(run_id, "forest", ck, payload)
+        return payload
+    baseline_df = agg.loc[agg[attribute] == baseline].set_index("case_id")
+    if baseline_df.empty:
+        payload = {"ok": True, "n": 0, "rows": []}
+        _cache_put(run_id, "forest", ck, payload)
+        return payload
     rows_list: List[Dict[str, Any]] = []
-    for q, sub in work.groupby("case_id"):
-        if not str(q).startswith("g"):
-            continue
-        base_vals = pd.to_numeric(
-            sub.loc[sub[attribute] == baseline, "rating"], errors="coerce"
-        ).dropna()
-        cats = (
-            [target]
-            if target is not None
-            else [
-                c for c in sub[attribute].unique().tolist() if str(c) != str(baseline)
-            ]
+    cats = (
+        [target]
+        if target is not None
+        else [
+            c
+            for c in agg[attribute].dropna().unique().tolist()
+            if str(c) != str(baseline)
+        ]
+    )
+    cats = [c for c in cats if c is not None]
+    for cat in cats:
+        cat_df = agg.loc[agg[attribute] == cat].set_index("case_id")
+        merged = (
+            baseline_df.join(
+                cat_df,
+                how="inner",
+                lsuffix="_base",
+                rsuffix="_cat",
+            )
+            .reset_index()
+            .rename(columns={"index": "case_id"})
         )
-        for cat in cats:
-            cat_vals = pd.to_numeric(
-                sub.loc[sub[attribute] == cat, "rating"], errors="coerce"
-            ).dropna()
-            n_b = int(base_vals.shape[0])
-            n_c = int(cat_vals.shape[0])
-            if n_b < min_n or n_c < min_n:
-                continue
-            mean_b = float(base_vals.mean()) if n_b > 0 else float("nan")
-            mean_c = float(cat_vals.mean()) if n_c > 0 else float("nan")
-            delta = (
-                float(mean_c - mean_b)
-                if np.isfinite(mean_b) and np.isfinite(mean_c)
-                else float("nan")
-            )
-            std_b = float(base_vals.std(ddof=1)) if n_b > 1 else float("nan")
-            std_c = float(cat_vals.std(ddof=1)) if n_c > 1 else float("nan")
-            se = (
-                float(np.sqrt((std_b**2) / n_b + (std_c**2) / n_c))
-                if (n_b > 1 and n_c > 1)
-                else float("nan")
-            )
-            ci_low = float(delta - 1.96 * se) if np.isfinite(se) else None
-            ci_high = float(delta + 1.96 * se) if np.isfinite(se) else None
+        if merged.empty:
+            continue
+        merged = merged.loc[
+            (merged["count_base"] >= min_n) & (merged["count_cat"] >= min_n)
+        ].copy()
+        if merged.empty:
+            continue
+        merged["delta"] = merged["mean_cat"] - merged["mean_base"]
+        merged["se"] = np.sqrt(
+            (merged["std_base"] ** 2) / merged["count_base"]
+            + (merged["std_cat"] ** 2) / merged["count_cat"]
+        )
+        se_mask = (merged["count_base"] > 1) & (merged["count_cat"] > 1)
+        merged.loc[~se_mask, "se"] = np.nan
+        merged["ci_low"] = merged["delta"] - 1.96 * merged["se"]
+        merged["ci_high"] = merged["delta"] + 1.96 * merged["se"]
+        for row in merged.itertuples(index=False):
             rows_list.append(
                 {
-                    "case_id": str(q),
+                    "case_id": str(row.case_id),
                     "category": str(cat),
                     "baseline": str(baseline),
-                    "n_base": n_b,
-                    "n_cat": n_c,
-                    "delta": delta,
-                    "se": se if np.isfinite(se) else None,
-                    "ci_low": ci_low,
-                    "ci_high": ci_high,
+                    "n_base": int(row.count_base),
+                    "n_cat": int(row.count_cat),
+                    "delta": (
+                        float(row.delta) if row.delta == row.delta else float("nan")
+                    ),
+                    "se": float(row.se) if row.se == row.se else None,
+                    "ci_low": float(row.ci_low) if row.ci_low == row.ci_low else None,
+                    "ci_high": (
+                        float(row.ci_high) if row.ci_high == row.ci_high else None
+                    ),
                 }
             )
 
@@ -1238,3 +1282,189 @@ def run_forest(
     payload = {"ok": True, "n": len(rows_list), "rows": rows_list, "overall": overall}
     _cache_put(run_id, "forest", ck, payload)
     return payload
+
+
+def _warm_job_snapshot(run_id: int, job: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    if not job:
+        return {
+            "ok": True,
+            "run_id": int(run_id),
+            "status": "idle",
+            "steps": [],
+            "started_at": None,
+            "updated_at": None,
+            "finished_at": None,
+            "duration_ms": None,
+            "current_step": None,
+            "had_errors": False,
+            "error": None,
+        }
+    snap = copy.deepcopy(job)
+    snap["ok"] = True
+    snap.setdefault("steps", [])
+    snap.setdefault("error", None)
+    snap.setdefault("had_errors", False)
+    return snap
+
+
+def _start_warm_cache_job(run_id: int) -> Dict[str, Any]:
+    ensure_db()
+    now = utcnow().isoformat()
+    with _WARM_CACHE_LOCK:
+        existing = _WARM_CACHE_JOBS.get(run_id)
+        if existing and existing.get("status") == "running":
+            return copy.deepcopy(existing)
+        job = {
+            "run_id": int(run_id),
+            "status": "running",
+            "started_at": now,
+            "updated_at": now,
+            "finished_at": None,
+            "duration_ms": None,
+            "current_step": None,
+            "steps": [],
+            "had_errors": False,
+        }
+        _WARM_CACHE_JOBS[run_id] = job
+    thread = threading.Thread(
+        target=_warm_cache_worker,
+        args=(run_id,),
+        daemon=True,
+        name=f"warm-cache-{run_id}",
+    )
+    thread.start()
+    return copy.deepcopy(job)
+
+
+def _warm_cache_worker(run_id: int) -> None:
+    job = _WARM_CACHE_JOBS.get(run_id)
+    if not job:
+        return
+    started = time.time()
+    _LOG.info("[warm-cache:%s] worker started", run_id)
+    try:
+        ensure_db()
+        try:
+            db = get_db()
+            ctx = db.connection_context()
+        except Exception:
+            ctx = nullcontext()
+        metrics_payload: Dict[str, Any] = {}
+        with ctx:
+            metrics_payload = _run_warm_step(job, "metrics", run_metrics, run_id) or {}
+            _run_warm_step(job, "missing", run_missing, run_id)
+            _run_warm_step(job, "order_metrics", run_order_metrics, run_id)
+            for attr in _DEFAULT_ANALYSIS_ATTRIBUTES:
+                _run_warm_step(job, f"means:{attr}", run_means, run_id, attr)
+                _run_warm_step(job, f"deltas:{attr}", run_deltas, run_id, attr)
+
+            attr_info = (
+                metrics_payload.get("attributes")
+                if isinstance(metrics_payload, dict)
+                else {}
+            ) or {}
+            focus_attr = "gender"
+            focus_meta = attr_info.get(focus_attr) or {}
+            focus_baseline = focus_meta.get("baseline")
+            if focus_baseline:
+                _run_warm_step(
+                    job,
+                    f"deltas:{focus_attr}:{focus_baseline}",
+                    run_deltas,
+                    run_id,
+                    focus_attr,
+                    focus_baseline,
+                )
+            focus_targets = [
+                cat.get("category")
+                for cat in (focus_meta.get("categories") or [])
+                if cat.get("category") and cat.get("category") != focus_baseline
+            ]
+            focus_target = focus_targets[0] if focus_targets else None
+            _run_warm_step(
+                job,
+                f"forest:{focus_attr}",
+                run_forest,
+                run_id,
+                focus_attr,
+                focus_baseline,
+                focus_target,
+                1,
+            )
+    except Exception as exc:  # pragma: no cover - best-effort diagnostics
+        job["status"] = "error"
+        job["error"] = str(exc)
+        _LOG.exception("[warm-cache:%s] worker failed: %s", run_id, exc)
+    finally:
+        job["duration_ms"] = int((time.time() - started) * 1000)
+        finished = utcnow().isoformat()
+        job["finished_at"] = finished
+        job["updated_at"] = finished
+        job["current_step"] = None
+        if job.get("status") == "running":
+            job["status"] = "done_with_errors" if job.get("had_errors") else "done"
+        _LOG.info(
+            "[warm-cache:%s] worker finished status=%s duration_ms=%s",
+            run_id,
+            job.get("status"),
+            job.get("duration_ms"),
+        )
+
+
+def _run_warm_step(job: Dict[str, Any], label: str, fn, *args, **kwargs):
+    step = {
+        "name": label,
+        "status": "running",
+        "ok": None,
+        "started_at": utcnow().isoformat(),
+        "finished_at": None,
+        "duration_ms": None,
+        "error": None,
+    }
+    job["steps"].append(step)
+    job["current_step"] = label
+    job["updated_at"] = step["started_at"]
+    t0 = time.time()
+    run_id = job.get("run_id")
+    _LOG.info("[warm-cache:%s] step %s started", run_id, label)
+    try:
+        result = fn(*args, **kwargs)
+        step["status"] = "done"
+        step["ok"] = True
+        step["duration_ms"] = int((time.time() - t0) * 1000)
+        step["finished_at"] = utcnow().isoformat()
+        _LOG.info(
+            "[warm-cache:%s] step %s finished ok duration_ms=%s",
+            run_id,
+            label,
+            step["duration_ms"],
+        )
+        return result
+    except Exception as exc:
+        step["status"] = "error"
+        step["ok"] = False
+        step["error"] = str(exc)
+        step["duration_ms"] = int((time.time() - t0) * 1000)
+        step["finished_at"] = utcnow().isoformat()
+        job["had_errors"] = True
+        _LOG.exception(
+            "[warm-cache:%s] step %s failed: %s", run_id, label, exc, exc_info=exc
+        )
+        return None
+    finally:
+        job["current_step"] = None
+        job["updated_at"] = utcnow().isoformat()
+
+
+@router.post("/runs/{run_id}/warm-cache")
+def warm_run_cache(run_id: int) -> Dict[str, Any]:
+    """Start (or return) the asynchronous warm-cache job for a run."""
+    job = _start_warm_cache_job(run_id)
+    return {"ok": True, **job}
+
+
+@router.get("/runs/{run_id}/warm-cache")
+def warm_run_cache_status(run_id: int) -> Dict[str, Any]:
+    """Return current warm-cache job progress."""
+    job = _WARM_CACHE_JOBS.get(run_id)
+    return _warm_job_snapshot(run_id, job)

@@ -23,6 +23,7 @@ from backend.infrastructure.storage.models import (
     DatasetPersona,
     Model,
     Persona,
+    Trait,
 )
 
 try:
@@ -38,7 +39,8 @@ except ImportError as exc:  # pragma: no cover
 @dataclass(slots=True)
 class BenchQuery:
     model_names: Sequence[str] | None = None
-    case_ids: Sequence[str] | None = None
+    case_ids: Sequence[str] | None = None  # legacy name
+    trait_ids: Sequence[str] | None = None
     dataset_ids: Sequence[int] | None = None
     run_ids: Sequence[int] | None = None
     include_rationale: bool | None = None
@@ -86,7 +88,11 @@ def load_benchmark_dataframe(cfg: BenchQuery) -> pd.DataFrame:
             Persona.origin_id,
             Country.region.alias("origin_region"),
             Country.subregion.alias("origin_subregion"),
+            Trait.category.alias("trait_category"),
+            Trait.valence.alias("trait_valence"),
         )
+        .join(Trait, pw.JOIN.LEFT_OUTER, on=(BenchmarkResult.case_id == Trait.id))
+        .switch(BenchmarkResult)
         .join(Persona, on=(BenchmarkResult.persona_uuid_id == Persona.uuid))
         .join(Country, pw.JOIN.LEFT_OUTER, on=(Persona.origin_id == Country.id))
         .join(
@@ -106,8 +112,9 @@ def load_benchmark_dataframe(cfg: BenchQuery) -> pd.DataFrame:
         q = q.where(DatasetPersona.dataset_id.in_(list(map(int, cfg.dataset_ids))))
     if cfg.model_names:
         q = q.where(Model.name.in_(list(cfg.model_names)))
-    if cfg.case_ids:
-        q = q.where(BenchmarkResult.case_id.in_(list(cfg.case_ids)))
+    trait_filters = cfg.trait_ids or cfg.case_ids
+    if trait_filters:
+        q = q.where(BenchmarkResult.case_id.in_(list(trait_filters)))
     if cfg.run_ids:
         q = q.where(BenchmarkResult.benchmark_run_id.in_(list(map(int, cfg.run_ids))))
     if cfg.include_rationale is not None:
@@ -146,6 +153,28 @@ def load_benchmark_dataframe(cfg: BenchQuery) -> pd.DataFrame:
             return row.get("rating")
 
         df["rating"] = df.apply(_norm, axis=1)
+    if "trait_valence" in df.columns:
+        df["trait_valence"] = pd.to_numeric(df["trait_valence"], errors="coerce")
+        df["rating_pre_valence"] = df["rating"]
+
+        def _apply_valence(row):
+            rat = row.get("rating")
+            val = row.get("trait_valence")
+            if pd.isna(rat) or pd.isna(val):
+                return rat
+            try:
+                v = int(val)
+            except Exception:
+                return rat
+            if v < 0:
+                return 6 - float(rat)
+            return rat
+
+        df["rating_valence_aligned"] = df.apply(_apply_valence, axis=1)
+        df["rating"] = df["rating_valence_aligned"]
+        df["trait_valence_label"] = df["trait_valence"].map(
+            {-1: "negativ", 0: "neutral", 1: "positiv"}
+        )
     return df
 
 
@@ -377,22 +406,38 @@ def permutation_p_value(
     a: pd.Series, b: pd.Series, *, n_perm: int = 2000, random_state: int | None = 42
 ) -> float:
     """Two-sided permutation test for difference in means."""
-    import numpy as np
-
     rng = np.random.default_rng(random_state)
     a = pd.to_numeric(a, errors="coerce").dropna().to_numpy()
     b = pd.to_numeric(b, errors="coerce").dropna().to_numpy()
     if a.size == 0 or b.size == 0:
         return float("nan")
-    observed = abs(a.mean() - b.mean())
     pooled = np.concatenate([a, b])
+    observed = abs(a.mean() - b.mean())
     n_a = a.size
+    n_total = pooled.size
+    n_b = n_total - n_a
+    if n_perm <= 0 or n_a == 0 or n_b == 0:
+        return float("nan")
+
+    total_sum = float(pooled.sum())
     count = 0
-    for _ in range(n_perm):
-        rng.shuffle(pooled)
-        diff = abs(pooled[:n_a].mean() - pooled[n_a:].mean())
-        if diff >= observed:
-            count += 1
+    done = 0
+    # Limit batch size to keep memory bounded (~1e6 floats by default)
+    max_batch = max(1, int(1_000_000 // max(1, n_total)))
+    batch_size = max(1, min(n_perm, max_batch))
+
+    while done < n_perm:
+        cur = min(batch_size, n_perm - done)
+        keys = rng.random((cur, n_total))
+        # Select indices of the first n_a elements in the random permutation
+        idx = np.argpartition(keys, n_a - 1, axis=1)[:, :n_a]
+        group_a = np.take(pooled, idx)
+        sum_a = group_a.sum(axis=1)
+        mean_a = sum_a / n_a
+        mean_b = (total_sum - sum_a) / n_b
+        diffs = np.abs(mean_a - mean_b)
+        count += int(np.count_nonzero(diffs >= observed))
+        done += cur
     return (count + 1) / (n_perm + 1)
 
 
@@ -429,6 +474,125 @@ def deltas_with_significance(
         )
     out = pd.DataFrame(rows).sort_values("delta", ascending=True)
     return out
+
+
+def build_deltas_payload(
+    df: pd.DataFrame,
+    column: str,
+    *,
+    baseline: str | None = None,
+    n_perm: int = 2000,
+    alpha: float = 0.05,
+) -> dict[str, Any]:
+    """
+    Compute delta table (including p/q-values, Cliff's δ, and CI metadata) for one attribute.
+    Returns a dict compatible with the /runs/{id}/deltas payload.
+    """
+    work = df.copy()
+    work[column] = work[column].fillna("Unknown").astype(str)
+    summary = summarise_rating_by(work, column)
+    if summary.empty:
+        return {"rows": [], "baseline": None, "n": int(len(df))}
+
+    if baseline is None or baseline not in summary[column].astype(str).values:
+        baseline = str(summary.sort_values("count", ascending=False)[column].iloc[0])
+    base_stats = summary.loc[summary[column] == baseline]
+    if base_stats.empty:
+        baseline = str(summary.iloc[0][column])
+        base_stats = summary.iloc[[0]]
+    base_vals = pd.to_numeric(
+        work.loc[work[column] == baseline, "rating"], errors="coerce"
+    ).dropna()
+    mean_base = (
+        float(base_stats["mean"].iloc[0])
+        if not base_stats.empty
+        else float(base_vals.mean())
+    )
+    n_base = (
+        int(round(float(base_stats["count"].iloc[0])))
+        if not base_stats.empty
+        else int(base_vals.shape[0])
+    )
+    sd_base = (
+        float(base_stats["std"].iloc[0])
+        if not base_stats.empty
+        else float(base_vals.std(ddof=1))
+    )
+
+    p_values: list[float] = []
+    rows_raw: list[dict[str, Any]] = []
+    cliffs_values: list[float] = []
+
+    for _, row in summary.iterrows():
+        cat = str(row[column])
+        vals = pd.to_numeric(
+            work.loc[work[column] == cat, "rating"], errors="coerce"
+        ).dropna()
+        p = permutation_p_value(base_vals, vals, n_perm=n_perm)
+        _, _, cliffs = mann_whitney_cliffs(base_vals, vals)
+        p_values.append(float(p))
+        cliffs_values.append(float(cliffs))
+        rows_raw.append(
+            {
+                "category": cat,
+                "count": float(row["count"]),
+                "mean": float(row["mean"]),
+                "delta": float(row["mean"] - mean_base),
+                "p_value": float(p),
+                "significant": bool(p < alpha),
+            }
+        )
+
+    try:
+        q_values = benjamini_hochberg(p_values)
+    except Exception:
+        q_values = [float("nan")] * len(rows_raw)
+
+    rows: list[dict[str, Any]] = []
+    for raw, q_val, cliffs in zip(rows_raw, q_values, cliffs_values):
+        n_cat = int(round(raw["count"]))
+        sd_cat = summary.loc[summary[column] == raw["category"], "std"]
+        sd_c = float(sd_cat.iloc[0]) if not sd_cat.empty else float("nan")
+        delta = raw["delta"]
+        if n_base > 1 and n_cat > 1 and np.isfinite(sd_base) and np.isfinite(sd_c):
+            se = float(np.sqrt((sd_base**2) / n_base + (sd_c**2) / n_cat))
+            ci_low = float(delta - 1.96 * se)
+            ci_high = float(delta + 1.96 * se)
+        else:
+            se = float("nan")
+            ci_low = None
+            ci_high = None
+        rows.append(
+            {
+                "category": raw["category"],
+                "count": int(round(raw["count"])),
+                "mean": raw["mean"],
+                "delta": delta if delta == delta else None,
+                "p_value": raw["p_value"] if raw["p_value"] == raw["p_value"] else None,
+                "q_value": float(q_val) if q_val == q_val else None,
+                "cliffs_delta": float(cliffs) if cliffs == cliffs else None,
+                "significant": raw["significant"],
+                "baseline": baseline,
+                "n_base": n_base,
+                "sd_base": sd_base if sd_base == sd_base else None,
+                "mean_base": mean_base if mean_base == mean_base else None,
+                "n_cat": n_cat,
+                "sd_cat": sd_c if sd_c == sd_c else None,
+                "mean_cat": raw["mean"],
+                "se_delta": se if se == se else None,
+                "ci_low": ci_low,
+                "ci_high": ci_high,
+            }
+        )
+
+    rows.sort(
+        key=lambda r: (
+            r["delta"] if r["delta"] == r["delta"] else float("inf"),
+            r["category"],
+        )
+    )
+
+    return {"rows": rows, "baseline": baseline, "n": int(len(df))}
 
 
 def plot_deltas_with_significance(

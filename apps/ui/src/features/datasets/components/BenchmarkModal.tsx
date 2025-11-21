@@ -18,13 +18,25 @@ export function BenchmarkModal({ opened, onClose, datasetId, initialModelName, a
   const { data: runs } = useDatasetRuns(datasetId);
 
   const completedModels = useMemo(() => {
-    return Array.from(
-      new Set(
-        (runsList.data?.runs || [])
-          .filter((r) => (r.done ?? 0) > 0 && (r.total ?? 0) > 0 && r.done === r.total)
-          .map((r) => r.model_name || '')
-      )
-    ).filter(Boolean) as string[];
+    const runs = runsList.data?.runs || [];
+    const stats: Record<string, { total: number; completed: number }> = {};
+    for (const run of runs) {
+      const name = run.model_name || '';
+      if (!name) continue;
+      const total = run.total ?? 0;
+      const done = run.done ?? 0;
+      if (!stats[name]) {
+        stats[name] = { total: 0, completed: 0 };
+      }
+      stats[name].total += total;
+      stats[name].completed += done;
+    }
+    return Object.entries(stats)
+      .map(([name, s]) => {
+        const percentage = s.total > 0 ? s.completed / s.total : 0;
+        return { value: name, label: `${name} (${Math.round(percentage * 100)}%)`, ready: percentage >= 0.99 };
+      })
+      .filter((entry) => entry.ready);
   }, [runsList.data?.runs]);
 
   const [modelName, setModelName] = useState<string>(initialModelName || '');
@@ -52,9 +64,10 @@ export function BenchmarkModal({ opened, onClose, datasetId, initialModelName, a
           data={completedModels}
           value={modelName}
           onChange={(v) => setModelName(v || '')}
-          placeholder="Model wählen"
+          placeholder={completedModels.length ? "Model wählen" : "Keine fertigen AttrGen-Runs"}
           searchable
-          disabled={!!resumeRunId}
+          disabled={!!resumeRunId || completedModels.length === 0}
+          nothingFoundMessage="Kein Modell gefunden"
         />
         <NumericTextInput label="Batch Size" value={batchSizeStr} setValue={setBatchSizeStr} min={1} onCommit={setBatchSize} placeholder="z.B. 8" />
       </Group>

@@ -44,6 +44,10 @@ def _persist_fail(
     )
 
 
+class BenchmarkCancelledError(RuntimeError):
+    """Raised when a benchmark run is cancelled mid-execution."""
+
+
 def run_benchmark_pipeline(
     *,
     dataset_id: int | None,
@@ -62,6 +66,7 @@ def run_benchmark_pipeline(
     scale_mode: str | None = None,
     dual_fraction: float | None = None,
     completed_keys: Set[tuple[str, str, str]] | None = None,
+    cancel_check: callable | None = None,
 ) -> None:
     """Primary benchmark pipeline.
 
@@ -89,6 +94,10 @@ def run_benchmark_pipeline(
             except Exception:
                 persona_count = 0
     total_items = persona_count * len(traits) if traits else 0
+
+    def _check_cancel() -> None:
+        if cancel_check and cancel_check():
+            raise BenchmarkCancelledError("Benchmark run cancelled")
 
     # Determine progress frequency based on batch size with sensible defaults.
     def _compute_progress_every(
@@ -147,7 +156,9 @@ def run_benchmark_pipeline(
 
     def iter_items() -> Iterable[BenchWorkItem]:
         for p in persona_repo.iter_personas(dataset_id):
+            _check_cancel()
             for c in traits:
+                _check_cancel()
                 persona_s = str(p.persona_uuid)
                 case_s = str(c.id)
                 scale_rev = _decide_reversed(persona_s, case_s)
@@ -223,6 +234,7 @@ def run_benchmark_pipeline(
         ok_cnt = retry_cnt = fail_cnt = 0
 
         for res in results:
+            _check_cancel()
             spec = res.spec  # BenchPromptSpec
             decision = post.decide(res)
 

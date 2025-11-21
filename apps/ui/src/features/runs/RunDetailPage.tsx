@@ -1,9 +1,9 @@
-import { Button, Card, Grid, Group, Spoiler, Text, Title, MultiSelect } from '@mantine/core';
+import { Alert, Button, Card, Grid, Group, Spoiler, Text, Title, MultiSelect, Progress } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from '@tanstack/react-router';
 import { ChartPanel } from '../../components/ChartPanel';
-import { useRunDeltas, useRunMetrics, useRun, useRunMissing, useRunOrderMetrics, useRunMeans, useRunForests } from './hooks';
-import { useStartBenchmark } from '../datasets/hooks';
+import { useRunDeltas, useRunMetrics, useRun, useRunMissing, useRunOrderMetrics, useRunMeans, useRunForests, useRunWarmup } from './hooks';
+import { useStartBenchmark, useBenchmarkStatus } from '../datasets/hooks';
 import { OrderMetricsCard } from './components/OrderMetricsCard';
 import { SignificanceTable } from './components/SignificanceTable';
 import { AttributeBaselineSelector } from './components/AttributeBaselineSelector';
@@ -21,14 +21,77 @@ const ATTRS = [
   { value: 'origin_subregion', label: 'Herkunft-Subregion' },
 ];
 
+const BASE_WARM_STEP_LABELS: Record<string, string> = {
+  metrics: 'Metriken',
+  missing: 'Fehlende Kombinationen',
+  order_metrics: 'Order-Metriken',
+};
+
+function formatAttrLabel(key: string | undefined) {
+  if (!key) return '';
+  return ATTRS.find((x) => x.value === key)?.label || key;
+}
+
+function formatWarmStepName(name: string) {
+  if (BASE_WARM_STEP_LABELS[name]) return BASE_WARM_STEP_LABELS[name];
+  if (name.startsWith('means:')) {
+    return `Mittelwerte (${formatAttrLabel(name.split(':')[1])})`;
+  }
+  if (name.startsWith('deltas:')) {
+    const parts = name.split(':');
+    const attr = formatAttrLabel(parts[1]);
+    if (parts.length > 2) {
+      return `Deltas (${attr} → ${parts.slice(2).join(' · ')})`;
+    }
+    return `Deltas (${attr})`;
+  }
+  if (name.startsWith('forest:')) {
+    return `Forest Plot (${formatAttrLabel(name.split(':')[1])})`;
+  }
+  return name;
+}
+
+function formatDuration(ms?: number | null) {
+  if (typeof ms !== 'number' || !Number.isFinite(ms)) return '–';
+  return `${(ms / 1000).toFixed(1)} s`;
+}
+
 export function RunDetailPage() {
   const { runId } = useParams({ from: '/runs/$runId' });
   const idNum = Number(runId);
   const { data: run, isLoading: isLoadingRun } = useRun(idNum);
-  const { data: metrics, isLoading: loadingMetrics, isError: errorMetrics, error: metricsError } = useRunMetrics(idNum);
-  const { data: missing, isLoading: loadingMissing } = useRunMissing(idNum);
+  const warmup = useRunWarmup(idNum);
+  const warmStatus = warmup.status.data;
+  const warmState = warmStatus?.status ?? (warmup.status.isError ? 'error' : warmup.status.isLoading ? 'running' : 'idle');
+  const warmReady = ['done', 'done_with_errors', 'error'].includes(warmState);
+  const warmLoading = !warmReady;
+  const warmSteps = warmStatus?.steps || [];
+  const warmRunningStep = warmSteps.find((s) => s.status === 'running');
+  const warmCurrentStepLabel = warmRunningStep
+    ? formatWarmStepName(warmRunningStep.name)
+    : warmStatus?.current_step
+    ? formatWarmStepName(warmStatus.current_step)
+    : null;
+  const warmStepErrors = warmSteps.filter((s) => s.status === 'error');
+  const warmStepErrorMessage = warmStepErrors.length
+    ? warmStepErrors.map((s) => `${formatWarmStepName(s.name)}: ${s.error ?? 'Fehler'}`).join(' • ')
+    : null;
+  const warmupErrorMessage =
+    (warmup.start.isError ? ((warmup.start.error as any)?.message ?? String(warmup.start.error ?? 'Fehler')) : null) ||
+    (warmup.status.isError ? ((warmup.status.error as any)?.message ?? String(warmup.status.error ?? 'Fehler')) : null) ||
+    warmStatus?.error ||
+    warmStepErrorMessage ||
+    null;
+  const { data: metrics, isLoading: loadingMetrics, isError: errorMetrics, error: metricsError } = useRunMetrics(idNum, { enabled: warmReady });
+  const { data: missing, isLoading: loadingMissing } = useRunMissing(idNum, { enabled: warmReady });
   const startBench = useStartBenchmark();
-  const order = useRunOrderMetrics(idNum);
+  const benchStatus = useBenchmarkStatus(idNum);
+  const order = useRunOrderMetrics(idNum, { enabled: warmReady });
+  const benchDone = typeof benchStatus.data?.done === 'number' ? benchStatus.data.done : null;
+  const benchTotal = typeof benchStatus.data?.total === 'number' ? benchStatus.data.total : null;
+  const benchPct = typeof benchStatus.data?.pct === 'number'
+    ? benchStatus.data.pct
+    : benchDone !== null && benchTotal ? (benchDone / Math.max(benchTotal, 1)) * 100 : null;
 
   // grade helpers moved into ./components/Grades
   const [attr, setAttr] = useState<string>('gender');
@@ -37,6 +100,9 @@ export function RunDetailPage() {
   const [baseline, setBaseline] = useState<string | undefined>(defaultBaseline);
   const [targets, setTargets] = useState<string[]>([]);
   const attrLabel = ATTRS.find((x) => x.value === attr)?.label || attr;
+
+  const liveStatus = (benchStatus.data?.status || '').toLowerCase();
+  const isActive = ['queued', 'running', 'partial', 'cancelling'].includes(liveStatus);
 
   // keep baseline in sync when attribute changes or metrics load
   useEffect(() => {
@@ -55,19 +121,19 @@ export function RunDetailPage() {
     setTargets([first]);
   }, [attr, baseline, defaultBaseline, availableCats.length]);
 
-  const { data: deltas, isLoading: loadingDeltas, isError: errorDeltas, error: deltasError } = useRunDeltas(idNum, attr, baseline);
-  const forestsQueries = useRunForests(idNum, attr, baseline, targets);
+  const { data: deltas, isLoading: loadingDeltas, isError: errorDeltas, error: deltasError } = useRunDeltas(idNum, attr, baseline, { enabled: warmReady });
+  const forestsQueries = useRunForests(idNum, attr, baseline, targets, { enabled: warmReady });
   const loadingForest = forestsQueries.length > 0 ? forestsQueries.some((q) => q.isLoading) : false;
   const errorForest = forestsQueries.length > 0 ? forestsQueries.some((q) => q.isError) : false;
   const forestError = forestsQueries.find((q) => q.isError)?.error as any;
   // Means for fixed attribute set (avoid calling hooks in loops)
-  const meansGender = useRunMeans(idNum, 'gender');
-  const meansSubregion = useRunMeans(idNum, 'origin_subregion');
-  const meansReligion = useRunMeans(idNum, 'religion');
-  const meansMigration = useRunMeans(idNum, 'migration_status');
-  const meansSexuality = useRunMeans(idNum, 'sexuality');
-  const meansMarriage = useRunMeans(idNum, 'marriage_status');
-  const meansEducation = useRunMeans(idNum, 'education');
+  const meansGender = useRunMeans(idNum, 'gender', undefined, { enabled: warmReady });
+  const meansSubregion = useRunMeans(idNum, 'origin_subregion', undefined, { enabled: warmReady });
+  const meansReligion = useRunMeans(idNum, 'religion', undefined, { enabled: warmReady });
+  const meansMigration = useRunMeans(idNum, 'migration_status', undefined, { enabled: warmReady });
+  const meansSexuality = useRunMeans(idNum, 'sexuality', undefined, { enabled: warmReady });
+  const meansMarriage = useRunMeans(idNum, 'marriage_status', undefined, { enabled: warmReady });
+  const meansEducation = useRunMeans(idNum, 'education', undefined, { enabled: warmReady });
   const meansData = [
     { a: 'gender', q: meansGender },
     { a: 'origin_subregion', q: meansSubregion },
@@ -78,13 +144,13 @@ export function RunDetailPage() {
     { a: 'education', q: meansEducation },
   ];
   // Deltas (significance tables)
-  const deltasGender = useRunDeltas(idNum, 'gender');
-  const deltasSubregion = useRunDeltas(idNum, 'origin_subregion');
-  const deltasReligion = useRunDeltas(idNum, 'religion');
-  const deltasMigration = useRunDeltas(idNum, 'migration_status');
-  const deltasSexuality = useRunDeltas(idNum, 'sexuality');
-  const deltasMarriage = useRunDeltas(idNum, 'marriage_status');
-  const deltasEducation = useRunDeltas(idNum, 'education');
+  const deltasGender = useRunDeltas(idNum, 'gender', undefined, { enabled: warmReady });
+  const deltasSubregion = useRunDeltas(idNum, 'origin_subregion', undefined, { enabled: warmReady });
+  const deltasReligion = useRunDeltas(idNum, 'religion', undefined, { enabled: warmReady });
+  const deltasMigration = useRunDeltas(idNum, 'migration_status', undefined, { enabled: warmReady });
+  const deltasSexuality = useRunDeltas(idNum, 'sexuality', undefined, { enabled: warmReady });
+  const deltasMarriage = useRunDeltas(idNum, 'marriage_status', undefined, { enabled: warmReady });
+  const deltasEducation = useRunDeltas(idNum, 'education', undefined, { enabled: warmReady });
   const deltasData = [
     { a: 'gender', q: deltasGender },
     { a: 'origin_subregion', q: deltasSubregion },
@@ -94,6 +160,26 @@ export function RunDetailPage() {
     { a: 'marriage_status', q: deltasMarriage },
     { a: 'education', q: deltasEducation },
   ];
+
+  if (isActive) {
+    const done = benchStatus.data?.done ?? 0;
+    const total = benchStatus.data?.total ?? 0;
+    return (
+      <Card>
+        <Title order={2} mb="sm">Benchmark #{runId} läuft…</Title>
+        <Text mb="sm">Bitte warten, bis der Benchmark abgeschlossen ist. Den Fortschritt kannst du auch auf der Dataset-Seite verfolgen.</Text>
+        <div style={{ width: 360, marginBottom: 12 }}>
+          <b>Status:</b> {benchStatus.data?.status} {done}/{total}
+          <Progress value={benchStatus.data?.pct ?? 0} mt="xs" />
+        </div>
+        {run?.dataset?.id ? (
+          <Button component={Link} to={'/datasets/$datasetId'} params={{ datasetId: String(run.dataset.id) }}>
+            Zur Dataset-Seite
+          </Button>
+        ) : null}
+      </Card>
+    );
+  }
 
   const histCounts = metrics?.hist?.counts || (metrics ? metrics.hist.shares.map((p) => Math.round(p * (metrics.n || 0))) : []);
   const histBars: Partial<Plotly.Data>[] = metrics ? [
@@ -110,6 +196,15 @@ export function RunDetailPage() {
           <div style={{ marginBottom: '1em' }}>
               <b>Datensatz:</b> <Link to={`/datasets/${run.dataset?.id}`}>{run.dataset?.id}: {run.dataset?.name}</Link> | <b>Modell:</b> {run.model_name} | {run.created_at ? (<><b>Erstellt:</b> {new Date(run.created_at).toLocaleDateString()} | <b>Ergebnisse:</b> {run.n_results} | </>) : null}
               {run.include_rationale ? (<><b>Mit Begründung (with_rational):</b> {run.include_rationale ? 'Ja' : 'Nein'} </>) : null}
+              {benchStatus.data ? (
+                <>
+                  <br />
+                  <b>Benchmark-Status:</b> {(benchStatus.data.status || 'unbekannt')}
+                  {benchDone !== null && benchTotal !== null ? (
+                    <> · Fortschritt: {benchPct !== null ? `${benchPct.toFixed(1)}%` : ''} ({benchDone}/{benchTotal})</>
+                  ) : null}
+                </>
+              ) : null}
               {loadingMissing ? null : (missing && typeof missing.missing === 'number' && typeof missing.total === 'number' ? (
                 <>
                   <br />
@@ -178,6 +273,58 @@ export function RunDetailPage() {
           </ul>
         </Spoiler>
       </Card>
+      {['running', 'idle'].includes(warmState) ? (
+        <Card withBorder padding="md" mb="md">
+          <Title order={4} mb="xs">Vorberechnung</Title>
+          <Text size="sm" mb="sm">
+            {warmState === 'idle'
+              ? 'Vorberechnung wird gestartet …'
+              : `Aktueller Schritt: ${warmCurrentStepLabel ?? '…'}`}
+          </Text>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {warmSteps.length ? (
+              warmSteps.map((step, idx) => {
+                const status =
+                  step.status === 'done'
+                    ? `fertig (${formatDuration(step.duration_ms)})`
+                    : step.status === 'error'
+                    ? 'Fehler'
+                    : 'läuft …';
+                const color =
+                  step.status === 'done' ? '#2ca25f' : step.status === 'error' ? '#d62828' : '#1f77b4';
+                return (
+                  <div key={`${step.name}-${step.started_at ?? idx}`} style={{ borderLeft: `3px solid ${color}`, paddingLeft: 8 }}>
+                    <Group justify="space-between" gap={6}>
+                      <Text size="sm">{formatWarmStepName(step.name)}</Text>
+                      <Text size="xs" c={color}>{status}</Text>
+                    </Group>
+                    {step.error && step.status === 'error' ? (
+                      <Text size="xs" c="red.7">{step.error}</Text>
+                    ) : null}
+                  </div>
+                );
+              })
+            ) : (
+              <Text size="sm" c="dimmed">Initialisiere …</Text>
+            )}
+          </div>
+        </Card>
+      ) : null}
+      {warmState === 'done_with_errors' ? (
+        <Alert color="yellow" title="Vorberechnung teilweise fehlgeschlagen" mb="md">
+          {warmStepErrorMessage || 'Einige Schritte konnten nicht vorbereitet werden. Die Seite lädt Daten live nach.'}
+        </Alert>
+      ) : null}
+      {warmState === 'error' ? (
+        <Alert color="red" title="Vorberechnung fehlgeschlagen" mb="md">
+          {warmupErrorMessage || 'Die Auswertungen werden live berechnet.'}
+        </Alert>
+      ) : warmupErrorMessage && warmState === 'done' ? (
+        <Alert color="yellow" title="Hinweis" mb="md">
+          {warmupErrorMessage}
+        </Alert>
+      ) : null}
+      <AsyncContent isLoading={warmLoading} loadingLabel="Bereite Auswertungen vor…">
       <Grid>
 
         <Grid.Col span={{ base: 12 }}>
@@ -269,6 +416,7 @@ export function RunDetailPage() {
         </Grid.Col>
 
       </Grid>
+      </AsyncContent>
     </Card>
   );
 }

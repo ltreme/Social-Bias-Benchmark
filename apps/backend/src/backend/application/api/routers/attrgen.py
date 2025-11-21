@@ -8,7 +8,7 @@ from urllib.parse import urlparse, urlunparse
 
 import peewee as pw
 import requests
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from backend.domain.benchmarking.adapters.postprocess.postprocessor_attr import (
     AttributePostProcessor,
@@ -28,9 +28,10 @@ from backend.infrastructure.storage.models import (
     Model,
 )
 
+from ..deps import db_session
 from ..utils import ensure_db
 
-router = APIRouter(tags=["attrgen"])
+router = APIRouter(tags=["attrgen"], dependencies=[Depends(db_session)])
 
 # In-memory job progress (single-process dev). For multi-process, replace with Redis.
 PROGRESS: Dict[int, Dict[str, Any]] = {}
@@ -370,6 +371,13 @@ def list_attrgen_runs(dataset_id: int) -> Dict[str, Any]:
         rid = int(r.id)
         _update_progress_done(rid, dataset_id)
         info = PROGRESS.get(rid, {})
+        total = info.get("total", 0) or 0
+        done = info.get("done", 0) or 0
+        if not info.get("status"):
+            if total and done >= total:
+                info["status"] = "done"
+            else:
+                info["status"] = "unknown"
         out.append(
             {
                 "id": rid,
@@ -380,8 +388,8 @@ def list_attrgen_runs(dataset_id: int) -> Dict[str, Any]:
                 "system_prompt": r.system_prompt,
                 "model_name": r.model_id.name if r.model_id else None,
                 "status": info.get("status", "unknown"),
-                "done": info.get("done", 0),
-                "total": info.get("total", 0),
+                "done": done,
+                "total": total,
                 "pct": info.get("pct", 0.0),
                 "error": info.get("error"),
             }
