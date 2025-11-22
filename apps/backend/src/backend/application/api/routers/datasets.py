@@ -19,6 +19,7 @@ from backend.domain.persona.persona_generator.main import (
     persist_run_and_personas,
     sample_personas,
 )
+from backend.infrastructure.benchmark import progress_tracker
 from backend.infrastructure.storage.models import (
     AdditionalPersonaAttributes,
     AttrGenerationRun,
@@ -31,7 +32,6 @@ from backend.infrastructure.storage.models import (
 
 from ..deps import db_session
 from ..utils import ensure_db
-from .runs import _BENCH_PROGRESS, _bench_update_progress
 
 router = APIRouter(tags=["datasets"], dependencies=[Depends(db_session)])
 
@@ -139,7 +139,7 @@ def dataset_runs(dataset_id: int) -> List[Dict[str, Any]]:
         .where(BenchmarkRun.dataset_id == dataset_id)
         .order_by(BenchmarkRun.id.desc())
     ):
-        info = _BENCH_PROGRESS.get(int(r.id))
+        info = progress_tracker.get_progress(int(r.id))
         if info and info.get("dataset_id") != dataset_id:
             info = None
         if info is None:
@@ -147,9 +147,9 @@ def dataset_runs(dataset_id: int) -> List[Dict[str, Any]]:
                 "status": "done",
                 "dataset_id": dataset_id,
             }
-            _BENCH_PROGRESS[int(r.id)] = info
+            progress_tracker.set_progress(int(r.id), info)
         try:
-            _bench_update_progress(int(r.id), dataset_id)
+            progress_tracker.update_progress(int(r.id), dataset_id)
         except Exception:
             pass
         status = info.get("status", "unknown")
