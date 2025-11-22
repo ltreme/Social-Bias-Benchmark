@@ -86,11 +86,13 @@ export function useImportTraitsCsv() {
 }
 
 export async function triggerTraitsExport(): Promise<void> {
-  const blob = await exportTraitsCsv();
+  const response = await exportTraitsCsv();
+  const blob = response.blob;
+  const filename = response.filename || 'traits.csv';
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = 'traits.csv';
+  link.download = filename;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -98,11 +100,13 @@ export async function triggerTraitsExport(): Promise<void> {
 }
 
 export async function triggerFilteredTraitsExport(traitIds: string[]): Promise<void> {
-  const blob = await exportFilteredTraitsCsv(traitIds);
+  const response = await exportFilteredTraitsCsv(traitIds);
+  const blob = response.blob;
+  const filename = response.filename || 'traits_filtered.csv';
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = 'traits_filtered.csv';
+  link.download = filename;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

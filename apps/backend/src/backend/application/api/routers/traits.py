@@ -1,18 +1,14 @@
+"""Traits API router - simplified to pure routing logic."""
+
 from __future__ import annotations
 
-import csv
-import io
-import re
-from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Annotated, Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
-from peewee import fn
-from pydantic import BaseModel, conint
+from pydantic import BaseModel, Field
 
-from backend.infrastructure.storage.db import get_db
-from backend.infrastructure.storage.models import BenchmarkResult, Trait
+from backend.application.services.trait_service import TraitService
 
 from ..deps import db_session
 from ..utils import ensure_db
@@ -25,7 +21,7 @@ class TraitOut(BaseModel):
     adjective: str
     case_template: Optional[str] = None
     category: Optional[str] = None
-    valence: Optional[conint(ge=-1, le=1)] = None
+    valence: Optional[Annotated[int, Field(ge=-1, le=1)]] = None
     is_active: bool = True
     linked_results_n: int = 0
 
@@ -34,7 +30,7 @@ class TraitIn(BaseModel):
     adjective: str
     case_template: Optional[str] = None
     category: Optional[str] = None
-    valence: Optional[conint(ge=-1, le=1)] = None
+    valence: Optional[Annotated[int, Field(ge=-1, le=1)]] = None
 
 
 class TraitActiveIn(BaseModel):
@@ -45,321 +41,122 @@ class TraitExportIn(BaseModel):
     trait_ids: List[str]
 
 
+def _get_service() -> TraitService:
+    """Get trait service instance."""
+    ensure_db()
+    return TraitService()
+
+
 @router.get("/traits", response_model=List[TraitOut])
 def list_traits() -> List[TraitOut]:
-    ensure_db()
-    out: List[TraitOut] = []
-    # Pre-compute counts to show whether deletion is allowed
-    counts: Dict[str, int] = {}
-    for row in BenchmarkResult.select(
-        BenchmarkResult.case_id, BenchmarkResult.id
-    ).tuples():
-        cid = str(row[0])
-        counts[cid] = counts.get(cid, 0) + 1
-
-    for c in Trait.select().order_by(Trait.id.asc()):
-        out.append(
-            TraitOut(
-                id=str(c.id),
-                adjective=str(c.adjective),
-                case_template=(
-                    str(c.case_template) if c.case_template is not None else None
-                ),
-                category=str(c.category) if c.category is not None else None,
-                valence=int(c.valence) if c.valence is not None else None,
-                is_active=bool(c.is_active),
-                linked_results_n=int(counts.get(str(c.id), 0)),
-            )
-        )
-    return out
+    """List all traits with metadata."""
+    traits = _get_service().list_traits()
+    return [TraitOut(**t) for t in traits]
 
 
 @router.get("/traits/export")
 def export_traits() -> StreamingResponse:
-    ensure_db()
-    buffer = io.StringIO()
-    fieldnames = ["id", "adjective", "category", "valence"]
-    writer = csv.DictWriter(buffer, fieldnames=fieldnames)
-    writer.writeheader()
-    for trait in Trait.select().order_by(Trait.id.asc()):
-        writer.writerow(
-            {
-                "id": str(trait.id),
-                "adjective": str(trait.adjective),
-                "category": str(trait.category) if trait.category is not None else "",
-                "valence": trait.valence if trait.valence is not None else "",
-            }
-        )
-    buffer.seek(0)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"traits_{timestamp}.csv"
+    """Export all traits as CSV."""
+    content, filename = _get_service().export_all_traits()
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
-    return StreamingResponse(
-        iter([buffer.getvalue()]), media_type="text/csv", headers=headers
-    )
+    return StreamingResponse(iter([content]), media_type="text/csv", headers=headers)
 
 
 @router.post("/traits/export")
 def export_filtered_traits(body: TraitExportIn) -> StreamingResponse:
     """Export traits with specific IDs in the given order."""
-    ensure_db()
-    buffer = io.StringIO()
-    fieldnames = [
-        "id",
-        "adjective",
-        "case_template",
-        "category",
-        "valence",
-        "is_active",
-    ]
-    writer = csv.DictWriter(buffer, fieldnames=fieldnames)
-    writer.writeheader()
-
-    # Fetch all requested traits in one query
-    traits_dict = {}
-    for trait in Trait.select().where(Trait.id.in_(body.trait_ids)):
-        traits_dict[str(trait.id)] = trait
-
-    # Write rows in the order specified by trait_ids
-    for trait_id in body.trait_ids:
-        trait = traits_dict.get(trait_id)
-        if trait:
-            writer.writerow(
-                {
-                    "id": str(trait.id),
-                    "adjective": str(trait.adjective),
-                    "case_template": (
-                        str(trait.case_template)
-                        if trait.case_template is not None
-                        else ""
-                    ),
-                    "category": (
-                        str(trait.category) if trait.category is not None else ""
-                    ),
-                    "valence": trait.valence if trait.valence is not None else "",
-                    "is_active": "true" if trait.is_active else "false",
-                }
-            )
-
-    buffer.seek(0)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"traits_filtered_{timestamp}.csv"
+    content, filename = _get_service().export_filtered_traits(body.trait_ids)
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
-    return StreamingResponse(
-        iter([buffer.getvalue()]), media_type="text/csv", headers=headers
-    )
-
-
-def _next_generated_id() -> str:
-    """Generate the next trait ID in the form g%d where %d increments the max present number."""
-    pat = re.compile(r"^g(\d+)$")
-    max_n = 0
-    for c in Trait.select(Trait.id):
-        m = pat.match(str(c.id))
-        if m:
-            try:
-                n = int(m.group(1))
-            except ValueError:
-                continue
-            if n > max_n:
-                max_n = n
-    return f"g{max_n + 1}"
-
-
-def _normalize_adjective(value: str | None) -> str:
-    return (value or "").strip()
-
-
-def _adjective_exists(adjective: str, *, exclude_id: str | None = None) -> bool:
-    norm = _normalize_adjective(adjective)
-    if not norm:
-        return False
-    query = Trait.select().where(fn.LOWER(Trait.adjective) == norm.lower())
-    if exclude_id is not None:
-        query = query.where(Trait.id != exclude_id)
-    return query.exists()
+    return StreamingResponse(iter([content]), media_type="text/csv", headers=headers)
 
 
 @router.post("/traits", response_model=TraitOut)
 def create_trait(body: TraitIn) -> TraitOut:
-    ensure_db()
-    adjective = _normalize_adjective(body.adjective)
-    if not adjective:
-        raise HTTPException(status_code=422, detail="Adjektiv ist erforderlich")
-    if _adjective_exists(adjective):
-        raise HTTPException(status_code=400, detail="Adjektiv existiert bereits")
-    # Generate a unique ID using the g%d scheme
-    new_id = _next_generated_id()
-    # Double-check uniqueness just in case
-    if Trait.get_or_none(Trait.id == new_id) is not None:
-        raise HTTPException(status_code=409, detail=f"Trait ID collision for {new_id}")
-    c = Trait.create(
-        id=new_id,
-        adjective=adjective,
-        case_template=body.case_template,
-        category=body.category,
-        valence=body.valence,
-        is_active=True,
-    )
-    return TraitOut(
-        id=str(c.id),
-        adjective=str(c.adjective),
-        case_template=c.case_template,
-        category=c.category,
-        valence=c.valence,
-        is_active=bool(c.is_active),
-        linked_results_n=0,
-    )
+    """Create a new trait."""
+    try:
+        result = _get_service().create_trait(
+            adjective=body.adjective,
+            case_template=body.case_template,
+            category=body.category,
+            valence=body.valence,
+        )
+        return TraitOut(**result)
+    except ValueError as e:
+        if "erforderlich" in str(e):
+            raise HTTPException(status_code=422, detail=str(e))
+        elif "existiert bereits" in str(e):
+            raise HTTPException(status_code=400, detail=str(e))
+        elif "collision" in str(e):
+            raise HTTPException(status_code=409, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.put("/traits/{trait_id}", response_model=TraitOut)
 def update_trait(trait_id: str, body: TraitIn) -> TraitOut:
-    ensure_db()
-    c = Trait.get_or_none(Trait.id == trait_id)
-    if c is None:
-        raise HTTPException(status_code=404, detail="Trait not found")
-    adjective = _normalize_adjective(body.adjective)
-    if not adjective:
-        raise HTTPException(status_code=422, detail="Adjektiv ist erforderlich")
-    if _adjective_exists(adjective, exclude_id=trait_id):
-        raise HTTPException(status_code=400, detail="Adjektiv existiert bereits")
-    c.adjective = adjective
-    c.case_template = body.case_template
-    c.category = body.category
-    c.valence = body.valence
-    c.save()
-    linked = BenchmarkResult.select().where(BenchmarkResult.case_id == trait_id).count()
-    return TraitOut(
-        id=str(c.id),
-        adjective=str(c.adjective),
-        case_template=c.case_template,
-        category=c.category,
-        valence=c.valence,
-        is_active=bool(c.is_active),
-        linked_results_n=int(linked),
-    )
+    """Update an existing trait."""
+    try:
+        result = _get_service().update_trait(
+            trait_id=trait_id,
+            adjective=body.adjective,
+            case_template=body.case_template,
+            category=body.category,
+            valence=body.valence,
+        )
+        return TraitOut(**result)
+    except ValueError as e:
+        if "not found" in str(e):
+            raise HTTPException(status_code=404, detail=str(e))
+        elif "erforderlich" in str(e):
+            raise HTTPException(status_code=422, detail=str(e))
+        elif "existiert bereits" in str(e):
+            raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.delete("/traits/{trait_id}")
 def delete_trait(trait_id: str) -> Dict[str, Any]:
-    ensure_db()
-    c = Trait.get_or_none(Trait.id == trait_id)
-    if c is None:
-        raise HTTPException(status_code=404, detail="Trait not found")
-    linked = BenchmarkResult.select().where(BenchmarkResult.case_id == trait_id).count()
-    if linked > 0:
-        raise HTTPException(
-            status_code=400,
-            detail="Trait ist mit Benchmark-Resultaten verknüpft und kann nicht gelöscht werden",
-        )
-    c.delete_instance()  # RESTRICT also protects at DB level
-    return {"ok": True}
+    """Delete a trait."""
+    try:
+        _get_service().delete_trait(trait_id)
+        return {"ok": True}
+    except ValueError as e:
+        if "not found" in str(e):
+            raise HTTPException(status_code=404, detail=str(e))
+        elif "verknüpft" in str(e):
+            raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/traits/categories")
 def list_trait_categories() -> Dict[str, List[str]]:
-    ensure_db()
-    categories: List[str] = []
-    query = (
-        Trait.select(Trait.category)
-        .where((Trait.category.is_null(False)) & (Trait.category != ""))
-        .distinct()
-        .order_by(Trait.category.asc())
-    )
-    categories = [str(row.category) for row in query if row.category]
+    """List all distinct trait categories."""
+    categories = _get_service().list_categories()
     return {"categories": categories}
 
 
 @router.post("/traits/{trait_id}/active", response_model=TraitOut)
 def set_trait_active(trait_id: str, body: TraitActiveIn) -> TraitOut:
-    ensure_db()
-    trait = Trait.get_or_none(Trait.id == trait_id)
-    if trait is None:
-        raise HTTPException(status_code=404, detail="Trait not found")
-    trait.is_active = bool(body.is_active)
-    trait.save()
-    linked = BenchmarkResult.select().where(BenchmarkResult.case_id == trait_id).count()
-    return TraitOut(
-        id=str(trait.id),
-        adjective=str(trait.adjective),
-        case_template=trait.case_template,
-        category=trait.category,
-        valence=trait.valence,
-        is_active=bool(trait.is_active),
-        linked_results_n=int(linked),
-    )
-
-
-def _parse_valence(raw: str | None, row: int) -> int | None:
-    if raw is None or raw == "":
-        return None
+    """Set trait active status."""
     try:
-        val = int(raw)
-    except (TypeError, ValueError):
-        raise ValueError(f"Zeile {row}: valence '{raw}' ist ungültig")
-    if val < -1 or val > 1:
-        raise ValueError(f"Zeile {row}: valence muss zwischen -1 und 1 liegen")
-    return val
+        result = _get_service().set_trait_active(trait_id, body.is_active)
+        return TraitOut(**result)
+    except ValueError as e:
+        if "not found" in str(e):
+            raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/traits/import")
 async def import_traits(file: UploadFile = File(...)) -> Dict[str, Any]:
-    ensure_db()
+    """Import traits from CSV file."""
     content = await file.read()
     try:
         text = content.decode("utf-8-sig")
     except UnicodeDecodeError:
         text = content.decode("latin-1")
-    reader = csv.DictReader(io.StringIO(text))
-    if not reader.fieldnames:
-        raise HTTPException(status_code=400, detail="CSV ohne Header")
-    inserted = updated = skipped = 0
-    errors: List[str] = []
-    db = get_db()
-    for idx, row in enumerate(reader, start=2):
-        try:
-            adjective = _normalize_adjective(row.get("adjective"))
-            if not adjective:
-                raise ValueError(f"Zeile {idx}: 'adjective' fehlt")
-            row_id = (row.get("id") or "").strip() or None
-            category = (row.get("category") or "").strip() or None
-            valence = _parse_valence((row.get("valence") or "").strip(), idx)
-            with db.atomic():
-                target = Trait.get_or_none(Trait.id == row_id) if row_id else None
-                if target:
-                    if _adjective_exists(adjective, exclude_id=target.id):
-                        raise ValueError(f"Zeile {idx}: Adjektiv existiert bereits")
-                    target.adjective = adjective
-                    target.category = category
-                    target.valence = valence
-                    target.save()
-                    updated += 1
-                else:
-                    if _adjective_exists(adjective):
-                        raise ValueError(f"Zeile {idx}: Adjektiv existiert bereits")
-                    new_id = row_id or _next_generated_id()
-                    if Trait.get_or_none(Trait.id == new_id):
-                        raise ValueError(f"Zeile {idx}: ID '{new_id}' bereits vergeben")
-                    Trait.create(
-                        id=new_id,
-                        adjective=adjective,
-                        category=category,
-                        case_template=None,
-                        valence=valence,
-                        is_active=True,
-                    )
-                    inserted += 1
-        except ValueError as exc:
-            errors.append(str(exc))
-            skipped += 1
-        except Exception as exc:
-            errors.append(f"Zeile {idx}: {exc}")
-            skipped += 1
-    return {
-        "ok": True,
-        "inserted": inserted,
-        "updated": updated,
-        "skipped": skipped,
-        "errors": errors,
-        "total_rows": inserted + updated + skipped,
-    }
+
+    try:
+        result = _get_service().import_traits(text)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))

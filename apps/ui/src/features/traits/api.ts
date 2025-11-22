@@ -47,14 +47,22 @@ export async function setTraitActive(id: string, is_active: boolean): Promise<Tr
   return res.data;
 }
 
-export async function exportTraitsCsv(): Promise<Blob> {
-  const res = await api.get<Blob>('/traits/export', { responseType: 'blob' });
-  return res.data;
+function extractFilenameFromHeader(contentDisposition: string | null): string | null {
+  if (!contentDisposition) return null;
+  const match = contentDisposition.match(/filename="(.+)"/);
+  return match ? match[1] : null;
 }
 
-export async function exportFilteredTraitsCsv(traitIds: string[]): Promise<Blob> {
+export async function exportTraitsCsv(): Promise<{ blob: Blob; filename: string | null }> {
+  const res = await api.get<Blob>('/traits/export', { responseType: 'blob' });
+  const filename = extractFilenameFromHeader(res.headers['content-disposition'] as string);
+  return { blob: res.data, filename };
+}
+
+export async function exportFilteredTraitsCsv(traitIds: string[]): Promise<{ blob: Blob; filename: string | null }> {
   const res = await api.post<Blob>('/traits/export', { trait_ids: traitIds }, { responseType: 'blob' });
-  return res.data;
+  const filename = extractFilenameFromHeader(res.headers['content-disposition'] as string);
+  return { blob: res.data, filename };
 }
 
 export type TraitImportResult = { ok: boolean; inserted: number; updated: number; skipped: number; errors: string[] };
