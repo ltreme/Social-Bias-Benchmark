@@ -23,19 +23,25 @@ services:
     command: >-
       bash -lc "uvicorn backend.application.api.main:app --host 0.0.0.0 --port 8765 --reload \
       --app-dir apps/backend/src \
-      --reload-dir apps/backend/src"
+      --reload-dir apps/backend/src \
+      --workers 1 \
+      --timeout-keep-alive 75"
     environment:
       # SQLite path defaults to ./data/benchmark.db (mounted via repo volume)
       PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "0"
       # Base URL for vLLM server reachable from inside the container
       # If your vLLM runs on the host at localhost:8000, use host.docker.internal
       VLLM_BASE_URL: http://host.docker.internal:8000
       # Optionally override DB with: DB_URL=sqlite:////app/data/benchmark.db
       # Use Peewee pooled connections for PostgreSQL (larger pool for concurrent UI queries)
-      DB_URL: postgresql+pool://sbb:sbb@postgres:5432/sbb?max_connections=80&stale_timeout=300
+      DB_URL: postgresql+pool://sbb:sbb@postgres:5432/sbb?max_connections=20&stale_timeout=300
       PYTHONPATH: apps/backend/src
     volumes:
-      - .:/app
+      # Use cached mode for better read performance on macOS
+      - .:/app:cached
+      # Store __pycache__ in volume for faster imports
+      - api_pycache:/app/apps/backend/src/backend/__pycache__
     ports:
       - "8765:8765"
     depends_on:
@@ -64,3 +70,4 @@ services:
 volumes:
   ui_node_modules:
   pg_data:
+  api_pycache:

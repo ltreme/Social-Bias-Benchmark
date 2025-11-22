@@ -100,18 +100,17 @@ class TraitDatabaseRepository:
         )
 
     def get_all_linked_result_counts(self) -> Dict[str, int]:
-        """Get result counts for all traits.
+        """Get result counts for all traits using SQL aggregation.
 
         Returns:
             Dict mapping trait_id to result count
         """
-        counts: Dict[str, int] = {}
-        for row in BenchmarkResult.select(
-            BenchmarkResult.case_id, BenchmarkResult.id
-        ).tuples():
-            cid = str(row[0])
-            counts[cid] = counts.get(cid, 0) + 1
-        return counts
+        # Use SQL GROUP BY instead of fetching all rows
+        query = BenchmarkResult.select(
+            BenchmarkResult.case_id,
+            fn.COUNT(BenchmarkResult.id).alias("count"),
+        ).group_by(BenchmarkResult.case_id)
+        return {str(row.case_id): int(row.count) for row in query}
 
     def list_categories(self) -> List[str]:
         """List all distinct non-empty trait categories."""

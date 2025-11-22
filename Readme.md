@@ -60,6 +60,12 @@ Troubleshooting
 - Import/Module errors right after `docker compose up` typically indicate missing Python deps — rebuild the API image.
 - Port already in use: stop conflicting local servers or change published ports in `docker-compose.yml`.
 - Node modules mismatch: the UI container keeps its own `node_modules` volume.
+- **Slow API responses**:
+  - First request after restart is slower due to module imports (~300ms) — this is normal
+  - On macOS: Docker volume mounts can be slow. The `:cached` flag is already set for better performance
+  - Connection pool is set to 20 connections (reduced from 80) to avoid overhead
+  - For production use (no hot reload needed), remove `--reload` flag from uvicorn command for 10x faster startup
+  - Python bytecode caching is enabled (`PYTHONDONTWRITEBYTECODE=0`) and stored in a Docker volume for faster imports
 
 Advanced: CLI (optional)
 - All functionality is also accessible via Python CLIs for batch/automation. The UI is recommended for interactive workflows.
