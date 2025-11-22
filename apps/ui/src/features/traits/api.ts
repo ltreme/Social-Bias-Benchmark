@@ -52,6 +52,11 @@ export async function exportTraitsCsv(): Promise<Blob> {
   return res.data;
 }
 
+export async function exportFilteredTraitsCsv(traitIds: string[]): Promise<Blob> {
+  const res = await api.post<Blob>('/traits/export', { trait_ids: traitIds }, { responseType: 'blob' });
+  return res.data;
+}
+
 export type TraitImportResult = { ok: boolean; inserted: number; updated: number; skipped: number; errors: string[] };
 
 export async function importTraitsCsv(file: File): Promise<TraitImportResult> {

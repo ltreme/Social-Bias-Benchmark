@@ -63,6 +63,8 @@ _DEFAULT_ANALYSIS_ATTRIBUTES: List[str] = [
     "marriage_status",
     "education",
 ]
+UNKNOWN_TRAIT_CATEGORY = "Unbekannt"
+METRICS_CACHE_VERSION = 2
 
 
 @router.get("/runs")
@@ -155,6 +157,18 @@ def _progress_status(info: Dict[str, Any]) -> str:
     if done > 0:
         return "partial"
     return info.get("status") or "queued"
+
+
+def _filter_by_trait_category(
+    df: pd.DataFrame, trait_category: Optional[str]
+) -> pd.DataFrame:
+    if not trait_category:
+        return df
+    work = df.copy()
+    work["trait_category"] = (
+        work.get("trait_category").fillna(UNKNOWN_TRAIT_CATEGORY).astype(str)
+    )
+    return work.loc[work["trait_category"] == trait_category]
 
 
 # ---------------- Persistent cache helpers ----------------
@@ -690,7 +704,7 @@ def active_benchmark(dataset_id: int) -> dict:
 @router.get("/runs/{run_id}/metrics")
 def run_metrics(run_id: int) -> Dict[str, Any]:
     ensure_db()
-    ck = _cache_key(run_id, "metrics", {})
+    ck = _cache_key(run_id, "metrics", {"v": METRICS_CACHE_VERSION})
     cached = _cache_get(run_id, "metrics", ck)
     if cached:
         return cached
@@ -739,6 +753,47 @@ def run_metrics(run_id: int) -> Dict[str, Any]:
             "education",
         ]
     }
+    cat_work = df.copy()
+    if "trait_category" in cat_work.columns:
+        tc_series = (
+            cat_work["trait_category"].fillna(UNKNOWN_TRAIT_CATEGORY).astype(str)
+        )
+    else:
+        tc_series = pd.Series(
+            [UNKNOWN_TRAIT_CATEGORY] * len(cat_work), index=cat_work.index
+        )
+    cat_work["trait_category"] = tc_series
+    cat_hists: List[Dict[str, Any]] = []
+    for cat, sub in cat_work.groupby("trait_category"):
+        seq = pd.to_numeric(sub["rating"], errors="coerce").dropna().astype(int)
+        cat_counts = seq.value_counts().reindex(cats, fill_value=0).sort_index()
+        total_cat = cat_counts.sum()
+        cat_shares = (
+            (cat_counts / total_cat).tolist() if total_cat > 0 else [0.0] * len(cats)
+        )
+        cat_hists.append(
+            {
+                "category": cat,
+                "bins": [str(x) for x in cats],
+                "counts": [int(x) for x in cat_counts.tolist()],
+                "shares": cat_shares,
+            }
+        )
+    cat_summary = (
+        cat_work.groupby("trait_category")["rating"]
+        .agg(["count", "mean", "std"])
+        .reset_index()
+        .rename(columns={"trait_category": "category"})
+    )
+    cat_summary_records = [
+        {
+            "category": str(r["category"]),
+            "count": int(r["count"]),
+            "mean": float(r["mean"]),
+            "std": float(r["std"]) if r["std"] == r["std"] else None,
+        }
+        for _, r in cat_summary.iterrows()
+    ]
     payload = {
         "ok": True,
         "n": int(len(df)),
@@ -746,6 +801,10 @@ def run_metrics(run_id: int) -> Dict[str, Any]:
             "bins": [str(c) for c in cats],
             "shares": shares,
             "counts": [int(x) for x in counts.tolist()],
+        },
+        "trait_categories": {
+            "histograms": cat_hists,
+            "summary": cat_summary_records,
         },
         "attributes": attrs,
     }
@@ -892,18 +951,47 @@ def run_order_metrics(run_id: int) -> Dict[str, Any]:
     # Per-case breakdown
     rows: List[Dict[str, Any]] = []
     try:
-        trait_map = {str(r.id): (r.adjective or str(r.id)) for r in Trait.select()}
+        trait_map = {}
+        trait_cat_map = {}
+        for r in Trait.select():
+            trait_map[str(r.id)] = r.adjective or str(r.id)
+            trait_cat_map[str(r.id)] = r.category or UNKNOWN_TRAIT_CATEGORY
     except Exception:
         trait_map = {}
+        trait_cat_map = {}
     for k, g in pairs.groupby("case_id"):
         ad = float((g["abs_diff"] == 0).mean()) if len(g) else 0.0
         rows.append(
             {
                 "case_id": str(k),
                 "adjective": trait_map.get(str(k)),
+                "trait_category": trait_cat_map.get(str(k)) or UNKNOWN_TRAIT_CATEGORY,
                 "n_pairs": int(len(g)),
                 "exact_rate": ad,
                 "mae": float(g["abs_diff"].mean()) if len(g) else 0.0,
+            }
+        )
+    by_cat = []
+    cat_stats: Dict[str, Dict[str, Any]] = {}
+    for r in rows:
+        cat = r.get("trait_category") or UNKNOWN_TRAIT_CATEGORY
+        entry = cat_stats.setdefault(
+            cat, {"trait_category": cat, "n_pairs": 0, "exact_sum": 0.0, "mae_sum": 0.0}
+        )
+        n_pairs_case = int(r.get("n_pairs") or 0)
+        entry["n_pairs"] += n_pairs_case
+        entry["exact_sum"] += float(r.get("exact_rate") or 0.0) * n_pairs_case
+        entry["mae_sum"] += float(r.get("mae") or 0.0) * n_pairs_case
+    for cat, stat in cat_stats.items():
+        n_pairs_cat = stat["n_pairs"] or 0
+        if n_pairs_cat <= 0:
+            continue
+        by_cat.append(
+            {
+                "trait_category": cat,
+                "n_pairs": n_pairs_cat,
+                "exact_rate": stat["exact_sum"] / n_pairs_cat,
+                "mae": stat["mae_sum"] / n_pairs_cat,
             }
         )
 
@@ -916,6 +1004,7 @@ def run_order_metrics(run_id: int) -> Dict[str, Any]:
         "test_retest": {"within1_rate": within1, "mean_abs_diff": mean_abs},
         "correlation": {"pearson": pear, "spearman": spear, "kendall": kend},
         "by_case": rows,
+        "by_trait_category": by_cat,
     }
     _cache_put(run_id, "order", ck, payload)
     return payload
@@ -1062,6 +1151,7 @@ def run_deltas(
     baseline: Optional[str] = None,
     n_perm: int = 1000,
     alpha: float = 0.05,
+    trait_category: Optional[str] = Query(None),
 ) -> Dict[str, Any]:
     ensure_db()
     ck = _cache_key(
@@ -1072,12 +1162,13 @@ def run_deltas(
             "baseline": baseline,
             "n_perm": int(n_perm),
             "alpha": float(alpha),
+            "trait_category": trait_category,
         },
     )
     cached = _cache_get(run_id, "deltas", ck)
     if cached:
         return cached
-    df = _df_for_read(run_id)
+    df = _filter_by_trait_category(_df_for_read(run_id), trait_category)
     if df.empty or attribute not in df.columns:
         payload = {"ok": True, "n": 0, "rows": []}
         _cache_put(run_id, "deltas", ck, payload)
@@ -1092,11 +1183,18 @@ def run_deltas(
 
 @router.get("/runs/{run_id}/means")
 def run_means(
-    run_id: int, attribute: str, top_n: Optional[int] = None
+    run_id: int,
+    attribute: str,
+    top_n: Optional[int] = None,
+    trait_category: Optional[str] = Query(None),
 ) -> Dict[str, Any]:
     """Mean rating and counts per category for a given attribute."""
     ensure_db()
-    ck = _cache_key(run_id, "means", {"attribute": attribute, "top_n": top_n})
+    ck = _cache_key(
+        run_id,
+        "means",
+        {"attribute": attribute, "top_n": top_n, "trait_category": trait_category},
+    )
     cached = _cache_get(run_id, "means", ck)
     if cached:
         return cached
@@ -1107,7 +1205,12 @@ def run_means(
         payload = {"ok": True, "rows": []}
         _cache_put(run_id, "means", ck, payload)
         return payload
-    work = df.copy()
+    work = _filter_by_trait_category(df, trait_category)
+    if work.empty:
+        payload = {"ok": True, "rows": []}
+        _cache_put(run_id, "means", ck, payload)
+        return payload
+    work = work.copy()
     work[attribute] = work[attribute].fillna("Unknown").astype(str)
     s = pd.to_numeric(work["rating"], errors="coerce")
     g = work.assign(r=s).groupby(attribute)["r"].agg(["count", "mean"]).reset_index()
@@ -1134,6 +1237,7 @@ def run_forest(
     baseline: Optional[str] = None,
     target: Optional[str] = None,
     min_n: int = 1,
+    trait_category: Optional[str] = Query(None),
 ) -> Dict[str, Any]:
     ensure_db()
     ck = _cache_key(
@@ -1144,12 +1248,13 @@ def run_forest(
             "baseline": baseline,
             "target": target,
             "min_n": int(min_n),
+            "trait_category": trait_category,
         },
     )
     cached = _cache_get(run_id, "forest", ck)
     if cached:
         return cached
-    df = _df_for_read(run_id)
+    df = _filter_by_trait_category(_df_for_read(run_id), trait_category)
     if df.empty or attribute not in df.columns:
         payload = {"ok": True, "n": 0, "rows": []}
         _cache_put(run_id, "forest", ck, payload)
@@ -1173,7 +1278,7 @@ def run_forest(
         target = str(s2.index[0]) if not s2.empty else None
 
     agg = (
-        work.groupby(["case_id", attribute])["rating"]
+        work.groupby(["case_id", "trait_category", attribute])["rating"]
         .agg(count="count", mean="mean", std="std")
         .reset_index()
     )
@@ -1182,7 +1287,9 @@ def run_forest(
         payload = {"ok": True, "n": 0, "rows": []}
         _cache_put(run_id, "forest", ck, payload)
         return payload
-    baseline_df = agg.loc[agg[attribute] == baseline].set_index("case_id")
+    baseline_df = agg.loc[agg[attribute] == baseline].set_index(
+        ["case_id", "trait_category"]
+    )
     if baseline_df.empty:
         payload = {"ok": True, "n": 0, "rows": []}
         _cache_put(run_id, "forest", ck, payload)
@@ -1199,7 +1306,7 @@ def run_forest(
     )
     cats = [c for c in cats if c is not None]
     for cat in cats:
-        cat_df = agg.loc[agg[attribute] == cat].set_index("case_id")
+        cat_df = agg.loc[agg[attribute] == cat].set_index(["case_id", "trait_category"])
         merged = (
             baseline_df.join(
                 cat_df,
@@ -1232,6 +1339,7 @@ def run_forest(
                     "case_id": str(row.case_id),
                     "category": str(cat),
                     "baseline": str(baseline),
+                    "trait_category": str(row.trait_category),
                     "n_base": int(row.count_base),
                     "n_cat": int(row.count_cat),
                     "delta": (

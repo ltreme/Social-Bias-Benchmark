@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchTraits, createTrait, updateTrait, deleteTrait, fetchTraitCategories, setTraitActive, exportTraitsCsv, importTraitsCsv, type TraitItem, type TraitPayload, type TraitImportResult } from './api';
+import { fetchTraits, createTrait, updateTrait, deleteTrait, fetchTraitCategories, setTraitActive, exportTraitsCsv, exportFilteredTraitsCsv, importTraitsCsv, type TraitItem, type TraitPayload, type TraitImportResult } from './api';
 
 export function useTraits() {
   return useQuery({ queryKey: ['traits'], queryFn: fetchTraits });
@@ -91,6 +91,18 @@ export async function triggerTraitsExport(): Promise<void> {
   const link = document.createElement('a');
   link.href = url;
   link.download = 'traits.csv';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export async function triggerFilteredTraitsExport(traitIds: string[]): Promise<void> {
+  const blob = await exportFilteredTraitsCsv(traitIds);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'traits_filtered.csv';
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

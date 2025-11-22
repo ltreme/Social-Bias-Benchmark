@@ -41,7 +41,11 @@ export async function startRun(body: { model_name: string; dataset_id: string })
 export type RunMetrics = {
     ok: boolean;
     n: number;
-    hist: { bins: number[]; shares: number[]; counts?: number[] };
+    hist: { bins: string[]; shares: number[]; counts?: number[] };
+    trait_categories?: {
+        histograms: Array<{ category: string; bins: string[]; counts: number[]; shares: number[] }>;
+        summary: Array<{ category: string; count: number; mean: number; std?: number | null }>;
+    };
     attributes: Record<string, { baseline: string | null; categories: Array<{ category: string; count: number; mean: number }> }>;
 };
 
@@ -71,20 +75,30 @@ export type RunDeltas = {
     }>;
 };
 
-export async function fetchRunDeltas(runId: number, params: { attribute: string; baseline?: string; n_perm?: number; alpha?: number }) {
-    const res = await api.get<RunDeltas>(`/runs/${runId}/deltas`, { params });
+export async function fetchRunDeltas(runId: number, params: { attribute: string; baseline?: string; n_perm?: number; alpha?: number; trait_category?: string }) {
+    const query: Record<string, any> = { attribute: params.attribute };
+    if (params.baseline) query.baseline = params.baseline;
+    if (typeof params.n_perm === 'number') query.n_perm = params.n_perm;
+    if (typeof params.alpha === 'number') query.alpha = params.alpha;
+    if (params.trait_category) query.trait_category = params.trait_category;
+    const res = await api.get<RunDeltas>(`/runs/${runId}/deltas`, { params: query });
     return res.data;
 }
 
 export type RunForest = {
     ok: boolean;
     n: number;
-    rows: Array<{ case_id: string; label?: string; category: string; baseline: string; n_base: number; n_cat: number; delta: number; se: number | null; ci_low: number | null; ci_high: number | null }>;
+    rows: Array<{ case_id: string; label?: string; category: string; trait_category?: string; baseline: string; n_base: number; n_cat: number; delta: number; se: number | null; ci_low: number | null; ci_high: number | null }>;
     overall: { mean: number | null; ci_low: number | null; ci_high: number | null };
 };
 
-export async function fetchRunForest(runId: number, params: { attribute: string; baseline?: string; target?: string; min_n?: number }) {
-    const res = await api.get<RunForest>(`/runs/${runId}/forest`, { params });
+export async function fetchRunForest(runId: number, params: { attribute: string; baseline?: string; target?: string; min_n?: number; trait_category?: string }) {
+    const query: Record<string, any> = { attribute: params.attribute };
+    if (params.baseline) query.baseline = params.baseline;
+    if (params.target) query.target = params.target;
+    if (typeof params.min_n === 'number') query.min_n = params.min_n;
+    if (params.trait_category) query.trait_category = params.trait_category;
+    const res = await api.get<RunForest>(`/runs/${runId}/forest`, { params: query });
     return res.data;
 }
 
@@ -107,7 +121,8 @@ export type OrderMetrics = {
   usage: { eei?: number; mni?: number; sv?: number };
   test_retest: { within1_rate?: number; mean_abs_diff?: number };
   correlation: { pearson?: number; spearman?: number; kendall?: number };
-  by_case: Array<{ case_id: string; adjective?: string | null; n_pairs: number; exact_rate: number; mae: number }>;
+  by_case: Array<{ case_id: string; adjective?: string | null; trait_category?: string | null; n_pairs: number; exact_rate: number; mae: number }>;
+  by_trait_category?: Array<{ trait_category: string; n_pairs: number; exact_rate?: number; mae?: number }>;
 };
 
 export async function fetchRunOrderMetrics(runId: number) {
@@ -116,8 +131,11 @@ export async function fetchRunOrderMetrics(runId: number) {
 }
 
 export type MeansRow = { category: string; count: number; mean: number };
-export async function fetchRunMeans(runId: number, attribute: string, top_n?: number) {
-  const res = await api.get<{ ok: boolean; rows: MeansRow[] }>(`/runs/${runId}/means`, { params: { attribute, top_n } });
+export async function fetchRunMeans(runId: number, attribute: string, top_n?: number, trait_category?: string) {
+  const params: Record<string, any> = { attribute };
+  if (typeof top_n === 'number') params.top_n = top_n;
+  if (trait_category) params.trait_category = trait_category;
+  const res = await api.get<{ ok: boolean; rows: MeansRow[] }>(`/runs/${runId}/means`, { params });
   return res.data;
 }
 

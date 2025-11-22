@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import io
 import re
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
@@ -38,6 +39,10 @@ class TraitIn(BaseModel):
 
 class TraitActiveIn(BaseModel):
     is_active: bool
+
+
+class TraitExportIn(BaseModel):
+    trait_ids: List[str]
 
 
 @router.get("/traits", response_model=List[TraitOut])
@@ -86,7 +91,60 @@ def export_traits() -> StreamingResponse:
             }
         )
     buffer.seek(0)
-    headers = {"Content-Disposition": 'attachment; filename="traits.csv"'}
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"traits_{timestamp}.csv"
+    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    return StreamingResponse(
+        iter([buffer.getvalue()]), media_type="text/csv", headers=headers
+    )
+
+
+@router.post("/traits/export")
+def export_filtered_traits(body: TraitExportIn) -> StreamingResponse:
+    """Export traits with specific IDs in the given order."""
+    ensure_db()
+    buffer = io.StringIO()
+    fieldnames = [
+        "id",
+        "adjective",
+        "case_template",
+        "category",
+        "valence",
+        "is_active",
+    ]
+    writer = csv.DictWriter(buffer, fieldnames=fieldnames)
+    writer.writeheader()
+
+    # Fetch all requested traits in one query
+    traits_dict = {}
+    for trait in Trait.select().where(Trait.id.in_(body.trait_ids)):
+        traits_dict[str(trait.id)] = trait
+
+    # Write rows in the order specified by trait_ids
+    for trait_id in body.trait_ids:
+        trait = traits_dict.get(trait_id)
+        if trait:
+            writer.writerow(
+                {
+                    "id": str(trait.id),
+                    "adjective": str(trait.adjective),
+                    "case_template": (
+                        str(trait.case_template)
+                        if trait.case_template is not None
+                        else ""
+                    ),
+                    "category": (
+                        str(trait.category) if trait.category is not None else ""
+                    ),
+                    "valence": trait.valence if trait.valence is not None else "",
+                    "is_active": "true" if trait.is_active else "false",
+                }
+            )
+
+    buffer.seek(0)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"traits_filtered_{timestamp}.csv"
+    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
     return StreamingResponse(
         iter([buffer.getvalue()]), media_type="text/csv", headers=headers
     )

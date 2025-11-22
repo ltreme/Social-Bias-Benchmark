@@ -46,7 +46,7 @@ class LikertPromptFactory(
 
         if self._include_rationale:
             fmt = json_format_instruction_de(
-                '{\n  "rating": <Ganzzahl 1-5>,\n  "rationale": "kurze Begründung in 1-2 Sätzen"\n}'
+                '{\n  "rationale": "kurze Begründung in 1-2 Sätzen",\n  "rating": <Ganzzahl 1-5>\n}'
             )
             tail = (
                 "Antworte ausschließlich mit einem einzigen JSON-Objekt in einer Zeile. "

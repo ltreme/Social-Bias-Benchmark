@@ -1,9 +1,9 @@
 import { useMemo, useRef, useState } from 'react';
-import { ActionIcon, Button, Card, Group, Menu, MultiSelect, Switch, Title } from '@mantine/core';
+import { ActionIcon, Badge, Button, Card, Checkbox, Group, Menu, Modal, MultiSelect, Stack, Switch, Text, Title } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import type { ColumnDef } from '@tanstack/react-table';
 import { DataTable } from '../../components/DataTable';
-import { useTraits, useCreateTrait, useDeleteTrait, useUpdateTrait, useTraitCategories, useToggleTraitActive, useImportTraitsCsv, triggerTraitsExport } from './hooks';
+import { useTraits, useCreateTrait, useDeleteTrait, useUpdateTrait, useTraitCategories, useToggleTraitActive, useImportTraitsCsv, triggerTraitsExport, triggerFilteredTraitsExport } from './hooks';
 import { TraitModal } from './TraitModal';
 import type { TraitItem } from './api';
 
@@ -20,7 +20,10 @@ export function TraitsPage() {
   const [pendingToggleId, setPendingToggleId] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
   const [valenceFilter, setValenceFilter] = useState<string[]>([]);
+  const [activeFilter, setActiveFilter] = useState<string[]>([]);
   const [sortOrder, setSortOrder] = useState<string[]>(['id']);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [useFiltersForExport, setUseFiltersForExport] = useState(false);
 
   const categoryOptions = useMemo(() => categories, [categories]);
 
@@ -41,20 +44,26 @@ export function TraitsPage() {
     return (aId ?? '').localeCompare(bId ?? '');
   };
 
-  const traitIdSorting: ColumnDef<TraitItem>['sortingFn'] = (rowA, rowB, columnId) => {
+  const traitIdSorting: ColumnDef<TraitItem>['sortingFn'] = (rowA: any, rowB: any, columnId: any) => {
     const a = (rowA.getValue(columnId) ?? '') as string;
     const b = (rowB.getValue(columnId) ?? '') as string;
     return compareTraitIds(a, b);
   };
 
   const sortedData = useMemo(() => {
-    const filtered = data.filter((item) => {
+    const filtered = data.filter((item: TraitItem) => {
       if (categoryFilter.length && (!item.category || !categoryFilter.includes(item.category))) {
         return false;
       }
       if (valenceFilter.length) {
         const val = item.valence ?? null;
         if (val === null || !valenceFilter.includes(String(val))) {
+          return false;
+        }
+      }
+      if (activeFilter.length) {
+        const isActive = item.is_active;
+        if (!activeFilter.includes(isActive ? 'active' : 'inactive')) {
           return false;
         }
       }
@@ -90,7 +99,7 @@ export function TraitsPage() {
       }
       return compareTraitIds(a.id, b.id);
     });
-  }, [data, categoryFilter, valenceFilter, sortOrder]);
+  }, [data, categoryFilter, valenceFilter, activeFilter, sortOrder]);
 
   const columns: ColumnDef<TraitItem>[] = [
     { header: 'ID', accessorKey: 'id', sortingFn: traitIdSorting },
@@ -100,10 +109,10 @@ export function TraitsPage() {
     {
       header: 'Aktiv',
       accessorKey: 'is_active',
-      cell: ({ row }) => (
+      cell: ({ row }: any) => (
         <Switch
           checked={row.original.is_active}
-          onChange={(e) => {
+          onChange={(e: any) => {
             setPendingToggleId(row.original.id);
             toggleActiveM.mutate(
               {
@@ -121,7 +130,7 @@ export function TraitsPage() {
       ),
     },
     { header: 'Verknüpfte Ergebnisse', accessorKey: 'linked_results_n' },
-    { header: '', accessorKey: 'actions', cell: ({ row }) => (
+    { header: '', accessorKey: 'actions', cell: ({ row }: any) => (
       <Menu withinPortal position="bottom-end">
         <Menu.Target>
           <ActionIcon variant="subtle">⋯</ActionIcon>
@@ -144,14 +153,7 @@ export function TraitsPage() {
       <Group justify="space-between" mb="md">
         <Title order={2}>Traits</Title>
         <Group gap="xs">
-          <Button variant="light" onClick={async () => {
-            try {
-              await triggerTraitsExport();
-              notifications.show({ color: 'green', title: 'Export erstellt', message: 'traits.csv wurde heruntergeladen.' });
-            } catch (err) {
-              notifications.show({ color: 'red', title: 'Export fehlgeschlagen', message: String(err) });
-            }
-          }}>CSV exportieren</Button>
+          <Button variant="light" onClick={() => setExportModalOpen(true)}>CSV exportieren</Button>
           <Button variant="light" onClick={() => fileInputRef.current?.click()} loading={importCsvM.isPending}>CSV importieren</Button>
           <Button onClick={() => setModal({ mode: 'create' })}>Trait hinzufügen</Button>
         </Group>
@@ -161,7 +163,7 @@ export function TraitsPage() {
         type="file"
         accept=".csv,text/csv"
         style={{ display: 'none' }}
-        onChange={async (e) => {
+        onChange={async (e: any) => {
           const file = e.target.files?.[0];
           if (!file) return;
           try {
@@ -182,7 +184,7 @@ export function TraitsPage() {
         <MultiSelect
           label="Kategorie filtern"
           placeholder="Alle Kategorien"
-          data={categoryOptions.map((c) => ({ value: c, label: c }))}
+          data={categoryOptions.map((c: string) => ({ value: c, label: c }))}
           value={categoryFilter}
           onChange={setCategoryFilter}
           searchable
@@ -203,6 +205,18 @@ export function TraitsPage() {
           w={240}
         />
         <MultiSelect
+          label="Status filtern"
+          placeholder="Alle"
+          data={[
+            { value: 'active', label: 'Aktiv' },
+            { value: 'inactive', label: 'Inaktiv' },
+          ]}
+          value={activeFilter}
+          onChange={setActiveFilter}
+          clearable
+          w={200}
+        />
+        <MultiSelect
           label="Sortierreihenfolge"
           placeholder="Standard (ID)"
           data={[
@@ -212,10 +226,16 @@ export function TraitsPage() {
             { value: 'valence', label: 'Valenz' },
           ]}
           value={sortOrder}
-          onChange={(vals) => setSortOrder(vals.length ? vals : ['id'])}
+          onChange={(vals: string[]) => setSortOrder(vals.length ? vals : ['id'])}
           clearable
           w={300}
         />
+      </Group>
+      <Group mb="md" justify="space-between" align="center">
+        <Text size="sm" c="dimmed">
+          {sortedData.length} von {data.length} Trait{data.length !== 1 ? 's' : ''} 
+          {sortedData.length !== data.length && ' (gefiltert)'}
+        </Text>
       </Group>
       {isLoading || catsLoading ? 'Laden…' : (
         <DataTable
@@ -245,6 +265,50 @@ export function TraitsPage() {
           onSubmit={async (v) => { await updateM.mutateAsync({ id: modal.row.id, ...v }); }}
         />
       )}
+
+      <Modal
+        opened={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        title="CSV exportieren"
+      >
+        <Stack gap="md">
+          <Checkbox
+            label="Filter und Reihenfolge verwenden"
+            description="Exportiert nur die gefilterten und sortierten Traits in der aktuellen Reihenfolge"
+            checked={useFiltersForExport}
+            onChange={(e: any) => setUseFiltersForExport(e.currentTarget.checked)}
+          />
+          <Group justify="flex-end" gap="sm">
+            <Button variant="default" onClick={() => setExportModalOpen(false)}>
+              Abbrechen
+            </Button>
+            <Button onClick={async () => {
+              try {
+                if (useFiltersForExport) {
+                  // Export mit Filtern: sortedData IDs an Backend senden
+                  const traitIds = sortedData.map((trait: TraitItem) => trait.id);
+                  await triggerFilteredTraitsExport(traitIds);
+                } else {
+                  // Standard-Export: alle Daten vom Server
+                  await triggerTraitsExport();
+                }
+                setExportModalOpen(false);
+                notifications.show({ 
+                  color: 'green', 
+                  title: 'Export erstellt', 
+                  message: useFiltersForExport 
+                    ? `${sortedData.length} gefilterte Traits wurden exportiert.`
+                    : 'traits.csv wurde heruntergeladen.' 
+                });
+              } catch (err) {
+                notifications.show({ color: 'red', title: 'Export fehlgeschlagen', message: String(err) });
+              }
+            }}>
+              Exportieren
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Card>
   );
 }

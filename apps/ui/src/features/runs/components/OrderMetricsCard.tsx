@@ -57,7 +57,21 @@ export function OrderMetricsCard({ data }: OrderMetricsCardProps) {
           </div>
         </div>
       ) : null}
+      {data.by_trait_category && data.by_trait_category.length ? (
+        <div style={{ marginTop: 12 }}>
+          <Text fw={700}>Nach Trait-Kategorie</Text>
+          <Text size="sm">Aggregierte Order-Consistency getrennt nach Trait-Kategorien (z.&nbsp;B. sozial vs. kompetenz). So lässt sich erkennen, ob eine Kategorie systematisch stabiler ist.</Text>
+          <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+            {data.by_trait_category.map((cat: any) => (
+              <div key={cat.trait_category} style={{ minWidth: 140 }}>
+                <b>{cat.trait_category}</b>
+                <Text size="sm">n={cat.n_pairs}</Text>
+                <Text size="sm">Exact {(cat.exact_rate ?? 0).toFixed(3)} · MAE {(cat.mae ?? 0).toFixed(3)}</Text>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </Card>
   );
 }
-

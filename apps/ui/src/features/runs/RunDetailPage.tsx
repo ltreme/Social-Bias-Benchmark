@@ -1,4 +1,4 @@
-import { Alert, Button, Card, Grid, Group, Spoiler, Text, Title, MultiSelect, Progress } from '@mantine/core';
+import { Alert, Button, Card, Grid, Group, Spoiler, Text, Title, MultiSelect, Progress, Select } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from '@tanstack/react-router';
 import { ChartPanel } from '../../components/ChartPanel';
@@ -99,6 +99,10 @@ export function RunDetailPage() {
   const defaultBaseline = metrics?.attributes?.[attr]?.baseline || undefined;
   const [baseline, setBaseline] = useState<string | undefined>(defaultBaseline);
   const [targets, setTargets] = useState<string[]>([]);
+  const traitCategorySummary = metrics?.trait_categories?.summary || [];
+  const traitCategoryOptions = traitCategorySummary.map((c) => c.category);
+  const [traitCategory, setTraitCategory] = useState<string>('__all');
+  const traitCategoryFilter = traitCategory === '__all' ? undefined : traitCategory;
   const attrLabel = ATTRS.find((x) => x.value === attr)?.label || attr;
 
   const liveStatus = (benchStatus.data?.status || '').toLowerCase();
@@ -120,20 +124,25 @@ export function RunDetailPage() {
     if (!first) return;
     setTargets([first]);
   }, [attr, baseline, defaultBaseline, availableCats.length]);
+  useEffect(() => {
+    if (traitCategoryFilter && !traitCategoryOptions.includes(traitCategoryFilter)) {
+      setTraitCategory('__all');
+    }
+  }, [traitCategoryOptions.join(','), traitCategoryFilter]);
 
-  const { data: deltas, isLoading: loadingDeltas, isError: errorDeltas, error: deltasError } = useRunDeltas(idNum, attr, baseline, { enabled: warmReady });
-  const forestsQueries = useRunForests(idNum, attr, baseline, targets, { enabled: warmReady });
+  const { data: deltas, isLoading: loadingDeltas, isError: errorDeltas, error: deltasError } = useRunDeltas(idNum, attr, baseline, { enabled: warmReady, traitCategory: traitCategoryFilter });
+  const forestsQueries = useRunForests(idNum, attr, baseline, targets, { enabled: warmReady, traitCategory: traitCategoryFilter });
   const loadingForest = forestsQueries.length > 0 ? forestsQueries.some((q) => q.isLoading) : false;
   const errorForest = forestsQueries.length > 0 ? forestsQueries.some((q) => q.isError) : false;
   const forestError = forestsQueries.find((q) => q.isError)?.error as any;
   // Means for fixed attribute set (avoid calling hooks in loops)
-  const meansGender = useRunMeans(idNum, 'gender', undefined, { enabled: warmReady });
-  const meansSubregion = useRunMeans(idNum, 'origin_subregion', undefined, { enabled: warmReady });
-  const meansReligion = useRunMeans(idNum, 'religion', undefined, { enabled: warmReady });
-  const meansMigration = useRunMeans(idNum, 'migration_status', undefined, { enabled: warmReady });
-  const meansSexuality = useRunMeans(idNum, 'sexuality', undefined, { enabled: warmReady });
-  const meansMarriage = useRunMeans(idNum, 'marriage_status', undefined, { enabled: warmReady });
-  const meansEducation = useRunMeans(idNum, 'education', undefined, { enabled: warmReady });
+  const meansGender = useRunMeans(idNum, 'gender', undefined, { enabled: warmReady, traitCategory: traitCategoryFilter });
+  const meansSubregion = useRunMeans(idNum, 'origin_subregion', undefined, { enabled: warmReady, traitCategory: traitCategoryFilter });
+  const meansReligion = useRunMeans(idNum, 'religion', undefined, { enabled: warmReady, traitCategory: traitCategoryFilter });
+  const meansMigration = useRunMeans(idNum, 'migration_status', undefined, { enabled: warmReady, traitCategory: traitCategoryFilter });
+  const meansSexuality = useRunMeans(idNum, 'sexuality', undefined, { enabled: warmReady, traitCategory: traitCategoryFilter });
+  const meansMarriage = useRunMeans(idNum, 'marriage_status', undefined, { enabled: warmReady, traitCategory: traitCategoryFilter });
+  const meansEducation = useRunMeans(idNum, 'education', undefined, { enabled: warmReady, traitCategory: traitCategoryFilter });
   const meansData = [
     { a: 'gender', q: meansGender },
     { a: 'origin_subregion', q: meansSubregion },
@@ -144,13 +153,13 @@ export function RunDetailPage() {
     { a: 'education', q: meansEducation },
   ];
   // Deltas (significance tables)
-  const deltasGender = useRunDeltas(idNum, 'gender', undefined, { enabled: warmReady });
-  const deltasSubregion = useRunDeltas(idNum, 'origin_subregion', undefined, { enabled: warmReady });
-  const deltasReligion = useRunDeltas(idNum, 'religion', undefined, { enabled: warmReady });
-  const deltasMigration = useRunDeltas(idNum, 'migration_status', undefined, { enabled: warmReady });
-  const deltasSexuality = useRunDeltas(idNum, 'sexuality', undefined, { enabled: warmReady });
-  const deltasMarriage = useRunDeltas(idNum, 'marriage_status', undefined, { enabled: warmReady });
-  const deltasEducation = useRunDeltas(idNum, 'education', undefined, { enabled: warmReady });
+  const deltasGender = useRunDeltas(idNum, 'gender', undefined, { enabled: warmReady, traitCategory: traitCategoryFilter });
+  const deltasSubregion = useRunDeltas(idNum, 'origin_subregion', undefined, { enabled: warmReady, traitCategory: traitCategoryFilter });
+  const deltasReligion = useRunDeltas(idNum, 'religion', undefined, { enabled: warmReady, traitCategory: traitCategoryFilter });
+  const deltasMigration = useRunDeltas(idNum, 'migration_status', undefined, { enabled: warmReady, traitCategory: traitCategoryFilter });
+  const deltasSexuality = useRunDeltas(idNum, 'sexuality', undefined, { enabled: warmReady, traitCategory: traitCategoryFilter });
+  const deltasMarriage = useRunDeltas(idNum, 'marriage_status', undefined, { enabled: warmReady, traitCategory: traitCategoryFilter });
+  const deltasEducation = useRunDeltas(idNum, 'education', undefined, { enabled: warmReady, traitCategory: traitCategoryFilter });
   const deltasData = [
     { a: 'gender', q: deltasGender },
     { a: 'origin_subregion', q: deltasSubregion },
@@ -182,10 +191,43 @@ export function RunDetailPage() {
   }
 
   const histCounts = metrics?.hist?.counts || (metrics ? metrics.hist.shares.map((p) => Math.round(p * (metrics.n || 0))) : []);
-  const histBars: Partial<Plotly.Data>[] = metrics ? [
-    { type: 'bar', x: metrics.hist.bins, y: metrics.hist.shares, marker: { color: '#3182bd' }, text: metrics.hist.shares.map((p, i) => `${(p * 100).toFixed(0)}% (n=${histCounts[i] ?? 0})`), textposition: 'outside', hovertemplate: '%{x}: %{y:.0%} (n=%{customdata})', customdata: histCounts },
-    { type: 'scatter', mode: 'markers', x: metrics.hist.bins, y: histCounts, yaxis: 'y2', opacity: 0, showlegend: false },
-  ] : [];
+  const palette = ['#3182bd', '#e6550d', '#31a354', '#756bb1'];
+  let histBars: Partial<Plotly.Data>[] = [];
+  if (metrics) {
+    if (!traitCategoryFilter && metrics.trait_categories?.histograms?.length) {
+      histBars = metrics.trait_categories.histograms.map((h, idx) => ({
+        type: 'bar',
+        name: h.category,
+        x: h.bins,
+        y: h.shares,
+        marker: { color: palette[idx % palette.length], opacity: 0.85 },
+        hovertemplate: '%{x}: %{y:.0%} (n=%{customdata})',
+        customdata: h.counts,
+      }));
+    } else {
+      const selectedHist = traitCategoryFilter
+        ? metrics.trait_categories?.histograms?.find((h) => h.category === traitCategoryFilter)
+        : undefined;
+      const baseHist = selectedHist || {
+        bins: metrics.hist.bins,
+        shares: metrics.hist.shares,
+        counts: histCounts,
+      };
+      histBars = [
+        {
+          type: 'bar',
+          x: baseHist.bins,
+          y: baseHist.shares,
+          marker: { color: '#3182bd' },
+          text: baseHist.shares.map((p: number, i: number) => `${(p * 100).toFixed(0)}% (n=${baseHist.counts?.[i] ?? 0})`),
+          textposition: 'outside',
+          hovertemplate: '%{x}: %{y:.0%} (n=%{customdata})',
+          customdata: baseHist.counts,
+        },
+        { type: 'scatter', mode: 'markers', x: baseHist.bins, y: baseHist.counts, yaxis: 'y2', opacity: 0, showlegend: false },
+      ];
+    }
+  }
 
   // delta bars moved into DeltaBarsPanel; forest rendering handled in MultiForestPlotPanel
 
@@ -234,6 +276,20 @@ export function RunDetailPage() {
       ) : (
           <div style={{ marginBottom: '1em' }}>Run nicht gefunden.</div>
       )}
+      {metrics?.trait_categories?.summary?.length ? (
+        <Card withBorder padding="sm" mb="md">
+          <Title order={5}>Trait-Kategorien – Überblick</Title>
+          <Text size="sm" c="dimmed">Mittelwerte pro Trait-Kategorie helfen einzuschätzen, ob „sozial“ vs. „Kompetenz“ unterschiedlich bewertet werden. Nutze den Filter über den Diagrammen, um alle Auswertungen darauf einzuschränken.</Text>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 8 }}>
+            {metrics.trait_categories.summary.map((cat) => (
+              <div key={cat.category} style={{ minWidth: 180 }}>
+                <b>{cat.category}</b>
+                <Text size="sm">n={cat.count} · Mittelwert {(cat.mean ?? 0).toFixed(2)}{typeof cat.std === 'number' ? ` · SD ${cat.std.toFixed(2)}` : ''}</Text>
+              </div>
+            ))}
+          </div>
+        </Card>
+      ) : null}
 
       {/* Versuchsaufbau / Beschreibung */}
       <Card withBorder padding="md" style={{ marginBottom: 12 }}>
@@ -343,6 +399,13 @@ export function RunDetailPage() {
               baseline={baseline}
               defaultBaseline={defaultBaseline}
               onBaselineChange={setBaseline}
+            />
+            <Select
+              label="Trait-Kategorie"
+              data={[{ value: '__all', label: 'Alle Kategorien' }, ...traitCategoryOptions.map((c) => ({ value: c, label: c }))]}
+              value={traitCategory}
+              onChange={(val) => setTraitCategory(val ?? '__all')}
+              style={{ minWidth: 220 }}
             />
             <MultiSelect
               label="Forest: Kategorien"
