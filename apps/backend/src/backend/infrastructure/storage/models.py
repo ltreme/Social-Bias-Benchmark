@@ -88,19 +88,6 @@ class Persona(BaseModel):
         indexes = ((("age", "gender"), False),)
 
 
-class FailLog(BaseModel):
-    id = pw.AutoField()
-    persona_uuid_id = pw.ForeignKeyField(
-        Persona, field=Persona.uuid, on_delete="CASCADE", null=True
-    )
-    model_id = pw.ForeignKeyField(Model, on_delete="SET NULL", null=True)
-    attempt = pw.IntegerField(null=True)
-    error_kind = pw.CharField(null=False)
-    raw_text_snippet = pw.TextField(null=True)
-    prompt_snippet = pw.TextField(null=True)
-    created_at = pw.DateTimeField(default=utcnow, null=False)
-
-
 # ==============================
 # == Dataset registry         ==
 # ==============================
@@ -153,6 +140,24 @@ class BenchmarkRun(BaseModel):
 
     class Meta:
         indexes = ((("dataset_id", "created_at"), False),)
+
+
+class FailLog(BaseModel):
+    id = pw.AutoField()
+    persona_uuid_id = pw.ForeignKeyField(
+        Persona, field=Persona.uuid, on_delete="CASCADE", null=True
+    )
+    model_id = pw.ForeignKeyField(Model, on_delete="SET NULL", null=True)
+    benchmark_run_id = pw.ForeignKeyField(
+        BenchmarkRun, backref="failures", on_delete="CASCADE", null=True
+    )
+    # We need case_id to know WHICH case failed
+    case_id = pw.ForeignKeyField(Trait, field=Trait.id, on_delete="SET NULL", null=True)
+    attempt = pw.IntegerField(null=True)
+    error_kind = pw.CharField(null=False)
+    raw_text_snippet = pw.TextField(null=True)
+    prompt_snippet = pw.TextField(null=True)
+    created_at = pw.DateTimeField(default=utcnow, null=False)
 
 
 class BenchCache(BaseModel):

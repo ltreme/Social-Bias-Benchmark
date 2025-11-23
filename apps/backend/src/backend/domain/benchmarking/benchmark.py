@@ -42,6 +42,8 @@ def _persist_fail(
             error_kind=reason or kind,
             raw_text_snippet=_snippet(raw),
             prompt_snippet=_snippet(spec.prompt_text),
+            benchmark_run_id=spec.benchmark_run_id,
+            case_id=spec.work.case_id,
         )
     )
 

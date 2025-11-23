@@ -178,7 +178,7 @@ class QueueService:
         Returns:
             List of task status dicts
         """
-        query = TaskQueue.select().order_by(TaskQueue.position)
+        query = TaskQueue.select().order_by(TaskQueue.position.desc())
 
         if not include_done:
             query = query.where(

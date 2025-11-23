@@ -78,14 +78,20 @@ def update_progress(run_id: int, dataset_id: int) -> None:
             done = BenchPersisterPeewee.get_progress_count(run_id)
 
             # If counter is 0, might be after restart - fall back to DB COUNT once
-            if done == 0 and existing_info.get("status") in {"running", "cancelling"}:
+            # This applies to ALL runs, not just active ones
+            if done == 0:
                 _LOG.info(
                     f"[ProgressTracker] In-memory counter empty for run_id={run_id}, querying DB once"
                 )
                 query_start = time.time()
                 done = (
-                    BenchmarkResult.select()
+                    BenchmarkResult.select(
+                        BenchmarkResult.persona_uuid_id,
+                        BenchmarkResult.case_id,
+                        BenchmarkResult.scale_order,
+                    )
                     .where(BenchmarkResult.benchmark_run_id == run_id)
+                    .distinct()
                     .count()
                 )
                 query_elapsed = time.time() - query_start
@@ -97,6 +103,24 @@ def update_progress(run_id: int, dataset_id: int) -> None:
                     _LOG.info(
                         f"[ProgressTracker] COUNT query: {query_elapsed:.2f}s for run_id={run_id}"
                     )
+
+            # Add permanently failed items to done count
+            try:
+                from backend.infrastructure.storage.models import FailLog
+
+                failed_count = (
+                    FailLog.select(FailLog.persona_uuid_id, FailLog.case_id)
+                    .where(
+                        (FailLog.benchmark_run_id == run_id)
+                        & (FailLog.error_kind == "max_attempts_exceeded")
+                    )
+                    .distinct()
+                    .count()
+                )
+                done += failed_count
+            except Exception:
+                # Silently ignore errors - failed count is optional
+                pass
         except Exception as e:
             # If counter access fails, use cached value
             _LOG.error(
@@ -104,7 +128,7 @@ def update_progress(run_id: int, dataset_id: int) -> None:
             )
             done = existing_info.get("done", 0)
     else:
-        # Use cached count
+        # Use cached count (already includes failed items from previous update)
         done = existing_info.get("done", 0)
 
     # Get expected total from the run's progress info if available (for running benchmarks)
@@ -172,8 +196,42 @@ def update_progress(run_id: int, dataset_id: int) -> None:
             if done > total:
                 total = done
     else:
-        # For non-running benchmarks, use done count as total (it's complete)
-        total = existing_info.get("total", done)
+        # For non-running benchmarks, calculate total if not cached
+        # Don't just use done as total - that's wrong!
+        if "_cached_total" in existing_info and "_last_total_update" in existing_info:
+            # Use cached value if available
+            total = existing_info.get("_cached_total", done)
+        else:
+            # Need to calculate total for the first time after restart
+            try:
+                traits = TraitRepository().count()
+                total_personas = (
+                    DatasetPersona.select()
+                    .where(DatasetPersona.dataset_id == dataset_id)
+                    .count()
+                )
+                base_total = total_personas * traits if traits and total_personas else 0
+
+                # Get dual_fraction from DB
+                try:
+                    br = BenchmarkRun.get_by_id(run_id)
+                    frac = float(getattr(br, "dual_fraction", 0.0) or 0.0)
+                except Exception:
+                    frac = 0.0
+
+                extra = int(round(base_total * frac)) if base_total and frac else 0
+                total = base_total + extra
+
+                # Cache for next time
+                existing_info["_cached_total"] = total
+                existing_info["_cached_base_total"] = base_total
+                existing_info["_cached_traits"] = traits
+                existing_info["_cached_personas"] = total_personas
+                existing_info["_last_total_update"] = now
+            except Exception:
+                # Fallback to done if calculation fails
+                total = done
+
         # If we have more results than expected, update total
         if done > total:
             total = done

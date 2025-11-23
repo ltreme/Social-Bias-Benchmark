@@ -214,4 +214,6 @@ class BenchPersisterPeewee(BenchPersister):
                 error_kind=fail.error_kind,
                 raw_text_snippet=fail.raw_text_snippet,
                 prompt_snippet=fail.prompt_snippet,
+                benchmark_run_id=getattr(fail, "benchmark_run_id", None),
+                case_id=getattr(fail, "case_id", None),
             )

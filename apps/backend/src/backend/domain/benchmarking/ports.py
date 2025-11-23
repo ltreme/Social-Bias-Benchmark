@@ -52,6 +52,8 @@ class FailureDto:
     raw_text_snippet: str
     prompt_snippet: str
     model_id: int | None = None
+    benchmark_run_id: int | None = None
+    case_id: str | None = None
 
 
 class DecisionKind(Enum):

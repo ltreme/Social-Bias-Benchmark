@@ -1,4 +1,6 @@
 # shared/storage/db.py
+from __future__ import annotations
+
 import os
 from contextlib import contextmanager
 from pathlib import Path
@@ -123,6 +125,7 @@ def create_tables() -> None:
     _migrate_additional_attrs_unique_index(db)
     _rebuild_benchmarkresult_if_legacy_unique(db)
     _rebuild_additional_attrs_if_legacy_unique(db)
+    _ensure_faillog_columns(db)
 
 
 def _fix_legacy_indexes(db: pw.Database) -> None:
@@ -153,14 +156,23 @@ def _ensure_new_columns(db: pw.Database) -> None:
 
     On PostgreSQL we rely on Peewee's schema creation and explicit migrations.
     """
-    # Skip for PostgreSQL (both standard and pooled)
-    if isinstance(db, (pw.PostgresqlDatabase, PooledPostgresqlDatabase)):
-        return
-    if not isinstance(db, pw.SqliteDatabase):
-        return
+    # Support both SQLite and Postgres
+    # Check for 'scale_order' in 'benchmarkresult'
+    cols = set()
     try:
-        cur = db.execute_sql("PRAGMA table_info(benchmarkresult)")
-        cols = {row[1] for row in cur.fetchall()}
+        if isinstance(db, pw.SqliteDatabase):
+            cur = db.execute_sql("PRAGMA table_info(benchmarkresult)")
+            cols = {row[1] for row in cur.fetchall()}
+        else:
+            # Postgres
+            cur = db.execute_sql(
+                "SELECT column_name FROM information_schema.columns WHERE table_name='benchmarkresult'"
+            )
+            cols = {row[0] for row in cur.fetchall()}
+    except Exception:
+        pass
+
+    try:
         if "scale_order" not in cols:
             db.execute_sql(
                 "ALTER TABLE benchmarkresult ADD COLUMN scale_order TEXT NULL"
@@ -422,6 +434,38 @@ def _rebuild_additional_attrs_if_legacy_unique(db: pw.Database) -> None:
             db.execute_sql("PRAGMA foreign_keys=ON")
     except Exception:
         # Don't block startup on migration failure
+        pass
+
+
+def _ensure_faillog_columns(db: pw.Database) -> None:
+    """Add benchmark_run_id and case_id to faillog if missing."""
+    cols = set()
+    try:
+        if isinstance(db, pw.SqliteDatabase):
+            cur = db.execute_sql("PRAGMA table_info(faillog)")
+            cols = {row[1] for row in cur.fetchall()}
+        else:
+            # Postgres
+            cur = db.execute_sql(
+                "SELECT column_name FROM information_schema.columns WHERE table_name='faillog'"
+            )
+            cols = {row[0] for row in cur.fetchall()}
+    except Exception:
+        pass
+
+    try:
+        if "benchmark_run_id" not in cols:
+            db.execute_sql(
+                "ALTER TABLE faillog ADD COLUMN benchmark_run_id INTEGER REFERENCES benchmarkrun(id) ON DELETE CASCADE"
+            )
+        if "case_id" not in cols:
+            # Note: "case" table name needs quoting in some DBs, but here we reference the table 'case'
+            # Peewee models map Trait -> table 'case'.
+            # In Postgres, 'case' is a reserved keyword, so we must quote it.
+            db.execute_sql(
+                'ALTER TABLE faillog ADD COLUMN case_id TEXT REFERENCES "case"(id) ON DELETE SET NULL'
+            )
+    except Exception:
         pass
 
 

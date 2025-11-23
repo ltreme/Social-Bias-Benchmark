@@ -251,22 +251,63 @@ class BenchmarkService:
                 rec = BenchmarkRun.get_by_id(run_id)
                 ds_id = int(rec.dataset_id.id)
 
-                # For old/completed runs only (not in active progress tracking),
-                # check if there are results. This avoids deadlocks with active INSERTs.
-                # Use a try/except with timeout protection
+                # Calculate total work items
+                from backend.infrastructure.benchmark.repository.trait import (
+                    TraitRepository,
+                )
+
+                traits_n = TraitRepository().count()
+                personas_n = (
+                    DatasetPersona.select()
+                    .where(DatasetPersona.dataset_id == ds_id)
+                    .count()
+                )
+                dual_frac = float(rec.dual_fraction or 0.0)
+                total = int(personas_n * traits_n * (1.0 + dual_frac))
+
+                # Calculate done items (results + failures)
+                # Note: We use the same logic as get_missing for consistency
+                result_count = (
+                    BenchmarkResult.select(
+                        BenchmarkResult.persona_uuid_id,
+                        BenchmarkResult.case_id,
+                        BenchmarkResult.scale_order,
+                    )
+                    .where(BenchmarkResult.benchmark_run_id == run_id)
+                    .distinct()
+                    .count()
+                )
+
+                failed_count = 0
                 try:
-                    result_count = (
-                        BenchmarkResult.select()
-                        .where(BenchmarkResult.benchmark_run_id == run_id)
+                    from backend.infrastructure.storage.models import FailLog
+
+                    failed_count = (
+                        FailLog.select(FailLog.persona_uuid_id, FailLog.case_id)
+                        .where(
+                            (FailLog.benchmark_run_id == run_id)
+                            & (FailLog.error_kind == "max_attempts_exceeded")
+                        )
+                        .distinct()
                         .count()
                     )
                 except Exception:
-                    # If COUNT fails (likely due to active benchmark), assume no old results
-                    result_count = 0
+                    pass
 
-                if result_count > 0:
-                    # Run has results but no active progress -> it's done
-                    info = {"status": "done", "dataset_id": ds_id}
+                done = result_count + failed_count
+
+                if done > 0:
+                    # Determine status based on completion
+                    status = "done" if (total > 0 and done >= total) else "partial"
+                    pct = (done / total * 100.0) if total > 0 else 0.0
+
+                    info = {
+                        "status": status,
+                        "dataset_id": ds_id,
+                        "done": done,
+                        "total": total,
+                        "pct": pct,
+                    }
                 else:
                     # No results at all -> unknown/never started
                     info = {"status": "unknown"}
@@ -559,25 +600,85 @@ class BenchmarkService:
             .where(DatasetPersona.dataset_id == dataset_id)
             .count()
         )
-        total = personas_n * traits_n
+        dual_frac = float(rec.dual_fraction or 0.0)
+        total = int(personas_n * traits_n * (1.0 + dual_frac))
         done = (
             BenchmarkResult.select(
-                BenchmarkResult.persona_uuid_id, BenchmarkResult.case_id
+                BenchmarkResult.persona_uuid_id,
+                BenchmarkResult.case_id,
+                BenchmarkResult.scale_order,
             )
             .where(BenchmarkResult.benchmark_run_id == run_id)
             .distinct()
             .count()
         )
 
+        # Count permanently failed items
+        failed_count = 0
+        try:
+            from backend.infrastructure.storage.models import FailLog
+
+            # Count distinct (persona, case) that have FAILED with 'max_attempts_exceeded'
+            # We filter by run_id.
+            failed_query = (
+                FailLog.select(FailLog.persona_uuid_id, FailLog.case_id)
+                .where(
+                    (FailLog.benchmark_run_id == run_id)
+                    & (FailLog.error_kind == "max_attempts_exceeded")
+                )
+                .distinct()
+            )
+            failed_count = failed_query.count()
+
+            # Add failed to done count for progress tracking
+            done += failed_count
+        except Exception:
+            pass
+
         MAX_DIRECT_SCAN = 500_000
+        # If total is huge, default to skip heavy scan unless we are very close to finish
+        # or if it's explicitly requested (not implemented here, but good practice)
         skip_heavy_scan = bool(total and total > MAX_DIRECT_SCAN)
+
+        # Fallback calculation
         missing = max(0, (total or 0) - (done or 0))
         samples: List[Dict[str, Any]] = []
         sampling_limited = skip_heavy_scan
 
         if not skip_heavy_scan:
             trait_alias = Trait.alias()
+
+            # OPTIMIZATION: Use a timeout for the heavy count query
+            # If it takes too long, we fallback to the simple subtraction
             try:
+                # We can't easily set a DB timeout here without raw SQL or specific driver hacks,
+                # but we can wrap the execution in a thread/process or just rely on the fact
+                # that we check 'done' first.
+                # For now, let's just try the query but catch any operational errors.
+                # A better approach for "pending" issues is often just to NOT do the count
+                # if the gap is large.
+
+                # Heuristic: If we have > 10% missing, don't try to find exact missing IDs via JOIN
+                # because that JOIN is massive.
+                pct_missing = missing / total if total > 0 else 0
+                if pct_missing > 0.05:
+                    raise TimeoutError("Too many missing items to scan efficiently")
+
+                # Note: This exact count query is tricky with scale_order/dual_fraction.
+                # The previous logic assumed unique(persona, case).
+                # With dual_fraction, we can't easily query "missing" items via a simple LEFT JOIN
+                # because we don't know WHICH scale_order is missing for a given pair without complex logic.
+                #
+                # Given the complexity and the fact that 'missing' is mostly for progress display,
+                # we will fallback to the simple subtraction (total - done) which is now correct
+                # because 'done' includes scale_order variations.
+                #
+                # So we SKIP the heavy query if we are in a dual/scale mode where simple exclusion doesn't work.
+                if dual_frac > 0 or rec.scale_mode in ("random50", "in", "rev"):
+                    raise TimeoutError(
+                        "Complex scale mode - skipping exact missing scan"
+                    )
+
                 cnt_query = (
                     DatasetPersona.select(pw.fn.COUNT(1))
                     .join(trait_alias, pw.JOIN.CROSS)
@@ -597,50 +698,57 @@ class BenchmarkService:
                     .where(
                         (DatasetPersona.dataset_id == dataset_id)
                         & (BenchmarkResult.id.is_null(True))
+                        & (trait_alias.is_active == True)
                     )
                 )
+                # This scalar() call is what likely hangs
                 missing = int(cnt_query.scalar() or 0)
             except Exception:
+                # Fallback to simple math
                 missing = max(0, (total or 0) - (done or 0))
+                sampling_limited = True
 
-            try:
-                sample_query = (
-                    DatasetPersona.select(
-                        DatasetPersona.persona_id,
-                        trait_alias.id.alias("case_id"),
-                        trait_alias.adjective.alias("adjective"),
+            # Only try to get samples if we are not limited
+            if not sampling_limited:
+                try:
+                    sample_query = (
+                        DatasetPersona.select(
+                            DatasetPersona.persona_id,
+                            trait_alias.id.alias("case_id"),
+                            trait_alias.adjective.alias("adjective"),
+                        )
+                        .join(trait_alias, pw.JOIN.CROSS)
+                        .switch(DatasetPersona)
+                        .join(
+                            BenchmarkResult,
+                            pw.JOIN.LEFT_OUTER,
+                            on=(
+                                (BenchmarkResult.benchmark_run_id == run_id)
+                                & (
+                                    BenchmarkResult.persona_uuid_id
+                                    == DatasetPersona.persona_id
+                                )
+                                & (BenchmarkResult.case_id == trait_alias.id)
+                            ),
+                        )
+                        .where(
+                            (DatasetPersona.dataset_id == dataset_id)
+                            & (BenchmarkResult.id.is_null(True))
+                            & (trait_alias.is_active == True)
+                        )
+                        .limit(20)
+                        .tuples()
                     )
-                    .join(trait_alias, pw.JOIN.CROSS)
-                    .switch(DatasetPersona)
-                    .join(
-                        BenchmarkResult,
-                        pw.JOIN.LEFT_OUTER,
-                        on=(
-                            (BenchmarkResult.benchmark_run_id == run_id)
-                            & (
-                                BenchmarkResult.persona_uuid_id
-                                == DatasetPersona.persona_id
-                            )
-                            & (BenchmarkResult.case_id == trait_alias.id)
-                        ),
-                    )
-                    .where(
-                        (DatasetPersona.dataset_id == dataset_id)
-                        & (BenchmarkResult.id.is_null(True))
-                    )
-                    .limit(20)
-                    .tuples()
-                )
-                for pid, cid, adj in sample_query:
-                    samples.append(
-                        {
-                            "persona_uuid": str(pid),
-                            "case_id": str(cid),
-                            "adjective": str(adj) if adj is not None else None,
-                        }
-                    )
-            except Exception:
-                samples = []
+                    for pid, cid, adj in sample_query:
+                        samples.append(
+                            {
+                                "persona_uuid": str(pid),
+                                "case_id": str(cid),
+                                "adjective": str(adj) if adj is not None else None,
+                            }
+                        )
+                except Exception:
+                    samples = []
 
         return {
             "ok": True,
@@ -648,9 +756,53 @@ class BenchmarkService:
             "total": total,
             "done": done,
             "missing": missing,
+            "failed": failed_count,
             "samples": samples,
             "sampling_limited": sampling_limited,
         }
+
+    def get_all_means(self, run_id: int) -> Dict[str, Any]:
+        """Get means for all standard attributes."""
+        attributes = [
+            "gender",
+            "origin_subregion",
+            "religion",
+            "migration_status",
+            "sexuality",
+            "marriage_status",
+            "education",
+        ]
+        results = {}
+        for attr in attributes:
+            # Re-use existing cached method
+            res = self.get_means(run_id, attr)
+            if res.get("ok"):
+                results[attr] = res.get("rows", [])
+            else:
+                results[attr] = []
+        return {"ok": True, "data": results}
+
+    def get_all_deltas(self, run_id: int) -> Dict[str, Any]:
+        """Get deltas for all standard attributes."""
+        attributes = [
+            "gender",
+            "origin_subregion",
+            "religion",
+            "migration_status",
+            "sexuality",
+            "marriage_status",
+            "education",
+        ]
+        results = {}
+        for attr in attributes:
+            # Re-use existing cached method
+            res = self.get_deltas(run_id, attr)
+            if res.get("ok"):
+                # We only need the rows, not the full payload
+                results[attr] = res
+            else:
+                results[attr] = {"ok": False}
+        return {"ok": True, "data": results}
 
     def get_deltas(
         self,

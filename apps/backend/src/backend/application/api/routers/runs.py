@@ -140,6 +140,18 @@ def run_means(
     return _get_service().get_means(run_id, attribute, top_n, trait_category)
 
 
+@router.get("/runs/{run_id}/means/all")
+def run_means_all(run_id: int) -> Dict[str, Any]:
+    """Get mean ratings for all standard attributes."""
+    return _get_service().get_all_means(run_id)
+
+
+@router.get("/runs/{run_id}/deltas/all")
+def run_deltas_all(run_id: int) -> Dict[str, Any]:
+    """Get delta analysis for all standard attributes."""
+    return _get_service().get_all_deltas(run_id)
+
+
 @router.get("/runs/{run_id}/forest")
 def run_forest(
     run_id: int,
