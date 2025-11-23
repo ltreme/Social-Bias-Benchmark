@@ -1,6 +1,8 @@
 # apps/benchmark/src/benchmark/pipeline/adapters/postprocessor_likert.py
 from __future__ import annotations
 
+import logging
+
 from ...ports_bench import (
     BenchAnswerDto,
     BenchPostProcessor,
@@ -10,6 +12,8 @@ from ...ports_bench import (
     RetryDecision,
 )
 from .abstract_postprocessor import AbstractPostProcessor
+
+_LOG = logging.getLogger(__name__)
 
 
 class LikertPostProcessor(AbstractPostProcessor, BenchPostProcessor):
@@ -39,6 +43,15 @@ class LikertPostProcessor(AbstractPostProcessor, BenchPostProcessor):
     ):
         if not isinstance(data, dict):
             raise ValueError("not_a_dict")
+
+        # Check for unexpected rationale
+        if not self.include_rationale and "rationale" in data:
+            _LOG.warning(
+                f"[LikertPostProcessor] UNEXPECTED RATIONALE found for persona={res.spec.work.persona_uuid} "
+                f"attempt={res.spec.attempt}. Model returned rationale but prompt should not request it! "
+                f"This might indicate vLLM cache pollution or prompt leak. Rationale: {data['rationale'][:100]}"
+            )
+
         rating_val = data.get("rating")
         rating = None
         if isinstance(rating_val, (int, float)):

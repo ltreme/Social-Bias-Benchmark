@@ -81,9 +81,48 @@ class BenchPersisterPeewee(BenchPersister):
                 )
             payload.append(item)
 
-        with self.db.atomic():
-            # SQLite: use OR IGNORE to be robust to legacy index names/orders.
-            (self._Res.insert_many(payload).on_conflict_ignore().execute())
+        # Retry logic for PostgreSQL deadlocks/serialization failures
+        max_retries = 5  # Increased from 3
+        import logging
+        import time
+
+        _LOG = logging.getLogger(__name__)
+
+        for retry in range(max_retries):
+            try:
+                start_time = time.time()
+                with self.db.atomic():
+                    # SQLite: use OR IGNORE to be robust to legacy index names/orders.
+                    (self._Res.insert_many(payload).on_conflict_ignore().execute())
+                elapsed = time.time() - start_time
+                if elapsed > 2.0:
+                    _LOG.warning(
+                        f"[Persister] Slow INSERT: {elapsed:.2f}s for {len(payload)} rows (retry {retry})"
+                    )
+                break  # Success, exit retry loop
+            except Exception as e:
+                error_str = str(e).lower()
+                # PostgreSQL deadlock or serialization failure
+                if (
+                    "deadlock" in error_str
+                    or "serialization" in error_str
+                    or "timeout" in error_str
+                ) and retry < max_retries - 1:
+                    wait_time = 0.05 * (
+                        2**retry
+                    )  # Exponential backoff: 50ms, 100ms, 200ms, 400ms, 800ms
+                    _LOG.warning(
+                        f"[Persister] DB error (retry {retry+1}/{max_retries}): {str(e)[:100]}, waiting {wait_time:.3f}s"
+                    )
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    # Not a deadlock or final retry - re-raise
+                    _LOG.error(
+                        f"[Persister] Failed to persist {len(payload)} rows after {retry+1} retries: {e}"
+                    )
+                    raise
+
         # optional debug
         import os
 

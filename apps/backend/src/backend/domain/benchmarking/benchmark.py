@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import os
 import time
 from typing import Iterable, List, Optional, Set, Tuple
@@ -18,6 +19,7 @@ from .ports_bench import (
     LLMResult,
 )
 
+_LOG = logging.getLogger(__name__)
 _SNIP = 300
 
 
@@ -244,14 +246,6 @@ def run_benchmark_pipeline(
                     continue
                 # Persist immediately (no buffering in persister phase)
                 persist.persist_results(decision.answers)
-                if debug:
-                    try:
-                        a = decision.answers[0]
-                        print(
-                            f"[BenchmarkPipeline] OK -> persisted persona={a.persona_uuid} case={a.case_id} rating={a.rating}"
-                        )
-                    except Exception:
-                        pass
                 ok_cnt += 1
                 # Mark as finished for progress (first answer defines the (persona,question))
                 try:
@@ -269,7 +263,7 @@ def run_benchmark_pipeline(
                                 else 0.0
                             )
                             elapsed = _fmt_dur(time.perf_counter() - t0)
-                            print(
+                            _LOG.info(
                                 f"[Benchmark] progress: {len(done_items)}/{total_items or '?'} items ({pct:.1f}%), elapsed={elapsed}"
                             )
                 except Exception:
@@ -286,13 +280,11 @@ def run_benchmark_pipeline(
             else:
                 _persist_fail(persist, spec, "unknown_decision", res.raw_text)
 
-        if debug:
-            try:
-                print(
-                    f"[BenchmarkPipeline] attempt={attempt} decisions ok={ok_cnt} retry={retry_cnt} fail={fail_cnt}"
-                )
-            except Exception:
-                pass
+        # Log summary only if there were retries or failures
+        if retry_cnt > 0 or fail_cnt > 0:
+            _LOG.debug(
+                f"[Benchmark] attempt={attempt} ok={ok_cnt} retry={retry_cnt} fail={fail_cnt}"
+            )
 
         if not next_retry_specs:
             break
@@ -308,8 +300,8 @@ def run_benchmark_pipeline(
             if progress_log and done_items:
                 pct = 100.0 * len(done_items) / total_items if total_items else 0.0
                 elapsed = _fmt_dur(time.perf_counter() - t0)
-                print(
-                    f"[Benchmark] progress: {len(done_items)}/{total_items or '?'} items ({pct:.1f}%), elapsed={elapsed}"
+                _LOG.info(
+                    f"[Benchmark] Max attempts reached: {len(done_items)}/{total_items or '?'} items ({pct:.1f}%), elapsed={elapsed}"
                 )
             break
 

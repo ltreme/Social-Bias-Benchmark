@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from ...ports import (
     AttributeDto,
     DecisionKind,
@@ -10,6 +12,8 @@ from ...ports import (
     RetryDecision,
 )
 from .abstract_postprocessor import AbstractPostProcessor
+
+_LOG = logging.getLogger(__name__)
 
 
 class AttributePostProcessor(AbstractPostProcessor, PostProcessor):
@@ -67,7 +71,6 @@ class AttributePostProcessor(AbstractPostProcessor, PostProcessor):
                 attr_generation_run_id,
             ),
         ]
-        print(f"[AttributePostProcessor] OK keys={[a.attribute_key for a in attrs]}")
         return OkDecision(kind=DecisionKind.OK, attrs=attrs)
 
     def build_retry(self, res: LLMResult, reason: str):

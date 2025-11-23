@@ -1,6 +1,7 @@
 # apps/benchmark/src/benchmark/pipeline/adapters/abstract_postprocessor.py
 from __future__ import annotations
 
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import replace
 from typing import Any
@@ -11,6 +12,8 @@ from .utils.json_tools import (
     sanitize_llama_chat,
     strip_thinking_blocks,
 )
+
+_LOG = logging.getLogger(__name__)
 
 
 class AbstractPostProcessor(ABC):
@@ -58,15 +61,7 @@ class AbstractPostProcessor(ABC):
         spec = res.spec
         text = self.sanitize(res.raw_text or "")
 
-        try:
-            snippet = (text[: self.debug_snippet_len]).replace("\n", "\\n")
-            print(
-                f"[{self.__class__.__name__}] persona={spec.work.persona_uuid} "
-                f"attempt={spec.attempt} raw={snippet}"
-            )
-        except Exception:
-            pass
-
+        # Log only errors or unexpected outputs
         data = extract_first_json(text)
         if isinstance(data, list) and len(data) == 1 and isinstance(data[0], dict):
             data = data[0]
@@ -75,8 +70,8 @@ class AbstractPostProcessor(ABC):
             try:
                 return self.build_ok(res, data, text, attr_generation_run_id)
             except Exception as e:
-                print(
-                    f"[{self.__class__.__name__}] validation_error={type(e).__name__}"
+                _LOG.warning(
+                    f"[{self.__class__.__name__}] Validation error for persona={spec.work.persona_uuid}: {type(e).__name__}"
                 )
 
         if spec.attempt < self.attempt_limit:

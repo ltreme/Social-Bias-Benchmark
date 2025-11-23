@@ -41,6 +41,11 @@ def main():
         action="store_true",
         help="Migrate BenchmarkResult unique constraint to (persona_uuid, case_id, benchmark_run)",
     )
+    parser.add_argument(
+        "--add-task-queue",
+        action="store_true",
+        help="Create TaskQueue table for queue management",
+    )
     args = parser.parse_args()
 
     init_database(args.db_url)
@@ -48,6 +53,9 @@ def main():
 
     if args.upgrade_benchmarkresult_unique:
         _upgrade_benchmarkresult_unique()
+
+    if args.add_task_queue:
+        _add_task_queue_table()
 
 
 def _upgrade_benchmarkresult_unique() -> None:
@@ -137,6 +145,22 @@ def _upgrade_benchmarkresult_unique() -> None:
         print(
             "Non-SQLite DB detected. Please adjust unique index to (persona_uuid, question_uuid, benchmark_run) manually."
         )
+
+
+def _add_task_queue_table() -> None:
+    """Create TaskQueue table if it doesn't exist."""
+    db = get_db()
+    tables = db.get_tables()
+
+    if "taskqueue" in tables:
+        print("TaskQueue table already exists.")
+        return
+
+    print("Creating TaskQueue table...")
+    from backend.infrastructure.storage.models import TaskQueue
+
+    db.create_tables([TaskQueue])
+    print("OK: TaskQueue table created successfully.")
 
 
 if __name__ == "__main__":

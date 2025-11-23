@@ -244,6 +244,53 @@ class BenchmarkResult(BaseModel):
         )
 
 
+class TaskQueue(BaseModel):
+    """Unified queue for long-running tasks (benchmarks, attrgen, etc.)."""
+
+    id = pw.AutoField()
+    created_at = pw.DateTimeField(default=utcnow, null=False)
+
+    # Task type and status
+    task_type = pw.CharField(
+        null=False
+    )  # 'benchmark' | 'attrgen' | 'pool_gen' | 'balanced_gen'
+    status = pw.CharField(
+        null=False, default="queued"
+    )  # 'queued' | 'waiting' | 'running' | 'done' | 'failed' | 'cancelled' | 'skipped'
+    position = pw.IntegerField(null=False)  # Execution order (auto-increment on add)
+
+    # Task configuration (JSON with type-specific parameters)
+    config = pw.TextField(null=False)  # JSON string
+
+    # Dependency support (only for attrgen -> benchmark in hybrid approach)
+    depends_on = pw.ForeignKeyField(
+        "self", null=True, backref="dependents", on_delete="SET NULL"
+    )
+
+    # Result linking (polymorphic: different run types)
+    result_run_id = pw.IntegerField(
+        null=True
+    )  # ID of BenchmarkRun or AttrGenerationRun
+    result_run_type = pw.CharField(
+        null=True
+    )  # 'benchmark' | 'attrgen' to identify which table
+
+    # Execution metadata
+    started_at = pw.DateTimeField(null=True)
+    finished_at = pw.DateTimeField(null=True)
+    error = pw.TextField(null=True)
+
+    # User-friendly label
+    label = pw.CharField(null=True)
+
+    class Meta:
+        indexes = (
+            (("status", "position"), False),  # Fast lookup for next runnable task
+            (("depends_on",), False),  # Fast lookup for dependents
+            (("task_type",), False),  # Fast filtering by type
+        )
+
+
 # ================================
 # == Lookup / statistics tables ==
 # ================================
@@ -397,6 +444,7 @@ ALL_MODELS = [
     Education,
     Occupation,
     FailLog,
+    TaskQueue,
 ]
 
 

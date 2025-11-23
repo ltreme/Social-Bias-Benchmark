@@ -2,9 +2,29 @@
 import os
 from contextlib import contextmanager
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 import peewee as pw
-from playhouse.db_url import connect
+from playhouse.pool import PooledPostgresqlDatabase
+
+
+class TimeoutPooledPostgresqlDatabase(PooledPostgresqlDatabase):
+    """PostgreSQL connection pool with automatic statement timeout."""
+
+    def _connect(self):
+        """Override to set statement_timeout when a new connection is created."""
+        conn = super()._connect()
+        # Set timeouts for this connection
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SET statement_timeout = '30s'")
+            cursor.execute("SET idle_in_transaction_session_timeout = '5min'")
+        except Exception:
+            pass  # Ignore errors
+        finally:
+            cursor.close()
+        return conn
+
 
 db_proxy = pw.Proxy()
 
@@ -21,10 +41,38 @@ def init_database(db_url: str | None = None) -> pw.Database:
     Initialize DB connection.
     - Default: SQLite under ./data/benchmark.db (created on first connect).
     - Honors DB_URL env or explicit db_url for other backends.
+    - Uses connection pooling for PostgreSQL.
     """
     db_url = db_url or os.getenv("DB_URL")
     if db_url:
-        db = connect(db_url)
+        # Parse database URL
+        parsed = urlparse(db_url)
+
+        # Use connection pool for PostgreSQL
+        if parsed.scheme in ("postgres", "postgresql"):
+            # Extract connection parameters
+            query_params = parse_qs(parsed.query)
+
+            # Parse host and port
+            host = parsed.hostname or "localhost"
+            port = parsed.port or 5432
+
+            db = TimeoutPooledPostgresqlDatabase(
+                parsed.path.lstrip("/"),
+                user=parsed.username,
+                password=parsed.password,
+                host=host,
+                port=port,
+                max_connections=32,  # Connection pool size
+                stale_timeout=300,  # 5 minutes
+            )
+
+        else:
+            # Fallback for other databases
+            from playhouse.db_url import connect
+
+            db = connect(db_url)
+
         if isinstance(db, pw.SqliteDatabase) and db.database not in (":memory:", None):
             _ensure_parent_dir(Path(db.database).resolve())
     else:
@@ -47,10 +95,13 @@ def init_database(db_url: str | None = None) -> pw.Database:
         if isinstance(db, pw.SqliteDatabase):
             where = db.database or ":memory:"
             print(f"[DB] Using SQLite at {where}")
-        elif isinstance(db, pw.PostgresqlDatabase):  # type: ignore[attr-defined]
+        elif isinstance(db, (pw.PostgresqlDatabase, PooledPostgresqlDatabase, TimeoutPooledPostgresqlDatabase)):  # type: ignore[attr-defined]
             # Avoid printing credentials; show db name and host
             host = getattr(db, "host", None) or "localhost"
-            print(f"[DB] Using PostgreSQL db='{db.database}' host='{host}'")
+            pool_info = ""
+            if isinstance(db, PooledPostgresqlDatabase):
+                pool_info = f" (pool: max_connections={db._max_connections})"
+            print(f"[DB] Using PostgreSQL db='{db.database}' host='{host}'{pool_info}")
         else:
             print(f"[DB] Using database backend: {db.__class__.__name__}")
     except Exception:
@@ -77,6 +128,8 @@ def create_tables() -> None:
 def _fix_legacy_indexes(db: pw.Database) -> None:
     """Drop broken legacy indexes that can block inserts (SQLite only)."""
     # Only relevant for SQLite; Postgres doesn't support PRAGMA and doesn't have these legacy indexes
+    if isinstance(db, (pw.PostgresqlDatabase, PooledPostgresqlDatabase)):
+        return
     if not isinstance(db, pw.SqliteDatabase):
         return
     try:
@@ -100,6 +153,9 @@ def _ensure_new_columns(db: pw.Database) -> None:
 
     On PostgreSQL we rely on Peewee's schema creation and explicit migrations.
     """
+    # Skip for PostgreSQL (both standard and pooled)
+    if isinstance(db, (pw.PostgresqlDatabase, PooledPostgresqlDatabase)):
+        return
     if not isinstance(db, pw.SqliteDatabase):
         return
     try:
@@ -131,6 +187,9 @@ def _ensure_new_columns(db: pw.Database) -> None:
 
 def _migrate_benchmarkresult_unique_index(db: pw.Database) -> None:
     """Ensure uniqueness for benchmarkresult includes scale_order (SQLite only)."""
+    # Skip for PostgreSQL (both standard and pooled)
+    if isinstance(db, (pw.PostgresqlDatabase, PooledPostgresqlDatabase)):
+        return
     if not isinstance(db, pw.SqliteDatabase):
         return
     try:
@@ -172,6 +231,9 @@ def _migrate_benchmarkresult_unique_index(db: pw.Database) -> None:
 
 def _migrate_additional_attrs_unique_index(db: pw.Database) -> None:
     """Ensure AdditionalPersonaAttributes unique index (SQLite only)."""
+    # Skip for PostgreSQL (both standard and pooled)
+    if isinstance(db, (pw.PostgresqlDatabase, PooledPostgresqlDatabase)):
+        return
     if not isinstance(db, pw.SqliteDatabase):
         return
     try:
@@ -220,6 +282,9 @@ def _rebuild_benchmarkresult_if_legacy_unique(db: pw.Database) -> None:
     rebuild the table with the desired UNIQUE including scale_order.
     """
     try:
+        # Skip for PostgreSQL (both standard and pooled)
+        if isinstance(db, (pw.PostgresqlDatabase, PooledPostgresqlDatabase)):
+            return
         if not isinstance(db, pw.SqliteDatabase):
             return
         rows = db.execute_sql("PRAGMA index_list(benchmarkresult)").fetchall()
@@ -291,6 +356,9 @@ def _rebuild_additional_attrs_if_legacy_unique(db: pw.Database) -> None:
     rebuild the table with the desired UNIQUE(attr_generation_run_id, persona_uuid_id, attribute_key).
     """
     try:
+        # Skip for PostgreSQL (both standard and pooled)
+        if isinstance(db, (pw.PostgresqlDatabase, PooledPostgresqlDatabase)):
+            return
         if not isinstance(db, pw.SqliteDatabase):
             return
         rows = db.execute_sql(
