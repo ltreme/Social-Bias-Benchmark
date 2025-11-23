@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
-import { Modal, Group, Select, Checkbox, Textarea, TextInput, Button } from '@mantine/core';
+import { useEffect, useMemo, useState } from 'react';
+import { Modal, Group, Select, Checkbox, Textarea, TextInput, Button, Radio } from '@mantine/core';
 import { useAttrgenRuns, useDatasetRuns, useStartBenchmark } from '../hooks';
+import { useAddTask, useQueueTasks } from '../../queue/hooks';
 import { NumericTextInput } from './NumericTextInput';
 
 type Props = {
@@ -15,7 +16,9 @@ type Props = {
 export function BenchmarkModal({ opened, onClose, datasetId, initialModelName, attrgenRunId, onStarted }: Props) {
   const runsList = useAttrgenRuns(datasetId);
   const startBench = useStartBenchmark();
+  const addTask = useAddTask();
   const { data: runs } = useDatasetRuns(datasetId);
+  const { data: queueTasks } = useQueueTasks(false);
 
   const completedModels = useMemo(() => {
     const runs = runsList.data?.runs || [];
@@ -31,40 +34,105 @@ export function BenchmarkModal({ opened, onClose, datasetId, initialModelName, a
       stats[name].total += total;
       stats[name].completed += done;
     }
-    return Object.entries(stats)
+    
+    // Add models from queued AttrGen tasks
+    const queuedAttrGenModels = new Set<string>();
+    if (queueTasks) {
+      for (const task of queueTasks) {
+        if (task.task_type === 'attrgen' && task.config?.model_name) {
+          queuedAttrGenModels.add(task.config.model_name);
+        }
+      }
+    }
+    
+    const completedEntries = Object.entries(stats)
       .map(([name, s]) => {
         const percentage = s.total > 0 ? s.completed / s.total : 0;
         return { value: name, label: `${name} (${Math.round(percentage * 100)}%)`, ready: percentage >= 0.99 };
       })
       .filter((entry) => entry.ready);
-  }, [runsList.data?.runs]);
+    
+    // Add queued models
+    const queuedEntries = Array.from(queuedAttrGenModels)
+      .filter(name => !stats[name] || stats[name].completed < stats[name].total * 0.99)
+      .map(name => ({ value: name, label: `${name} (in Queue)` }));
+    
+    return [...completedEntries, ...queuedEntries];
+  }, [runsList.data?.runs, queueTasks]);
 
   const [modelName, setModelName] = useState<string>(initialModelName || '');
   const [resumeRunId, setResumeRunId] = useState<number | undefined>(undefined);
 
-  const [batchSizeStr, setBatchSizeStr] = useState('8');
+  const [batchSizeStr, setBatchSizeStr] = useState('20');
   const [maxNewStr, setMaxNewStr] = useState('192');
   const [maxAttemptsStr, setMaxAttemptsStr] = useState('3');
-  const [batchSize, setBatchSize] = useState(8);
+  const [batchSize, setBatchSize] = useState(20);
   const [maxNew, setMaxNew] = useState(192);
   const [maxAttempts, setMaxAttempts] = useState(3);
 
   const [includeRationale, setIncludeRationale] = useState(false);
-  const [scaleMode, setScaleMode] = useState<'in' | 'rev' | 'random50'>('in');
-  const [dualFrac, setDualFrac] = useState<number>(0.15);
+  const [scaleMode, setScaleMode] = useState<'in' | 'rev' | 'random50'>('random50');
+  const [dualFrac, setDualFrac] = useState<number>(0.2);
   const [systemPrompt, setSystemPrompt] = useState('');
   const [vllmBase, setVllmBase] = useState('http://host.docker.internal:8000');
   const [vllmApiKey, setVllmApiKey] = useState('');
 
+  const [executionMode, setExecutionMode] = useState<'immediate' | 'queue'>('queue');
+  const [dependsOn, setDependsOn] = useState<number | undefined>(undefined);
+
+  // Filter queued/waiting AttrGen tasks for dependency selection
+  const availableAttrGenTasks = useMemo(() => {
+    if (!queueTasks) return [];
+    return queueTasks
+      .filter(t => t.task_type === 'attrgen' && (t.status === 'queued' || t.status === 'waiting'))
+      .map(t => ({
+        value: String(t.id),
+        label: t.label || `AttrGen Task #${t.id}`,
+      }));
+  }, [queueTasks]);
+
+  // Auto-select model when AttrGen task is selected
+  useEffect(() => {
+    if (dependsOn && queueTasks) {
+      const selectedTask = queueTasks.find(t => t.id === dependsOn);
+      if (selectedTask?.config?.model_name) {
+        setModelName(selectedTask.config.model_name);
+      }
+    }
+  }, [dependsOn, queueTasks]);
+
   return (
     <Modal opened={opened} onClose={onClose} title="Benchmark starten" size="lg">
+      <Radio.Group
+        label="Ausführungsmodus"
+        value={executionMode}
+        onChange={(v) => setExecutionMode(v as 'immediate' | 'queue')}
+        mb="md"
+      >
+        <Group mt="xs">
+          <Radio value="immediate" label="Sofort starten" />
+          <Radio value="queue" label="Zur Queue hinzufügen" />
+        </Group>
+      </Radio.Group>
+      {executionMode === 'queue' && (
+        <Select
+          label="Warten auf AttrGen-Task (optional)"
+          data={availableAttrGenTasks}
+          value={dependsOn ? String(dependsOn) : null}
+          onChange={(v) => setDependsOn(v ? Number(v) : undefined)}
+          clearable
+          placeholder={availableAttrGenTasks.length ? "Optional: AttrGen-Task auswählen" : "Keine wartenden AttrGen-Tasks"}
+          description="Benchmark startet erst nach Abschluss des ausgewählten AttrGen-Tasks"
+          mb="md"
+        />
+      )}
       <Group grow mb="md">
         <Select
-          label="Model (aus fertigen AttrGen-Runs)"
+          label="Model"
           data={completedModels}
           value={modelName}
           onChange={(v) => setModelName(v || '')}
-          placeholder={completedModels.length ? "Model wählen" : "Keine fertigen AttrGen-Runs"}
+          placeholder={completedModels.length ? "Model wählen" : "Keine Modelle verfügbar"}
           searchable
           disabled={!!resumeRunId || completedModels.length === 0}
           nothingFoundMessage="Kein Modell gefunden"
@@ -117,7 +185,7 @@ export function BenchmarkModal({ opened, onClose, datasetId, initialModelName, a
           Abbrechen
         </Button>
         <Button
-          loading={startBench.isPending}
+          loading={startBench.isPending || addTask.isPending}
           disabled={!modelName && !resumeRunId}
           onClick={async () => {
             try {
@@ -125,11 +193,11 @@ export function BenchmarkModal({ opened, onClose, datasetId, initialModelName, a
               const mn = Math.max(32, parseInt(maxNewStr || String(maxNew), 10) || maxNew);
               const ma = Math.max(1, parseInt(maxAttemptsStr || String(maxAttempts), 10) || maxAttempts);
 
-              const rs = await startBench.mutateAsync({
+              const config = {
                 dataset_id: datasetId,
                 model_name: modelName || undefined,
                 include_rationale: includeRationale,
-                llm: 'vllm',
+                llm: 'vllm' as const,
                 batch_size: bs,
                 max_new_tokens: mn,
                 max_attempts: ma,
@@ -140,15 +208,25 @@ export function BenchmarkModal({ opened, onClose, datasetId, initialModelName, a
                 scale_mode: resumeRunId ? undefined : scaleMode,
                 dual_fraction: resumeRunId ? undefined : dualFrac,
                 attrgen_run_id: attrgenRunId,
-              });
-              onStarted?.(rs.run_id);
+              };
+
+              if (executionMode === 'immediate') {
+                const rs = await startBench.mutateAsync(config);
+                onStarted?.(rs.run_id);
+              } else {
+                await addTask.mutateAsync({
+                  task_type: 'benchmark',
+                  config,
+                  depends_on: dependsOn,
+                });
+              }
               onClose();
             } catch (e) {
               /* no-op */
             }
           }}
         >
-          Benchmark starten
+          {executionMode === 'immediate' ? 'Benchmark starten' : 'Zur Queue hinzufügen'}
         </Button>
       </Group>
     </Modal>

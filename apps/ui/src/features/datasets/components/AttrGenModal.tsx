@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Modal, Group, Select, TextInput, Button } from '@mantine/core';
+import { Modal, Group, Select, TextInput, Button, Radio } from '@mantine/core';
 import { useAttrgenRuns, useStartAttrgen } from '../hooks';
+import { useAddTask } from '../../queue/hooks';
 import { NumericTextInput } from './NumericTextInput';
 
 type Props = {
@@ -14,6 +15,7 @@ type Props = {
 export function AttrGenModal({ opened, onClose, datasetId, availableModels, onStarted }: Props) {
   const runsList = useAttrgenRuns(datasetId);
   const startAttr = useStartAttrgen();
+  const addTask = useAddTask();
 
   const [llm, setLlm] = useState<'vllm' | 'fake'>('vllm');
   const [modelName, setModelName] = useState<string>('');
@@ -29,6 +31,8 @@ export function AttrGenModal({ opened, onClose, datasetId, availableModels, onSt
   const [systemPrompt, setSystemPrompt] = useState('');
   const [vllmBase, setVllmBase] = useState('http://host.docker.internal:8000');
 
+  const [executionMode, setExecutionMode] = useState<'immediate' | 'queue'>('immediate');
+
   useEffect(() => {
     if (!opened) {
       // reset resume state when closing
@@ -38,6 +42,17 @@ export function AttrGenModal({ opened, onClose, datasetId, availableModels, onSt
 
   return (
     <Modal opened={opened} onClose={onClose} title="Additional Attributes generieren" size="lg">
+      <Radio.Group
+        label="Ausführungsmodus"
+        value={executionMode}
+        onChange={(v) => setExecutionMode(v as 'immediate' | 'queue')}
+        mb="md"
+      >
+        <Group mt="xs">
+          <Radio value="immediate" label="Sofort starten" />
+          <Radio value="queue" label="Zur Queue hinzufügen" />
+        </Group>
+      </Radio.Group>
       <Group grow mb="md">
         <Select label="Backend" data={[{ value: 'vllm', label: 'vLLM' }, { value: 'fake', label: 'Fake' }]} value={llm} onChange={(v) => setLlm((v as any) || 'vllm')} />
         <Select label="Model" data={availableModels || []} value={modelName} onChange={(v) => setModelName(v || '')} searchable placeholder="Model wählen" />
@@ -64,7 +79,7 @@ export function AttrGenModal({ opened, onClose, datasetId, availableModels, onSt
           Abbrechen
         </Button>
         <Button
-          loading={startAttr.isPending}
+          loading={startAttr.isPending || addTask.isPending}
           disabled={!modelName && !resumeRunId}
           onClick={async () => {
             try {
@@ -79,7 +94,7 @@ export function AttrGenModal({ opened, onClose, datasetId, availableModels, onSt
               setMaxAttempts(ma);
               setMaxAttemptsStr(String(ma));
 
-              const r = await startAttr.mutateAsync({
+              const config = {
                 dataset_id: datasetId,
                 model_name: modelName,
                 llm,
@@ -89,15 +104,25 @@ export function AttrGenModal({ opened, onClose, datasetId, availableModels, onSt
                 system_prompt: systemPrompt || undefined,
                 vllm_base_url: llm === 'vllm' ? vllmBase : undefined,
                 resume_run_id: resumeRunId,
-              });
-              onStarted?.(r.run_id);
+              };
+
+              if (executionMode === 'immediate') {
+                const r = await startAttr.mutateAsync(config);
+                onStarted?.(r.run_id);
+              } else {
+                await addTask.mutateAsync({
+                  task_type: 'attrgen',
+                  config,
+                  depends_on: undefined,
+                });
+              }
               onClose();
             } catch (e) {
               /* no-op: notifications via interceptors */
             }
           }}
         >
-          Starten
+          {executionMode === 'immediate' ? 'Starten' : 'Zur Queue hinzufügen'}
         </Button>
       </Group>
     </Modal>

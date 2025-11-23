@@ -3,10 +3,10 @@ import { PageShell } from '../components/PageShell';
 import { DatasetsPage } from '../features/datasets/DatasetsPage';
 import { DatasetDetailPage } from '../features/datasets/DatasetDetailPage';
 import { RunDetailPage } from '../features/runs/RunDetailPage';
-import { ComparePage } from '../features/compare/ComparePage';
 import { TraitsPage } from '../features/traits/TraitsPage';
 import { PersonaBrowserPage } from '../features/personas/PersonaBrowserPage';
 import { ModelsPage } from '../features/models/ModelsPage';
+import { QueuePage } from '../features/queue/QueuePage';
 
 export const rootRoute = createRootRoute({
     component: () => <PageShell />,
@@ -31,12 +31,6 @@ const runDetailRoute = createRoute({
     component: RunDetailPage,
 });
 
-const compareRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/compare',
-    component: ComparePage,
-});
-
 const traitsRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/traits',
@@ -55,5 +49,11 @@ const modelsRoute = createRoute({
     component: ModelsPage,
 });
 
-export const routeTree = rootRoute.addChildren([datasetsRoute, datasetDetailRoute, runDetailRoute, compareRoute, traitsRoute, datasetPersonasRoute, modelsRoute]);
+const queueRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/queue',
+    component: QueuePage,
+});
+
+export const routeTree = rootRoute.addChildren([datasetsRoute, datasetDetailRoute, runDetailRoute, traitsRoute, datasetPersonasRoute, modelsRoute, queueRoute]);
 export const router = createRouter({ routeTree });

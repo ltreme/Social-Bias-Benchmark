@@ -4,7 +4,7 @@ import { useParams, Link } from '@tanstack/react-router';
 import { ChartPanel } from '../../components/ChartPanel';
 import { toBar } from '../../components/ChartUtils';
 import { useDatasetComposition, useDataset, useDatasetRuns, useAttrgenStatus, useLatestAttrgen, useAttrgenRuns, useBenchmarkStatus, useCancelBenchmark, useActiveBenchmark } from './hooks';
-import { useModels } from '../compare/hooks';
+import { useModelsAdmin } from '../models/hooks';
 import { useEffect, useState } from 'react';
 // no modal inputs here; forms live in child components
 import { AttrGenModal } from './components/AttrGenModal';
@@ -18,7 +18,7 @@ export function DatasetDetailPage() {
     const { data: dataset_info, isLoading: isLoadingDataset } = useDataset(idNum);
     const { data, isLoading } = useDatasetComposition(idNum);
     const { data: runs, isLoading: isLoadingRuns } = useDatasetRuns(idNum);
-    const { data: availableModels } = useModels();
+    const { data: availableModels } = useModelsAdmin();
     const [modalOpen, setModalOpen] = useState(false);
     const [benchModalOpen, setBenchModalOpen] = useState(false);
     const [runId, setRunId] = useState<number | undefined>(undefined);
@@ -204,7 +204,7 @@ export function DatasetDetailPage() {
           opened={modalOpen}
           onClose={() => setModalOpen(false)}
           datasetId={idNum}
-          availableModels={availableModels}
+          availableModels={availableModels?.map(m => m.name)}
           onStarted={(rid) => setRunId(rid)}
         />
         {/* Benchmark Modal */}

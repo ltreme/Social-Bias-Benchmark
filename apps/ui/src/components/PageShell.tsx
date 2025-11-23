@@ -29,9 +29,9 @@ export function PageShell() {
             </AppShell.Header>
             <AppShell.Navbar p="md">
                 <NavLink label="Datasets" component={Link} to="/" active={state.location.pathname === '/'} />
-                <NavLink label="Compare" component={Link} to="/compare" active={state.location.pathname === '/compare'} />
                 <NavLink label="Traits" component={Link} to="/traits" active={state.location.pathname === '/traits'} />
                 <NavLink label="Models" component={Link} to="/models" active={state.location.pathname === '/models'} />
+                <NavLink label="Queue" component={Link} to="/queue" active={state.location.pathname === '/queue'} />
             </AppShell.Navbar>
             <AppShell.Main>
                 <Outlet />
