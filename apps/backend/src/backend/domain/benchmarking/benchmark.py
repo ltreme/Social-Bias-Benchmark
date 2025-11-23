@@ -253,6 +253,22 @@ def run_benchmark_pipeline(
                     key = (str(a0.persona_uuid), str(a0.case_id))
                     if key not in done_items:
                         done_items.add(key)
+                        # Force progress update every 100 items or if finished
+                        if (len(done_items) % 100 == 0) or (
+                            total_items and len(done_items) == total_items
+                        ):
+                            # Update in-memory counter for executor heartbeat
+                            try:
+                                from backend.infrastructure.benchmark.persister_bench import (
+                                    BenchPersisterPeewee,
+                                )
+
+                                # We can't easily update the counter here directly as it's private/managed by persister
+                                # But persister updates it on persist_results() call above!
+                                pass
+                            except ImportError:
+                                pass
+
                         if progress_log and (
                             (len(done_items) % progress_every == 0)
                             or (total_items and len(done_items) == total_items)

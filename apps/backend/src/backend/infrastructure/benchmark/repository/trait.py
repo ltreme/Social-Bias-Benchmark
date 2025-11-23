@@ -86,8 +86,8 @@ class TraitRepository:
 
     def count(self) -> int:
         """
-        Count the total number of traits in the repository.
+        Count the total number of active traits in the repository.
         """
         if self._csv_path:
             return sum(1 for _ in self._iter_from_csv())
-        return Trait.select().count()
+        return Trait.select().where(Trait.is_active == True).count()

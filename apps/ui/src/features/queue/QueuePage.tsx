@@ -1,7 +1,7 @@
-import { ActionIcon, Badge, Button, Card, Group, Progress, Stack, Text, Title, Tooltip } from '@mantine/core';
-import { IconPlayerPause, IconPlayerPlay, IconPlayerStop, IconTrash, IconX } from '@tabler/icons-react';
+import { ActionIcon, Badge, Button, Card, Group, Menu, Progress, Stack, Text, Title, Tooltip } from '@mantine/core';
+import { IconPlayerPause, IconPlayerPlay, IconPlayerStop, IconTrash, IconX, IconRefresh, IconRefreshAlert } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
-import { useCancelTask, usePauseQueue, useQueueStats, useQueueTasks, useRemoveTask, useResumeQueue, useStartQueue, useStopQueue } from './hooks';
+import { useCancelTask, usePauseQueue, useQueueStats, useQueueTasks, useRemoveTask, useResumeQueue, useRetryTask, useStartQueue, useStopQueue } from './hooks';
 import type { QueueTask, TaskStatus } from './api';
 
 function getStatusColor(status: TaskStatus): string {
@@ -52,9 +52,11 @@ function formatDuration(startedAt: string | null, finishedAt: string | null): st
 function TaskCard({ task }: { task: QueueTask }) {
   const removeTask = useRemoveTask();
   const cancelTask = useCancelTask();
+  const retryTask = useRetryTask();
   
   const canRemove = task.status === 'queued' || task.status === 'waiting';
   const canCancel = task.status === 'queued' || task.status === 'waiting' || task.status === 'running';
+  const canRetry = task.status === 'failed' || task.status === 'cancelled';
   
   return (
     <Card withBorder padding="md" style={{ position: 'relative' }}>
@@ -67,6 +69,37 @@ function TaskCard({ task }: { task: QueueTask }) {
         </Group>
         
         <Group gap="xs">
+          {canRetry && (
+            <Menu withinPortal position="bottom-end">
+              <Menu.Target>
+                <Tooltip label="Task wiederholen">
+                  <ActionIcon
+                    color="blue"
+                    variant="subtle"
+                    loading={retryTask.isPending}
+                  >
+                    <IconRefresh size={18} />
+                  </ActionIcon>
+                </Tooltip>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Label>Wiederholungsmodus</Menu.Label>
+                <Menu.Item
+                  leftSection={<IconRefresh size={16} />}
+                  onClick={() => retryTask.mutate({ taskId: task.id, deleteResults: false })}
+                >
+                  Fortsetzen (vorhandene Ergebnisse behalten)
+                </Menu.Item>
+                <Menu.Item
+                  leftSection={<IconRefreshAlert size={16} />}
+                  color="orange"
+                  onClick={() => retryTask.mutate({ taskId: task.id, deleteResults: true })}
+                >
+                  Neu starten (Ergebnisse löschen)
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          )}
           {canCancel && (
             <Tooltip label="Task abbrechen">
               <ActionIcon
@@ -106,8 +139,22 @@ function TaskCard({ task }: { task: QueueTask }) {
           </Text>
         )}
         
-        {task.status === 'running' && task.config && (
-          <Progress value={33} size="sm" animated />
+        {task.status === 'running' && task.progress && (
+          <Stack gap={4}>
+            <Group justify="space-between">
+              <Text size="xs" c="dimmed">
+                Fortschritt: {task.progress.done.toLocaleString()} / {task.progress.total.toLocaleString()}
+              </Text>
+              <Text size="xs" fw={500}>
+                {task.progress.percent}%
+              </Text>
+            </Group>
+            <Progress value={task.progress.percent} size="sm" animated />
+          </Stack>
+        )}
+        
+        {task.status === 'running' && !task.progress && (
+          <Progress value={100} size="sm" animated striped />
         )}
         
         {task.error && (

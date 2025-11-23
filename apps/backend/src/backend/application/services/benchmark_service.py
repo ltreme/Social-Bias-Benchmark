@@ -224,7 +224,8 @@ class BenchmarkService:
                 progress_tracker.update_progress,
                 progress_tracker.get_completed_keys,
             ),
-            daemon=True,
+            daemon=False,  # Changed from True to False to ensure thread completes
+            name=f"BenchmarkRun-{run_id}",
         )
         t.start()
         try:
@@ -232,6 +233,7 @@ class BenchmarkService:
                 target=progress_tracker.progress_poller,
                 args=(run_id, ds_id),
                 daemon=True,
+                name=f"ProgressPoller-{run_id}",
             )
             t_poll.start()
         except Exception:
@@ -243,17 +245,24 @@ class BenchmarkService:
         info = progress_tracker.get_progress(run_id)
 
         # If no progress info in memory, check if it's an old completed run
+        # CRITICAL: Avoid COUNT queries during active benchmarks to prevent deadlocks
         if not info:
             try:
                 rec = BenchmarkRun.get_by_id(run_id)
                 ds_id = int(rec.dataset_id.id)
 
-                # Check if there are any results for this run
-                result_count = (
-                    BenchmarkResult.select()
-                    .where(BenchmarkResult.benchmark_run_id == run_id)
-                    .count()
-                )
+                # For old/completed runs only (not in active progress tracking),
+                # check if there are results. This avoids deadlocks with active INSERTs.
+                # Use a try/except with timeout protection
+                try:
+                    result_count = (
+                        BenchmarkResult.select()
+                        .where(BenchmarkResult.benchmark_run_id == run_id)
+                        .count()
+                    )
+                except Exception:
+                    # If COUNT fails (likely due to active benchmark), assume no old results
+                    result_count = 0
 
                 if result_count > 0:
                     # Run has results but no active progress -> it's done

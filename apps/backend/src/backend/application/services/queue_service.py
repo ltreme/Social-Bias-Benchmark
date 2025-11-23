@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any, Dict, List, Optional
 
 import peewee as pw
 
 from backend.infrastructure.storage.models import TaskQueue, utcnow
+
+_LOG = logging.getLogger(__name__)
 
 
 class QueueService:
@@ -119,6 +122,50 @@ class QueueService:
 
         return f"Task: {task_type}"
 
+    def _get_task_progress(
+        self, task_type: str, run_id: int
+    ) -> Optional[Dict[str, Any]]:
+        """Get progress info for a running task.
+
+        Args:
+            task_type: Type of task ('benchmark' or 'attrgen')
+            run_id: The run ID (benchmark_run_id or attrgen_run_id)
+
+        Returns:
+            Dict with 'done', 'total', 'percent' or None if unavailable
+        """
+        try:
+            if task_type == "benchmark":
+                from backend.application.services.benchmark_service import (
+                    BenchmarkService,
+                )
+
+                service = BenchmarkService()
+                status = service.get_status(run_id)
+                done = status.get("done", 0)
+                total = status.get("total", 0)
+                percent = (done / total * 100) if total > 0 else 0
+
+                return {"done": done, "total": total, "percent": round(percent, 1)}
+
+            elif task_type == "attrgen":
+                from backend.infrastructure.persona.progress_tracker import (
+                    get_progress as get_attrgen_progress,
+                )
+
+                progress = get_attrgen_progress(run_id)
+                done = progress.get("done", 0)
+                total = progress.get("total", 0)
+                percent = (done / total * 100) if total > 0 else 0
+
+                return {"done": done, "total": total, "percent": round(percent, 1)}
+
+        except Exception:
+            # Silently fail - progress is optional
+            pass
+
+        return None
+
     def get_queue_status(
         self, include_done: bool = False, limit: Optional[int] = None
     ) -> List[Dict[str, Any]]:
@@ -157,6 +204,12 @@ class QueueService:
                 "result_run_id": task.result_run_id,
                 "result_run_type": task.result_run_type,
             }
+
+            # Add progress info for running tasks
+            if task.status == "running" and task.result_run_id:
+                task_dict["progress"] = self._get_task_progress(
+                    task.task_type, task.result_run_id
+                )
 
             # Parse config for preview
             try:
@@ -201,6 +254,97 @@ class QueueService:
             )
 
         task.delete_instance()
+        return {"ok": True}
+
+    def retry_task(self, task_id: int, delete_results: bool = False) -> Dict[str, Any]:
+        """Retry a failed or cancelled task.
+
+        Args:
+            task_id: The task ID to retry
+            delete_results: If True, delete all previous results. If False, resume from where it stopped.
+
+        Returns:
+            Dict with ok=True on success
+
+        Raises:
+            ValueError: If task not found or cannot be retried
+        """
+        task = TaskQueue.get_or_none(TaskQueue.id == task_id)
+        if not task:
+            raise ValueError(f"Task #{task_id} not found")
+
+        # Can only retry failed/cancelled tasks
+        if task.status not in ("failed", "cancelled"):
+            raise ValueError(
+                f"Cannot retry task with status '{task.status}'. "
+                f"Only failed/cancelled tasks can be retried."
+            )
+
+        # Delete previous results if requested
+        if delete_results and task.result_run_id:
+            try:
+                if task.task_type == "benchmark":
+                    from backend.infrastructure.storage.models import (
+                        BenchmarkResult,
+                        BenchmarkRun,
+                    )
+
+                    # Delete results
+                    BenchmarkResult.delete().where(
+                        BenchmarkResult.benchmark_run_id == task.result_run_id
+                    ).execute()
+
+                    # Delete run record
+                    BenchmarkRun.delete().where(
+                        BenchmarkRun.id == task.result_run_id
+                    ).execute()
+
+                elif task.task_type == "attrgen":
+                    from backend.infrastructure.storage.models import (
+                        AttrGenRun,
+                        GeneratedPersona,
+                    )
+
+                    # Delete generated personas
+                    GeneratedPersona.delete().where(
+                        GeneratedPersona.attr_generation_run_id == task.result_run_id
+                    ).execute()
+
+                    # Delete run record
+                    AttrGenRun.delete().where(
+                        AttrGenRun.id == task.result_run_id
+                    ).execute()
+
+                # Clear result_run_id since we deleted everything
+                task.result_run_id = None
+                task.result_run_type = None
+
+            except Exception as e:
+                raise ValueError(f"Failed to delete previous results: {e}")
+
+        # Reset task to queued state
+        task.status = "queued"
+        task.error = None
+        task.started_at = None
+        task.finished_at = None
+
+        # Clear vllm_base_url from config to force re-discovery on retry
+        # This prevents reusing a failed/stale URL from previous attempt
+        try:
+            config = json.loads(task.config)
+            if "vllm_base_url" in config:
+                _LOG.info(
+                    f"[QueueService] Clearing cached vllm_base_url from task #{task_id} config for retry"
+                )
+                config.pop("vllm_base_url", None)
+                task.config = json.dumps(config)
+        except Exception as e:
+            _LOG.warning(
+                f"[QueueService] Failed to clear vllm_base_url from config: {e}"
+            )
+
+        task.save()
+
         return {"ok": True}
 
     def cancel_task(self, task_id: int) -> Dict[str, bool]:

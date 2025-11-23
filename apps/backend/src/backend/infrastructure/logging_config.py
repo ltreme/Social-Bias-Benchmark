@@ -87,6 +87,8 @@ def setup_logging():
         "backend.domain.benchmarking.adapters.postprocess",
         "backend.infrastructure.benchmark.executor",
         "backend.infrastructure.benchmark.cache_warming",
+        "backend.infrastructure.benchmark.persister_bench",
+        "backend.infrastructure.llm",
         "backend.application.services.benchmark_service",
         "backend.application.services.attrgen_service",
     ]

@@ -541,6 +541,15 @@ class QueueExecutor:
                     f"(stuck at {done}/{total}). Possible causes: vLLM timeout, cache pollution, OOM. "
                     f"Last vLLM request likely timed out or never returned."
                 )
+                # DUMP THREAD STACK TRACES TO LOG
+                import sys
+                import traceback
+
+                _LOG.error("Dumping stack traces of all threads to debug stall:")
+                for thread_id, frame in sys._current_frames().items():
+                    _LOG.error(f"\nThread {thread_id}:")
+                    traceback.print_stack(frame)
+
                 raise RuntimeError(
                     f"Benchmark stalled: No progress for {int(time_since_progress)}s at {done}/{total} items. "
                     f"Check vLLM server logs for timeout/OOM errors."

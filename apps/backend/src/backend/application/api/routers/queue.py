@@ -280,3 +280,25 @@ def resume_queue() -> StatusResponse:
         return StatusResponse(ok=True, message="Queue resumed")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/queue/{task_id}/retry", response_model=StatusResponse)
+def retry_task(task_id: int, delete_results: bool = False) -> StatusResponse:
+    """Retry a failed or cancelled task.
+
+    Query params:
+    - delete_results: If true, delete all previous results before retry (default: false = resume)
+
+    Only failed/cancelled tasks can be retried.
+
+    Returns:
+        {"ok": true, "message": "Task reset to queued"}
+    """
+    try:
+        service = _get_queue_service()
+        service.retry_task(task_id, delete_results=delete_results)
+        return StatusResponse(ok=True, message="Task reset to queued for retry")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

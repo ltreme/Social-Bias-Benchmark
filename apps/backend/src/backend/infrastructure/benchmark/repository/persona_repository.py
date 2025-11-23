@@ -24,47 +24,62 @@ class PersonaRepository(PersonaRepo):
         # Ensure DB is initialized by caller (init_database()).
         _ = get_db()
 
-        # Select only minimal fields to reduce IO.
-        query = Persona.select(
-            Persona.uuid,
-            Persona.age,
-            Persona.gender,
-            Persona.education,
-            Persona.occupation,
-            Persona.marriage_status,
-            Persona.religion,
-            Persona.sexuality,
-            Country.country_de.alias("origin_name"),
-        ).join(Country, JOIN.LEFT_OUTER, on=(Persona.origin_id == Country.id))
-
-        if dataset_id is not None:
-            query = query.join(
-                DatasetPersona,
-                JOIN.INNER,
-                on=(DatasetPersona.persona_id == Persona.uuid),
-            ).where(DatasetPersona.dataset_id == dataset_id)
-        else:
-            query = query.where(True)
-
+        last_uuid = None
+        batch_size = 1000
         translator = TranslatorService()
 
-        for row in query.iterator():
-            origin_name = getattr(row, "origin_name", None)  # None, wenn kein Country
-            persona_minimal = {
-                "Alter": row.age,
-                "Geschlecht": translator.translate(row.gender),
-                "Herkunft": origin_name,
-                "Bildung": row.education,
-                "Beruf": row.occupation,
-                "Familienstand": translator.translate(row.marriage_status),
-                "Religion": translator.translate(row.religion),
-                "Sexualität": translator.translate(row.sexuality),
-            }
-            yield WorkItem(
-                dataset_id=dataset_id or 0,  # Use 0 as default for all personas
-                persona_uuid=PersonaUUID(str(row.uuid)),
-                persona_minimal=persona_minimal,
-            )
+        while True:
+            # Select only minimal fields to reduce IO.
+            query = Persona.select(
+                Persona.uuid,
+                Persona.age,
+                Persona.gender,
+                Persona.education,
+                Persona.occupation,
+                Persona.marriage_status,
+                Persona.religion,
+                Persona.sexuality,
+                Country.country_de.alias("origin_name"),
+            ).join(Country, JOIN.LEFT_OUTER, on=(Persona.origin_id == Country.id))
+
+            if dataset_id is not None:
+                query = query.join(
+                    DatasetPersona,
+                    JOIN.INNER,
+                    on=(DatasetPersona.persona_id == Persona.uuid),
+                ).where(DatasetPersona.dataset_id == dataset_id)
+            else:
+                query = query.where(True)
+
+            if last_uuid is not None:
+                query = query.where(Persona.uuid > last_uuid)
+
+            query = query.order_by(Persona.uuid).limit(batch_size)
+
+            rows = list(query)
+            if not rows:
+                break
+
+            for row in rows:
+                last_uuid = row.uuid
+                origin_name = getattr(
+                    row, "origin_name", None
+                )  # None, wenn kein Country
+                persona_minimal = {
+                    "Alter": row.age,
+                    "Geschlecht": translator.translate(row.gender),
+                    "Herkunft": origin_name,
+                    "Bildung": row.education,
+                    "Beruf": row.occupation,
+                    "Familienstand": translator.translate(row.marriage_status),
+                    "Religion": translator.translate(row.religion),
+                    "Sexualität": translator.translate(row.sexuality),
+                }
+                yield WorkItem(
+                    dataset_id=dataset_id or 0,  # Use 0 as default for all personas
+                    persona_uuid=PersonaUUID(str(row.uuid)),
+                    persona_minimal=persona_minimal,
+                )
 
     def count(self, dataset_id: int | None) -> int:
         _ = get_db()
@@ -87,47 +102,61 @@ class PersonaRepositoryByDataset(PersonaRepo):
         self, dataset_id: int | None
     ) -> Iterable[WorkItem]:  # dataset_id ignored
         _ = get_db()
-        query = (
-            Persona.select(
-                Persona.uuid,
-                Persona.age,
-                Persona.gender,
-                Persona.education,
-                Persona.occupation,
-                Persona.marriage_status,
-                Persona.religion,
-                Persona.sexuality,
-                Country.country_de.alias("origin_name"),
-            )
-            .join(
-                DatasetPersona,
-                JOIN.INNER,
-                on=(DatasetPersona.persona_id == Persona.uuid),
-            )
-            .switch(Persona)
-            .join(Country, JOIN.LEFT_OUTER, on=(Persona.origin_id == Country.id))
-            .where(DatasetPersona.dataset_id == self.dataset_id)
-        )
 
+        last_uuid = None
+        batch_size = 1000
         translator = TranslatorService()
 
-        for row in query.iterator():
-            origin_name = getattr(row, "origin_name", None)
-            persona_minimal = {
-                "Alter": row.age,
-                "Geschlecht": translator.translate(row.gender),
-                "Herkunft": origin_name,
-                "Bildung": row.education,
-                "Beruf": row.occupation,
-                "Familienstand": translator.translate(row.marriage_status),
-                "Religion": translator.translate(row.religion),
-                "Sexualität": translator.translate(row.sexuality),
-            }
-            yield WorkItem(
-                dataset_id=self.dataset_id,
-                persona_uuid=PersonaUUID(str(row.uuid)),
-                persona_minimal=persona_minimal,
+        while True:
+            query = (
+                Persona.select(
+                    Persona.uuid,
+                    Persona.age,
+                    Persona.gender,
+                    Persona.education,
+                    Persona.occupation,
+                    Persona.marriage_status,
+                    Persona.religion,
+                    Persona.sexuality,
+                    Country.country_de.alias("origin_name"),
+                )
+                .join(
+                    DatasetPersona,
+                    JOIN.INNER,
+                    on=(DatasetPersona.persona_id == Persona.uuid),
+                )
+                .switch(Persona)
+                .join(Country, JOIN.LEFT_OUTER, on=(Persona.origin_id == Country.id))
+                .where(DatasetPersona.dataset_id == self.dataset_id)
             )
+
+            if last_uuid is not None:
+                query = query.where(Persona.uuid > last_uuid)
+
+            query = query.order_by(Persona.uuid).limit(batch_size)
+
+            rows = list(query)
+            if not rows:
+                break
+
+            for row in rows:
+                last_uuid = row.uuid
+                origin_name = getattr(row, "origin_name", None)
+                persona_minimal = {
+                    "Alter": row.age,
+                    "Geschlecht": translator.translate(row.gender),
+                    "Herkunft": origin_name,
+                    "Bildung": row.education,
+                    "Beruf": row.occupation,
+                    "Familienstand": translator.translate(row.marriage_status),
+                    "Religion": translator.translate(row.religion),
+                    "Sexualität": translator.translate(row.sexuality),
+                }
+                yield WorkItem(
+                    dataset_id=self.dataset_id,
+                    persona_uuid=PersonaUUID(str(row.uuid)),
+                    persona_minimal=persona_minimal,
+                )
 
     def count(self, dataset_id: int | None) -> int:
         _ = get_db()
@@ -158,66 +187,80 @@ class FullPersonaRepository(BenchPersonaRepo):
 
     def iter_personas(self, dataset_id: int | None = None):
         _ = get_db()
-        query = Persona.select(
-            Persona.uuid,
-            Persona.age,
-            Persona.gender,
-            Persona.education,
-            Persona.occupation,
-            Persona.marriage_status,
-            Persona.religion,
-            Persona.sexuality,
-            Country.country_de.alias("origin_name"),
-        ).join(Country, JOIN.LEFT_OUTER, on=(Persona.origin_id == Country.id))
 
-        if dataset_id is not None:
-            query = query.join(
-                DatasetPersona,
-                JOIN.INNER,
-                on=(DatasetPersona.persona_id == Persona.uuid),
-            ).where(DatasetPersona.dataset_id == dataset_id)
-        else:
-            query = query.where(True)
-
+        last_uuid = None
+        batch_size = 1000
         translator = TranslatorService()
 
-        for row in query.iterator():
-            origin_name = getattr(row, "origin_name", None)
+        while True:
+            query = Persona.select(
+                Persona.uuid,
+                Persona.age,
+                Persona.gender,
+                Persona.education,
+                Persona.occupation,
+                Persona.marriage_status,
+                Persona.religion,
+                Persona.sexuality,
+                Country.country_de.alias("origin_name"),
+            ).join(Country, JOIN.LEFT_OUTER, on=(Persona.origin_id == Country.id))
 
-            # Fetch enriched attributes for this persona. If a specific
-            # attr_generation_run_id is provided, restrict to that run.
-            attrs_query = Attr.select(Attr.attribute_key, Attr.value).where(
-                Attr.persona_uuid_id == row.uuid
-            )
-            if self.attr_generation_run_id is not None:
-                attrs_query = attrs_query.where(
-                    Attr.attr_generation_run_id == int(self.attr_generation_run_id)
+            if dataset_id is not None:
+                query = query.join(
+                    DatasetPersona,
+                    JOIN.INNER,
+                    on=(DatasetPersona.persona_id == Persona.uuid),
+                ).where(DatasetPersona.dataset_id == dataset_id)
+            else:
+                query = query.where(True)
+
+            if last_uuid is not None:
+                query = query.where(Persona.uuid > last_uuid)
+
+            query = query.order_by(Persona.uuid).limit(batch_size)
+
+            rows = list(query)
+            if not rows:
+                break
+
+            for row in rows:
+                last_uuid = row.uuid
+                origin_name = getattr(row, "origin_name", None)
+
+                # Fetch enriched attributes for this persona. If a specific
+                # attr_generation_run_id is provided, restrict to that run.
+                attrs_query = Attr.select(Attr.attribute_key, Attr.value).where(
+                    Attr.persona_uuid_id == row.uuid
                 )
-            attrs = attrs_query
-            attr_map = {a.attribute_key: a.value for a in attrs}
+                if self.attr_generation_run_id is not None:
+                    attrs_query = attrs_query.where(
+                        Attr.attr_generation_run_id == int(self.attr_generation_run_id)
+                    )
+                attrs = attrs_query
+                attr_map = {a.attribute_key: a.value for a in attrs}
 
-            persona_ctx = {
-                "name": attr_map.get("name"),
-                "appearance": attr_map.get("appearance"),
-                "biography": attr_map.get("biography"),
-                "Alter": row.age,
-                "Geschlecht": translator.translate(row.gender),
-                "Herkunft": origin_name,
-                "Bildung": row.education,
-                "Beruf": row.occupation,
-                "Familienstand": translator.translate(row.marriage_status),
-                "Religion": translator.translate(row.religion),
-                "Sexualität": translator.translate(row.sexuality),
-            }
+                persona_ctx = {
+                    "name": attr_map.get("name"),
+                    "appearance": attr_map.get("appearance"),
+                    "biography": attr_map.get("biography"),
+                    "Alter": row.age,
+                    "Geschlecht": translator.translate(row.gender),
+                    "Herkunft": origin_name,
+                    "Bildung": row.education,
+                    "Beruf": row.occupation,
+                    "Familienstand": translator.translate(row.marriage_status),
+                    "Religion": translator.translate(row.religion),
+                    "Sexualität": translator.translate(row.sexuality),
+                }
 
-            yield BenchWorkItem(
-                dataset_id=dataset_id or 0,  # Use 0 as default for all personas
-                persona_uuid=PersonaUUID(str(row.uuid)),
-                persona_context=persona_ctx,
-                case_id="",  # filled later
-                adjective="",
-                case_template=None,
-            )
+                yield BenchWorkItem(
+                    dataset_id=dataset_id or 0,  # Use 0 as default for all personas
+                    persona_uuid=PersonaUUID(str(row.uuid)),
+                    persona_context=persona_ctx,
+                    case_id="",  # filled later
+                    adjective="",
+                    case_template=None,
+                )
 
     def count(self, dataset_id: int | None) -> int:
         _ = get_db()
@@ -250,64 +293,78 @@ class FullPersonaRepositoryByDataset(BenchPersonaRepo):
         self, dataset_id: int | None
     ) -> Iterable[BenchWorkItem]:  # dataset_id unused, uses self.dataset_id
         _ = get_db()
-        query = (
-            Persona.select(
-                Persona.uuid,
-                Persona.age,
-                Persona.gender,
-                Persona.education,
-                Persona.occupation,
-                Persona.marriage_status,
-                Persona.religion,
-                Persona.sexuality,
-                Country.country_de.alias("origin_name"),
-            )
-            .join(
-                DatasetPersona,
-                JOIN.INNER,
-                on=(DatasetPersona.persona_id == Persona.uuid),
-            )
-            .switch(Persona)
-            .join(Country, JOIN.LEFT_OUTER, on=(Persona.origin_id == Country.id))
-            .where(DatasetPersona.dataset_id == self.dataset_id)
-        )
 
+        last_uuid = None
+        batch_size = 1000
         translator = TranslatorService()
 
-        for row in query.iterator():
-            origin_name = getattr(row, "origin_name", None)
-            # Restrict attributes to the provided attr-generation run when specified
-            attrs_query = Attr.select(Attr.attribute_key, Attr.value).where(
-                Attr.persona_uuid_id == row.uuid
-            )
-            if self.attr_generation_run_id is not None:
-                attrs_query = attrs_query.where(
-                    Attr.attr_generation_run_id == int(self.attr_generation_run_id)
+        while True:
+            query = (
+                Persona.select(
+                    Persona.uuid,
+                    Persona.age,
+                    Persona.gender,
+                    Persona.education,
+                    Persona.occupation,
+                    Persona.marriage_status,
+                    Persona.religion,
+                    Persona.sexuality,
+                    Country.country_de.alias("origin_name"),
                 )
-            attr_map = {a.attribute_key: a.value for a in attrs_query}
-
-            persona_ctx = {
-                "name": attr_map.get("name"),
-                "appearance": attr_map.get("appearance"),
-                "biography": attr_map.get("biography"),
-                "Alter": row.age,
-                "Geschlecht": translator.translate(row.gender),
-                "Herkunft": origin_name,
-                "Bildung": row.education,
-                "Beruf": row.occupation,
-                "Familienstand": translator.translate(row.marriage_status),
-                "Religion": translator.translate(row.religion),
-                "Sexualität": translator.translate(row.sexuality),
-            }
-
-            yield BenchWorkItem(
-                dataset_id=self.dataset_id,
-                persona_uuid=PersonaUUID(str(row.uuid)),
-                persona_context=persona_ctx,
-                case_id="",
-                adjective="",
-                case_template=None,
+                .join(
+                    DatasetPersona,
+                    JOIN.INNER,
+                    on=(DatasetPersona.persona_id == Persona.uuid),
+                )
+                .switch(Persona)
+                .join(Country, JOIN.LEFT_OUTER, on=(Persona.origin_id == Country.id))
+                .where(DatasetPersona.dataset_id == self.dataset_id)
             )
+
+            if last_uuid is not None:
+                query = query.where(Persona.uuid > last_uuid)
+
+            query = query.order_by(Persona.uuid).limit(batch_size)
+
+            rows = list(query)
+            if not rows:
+                break
+
+            for row in rows:
+                last_uuid = row.uuid
+                origin_name = getattr(row, "origin_name", None)
+                # Restrict attributes to the provided attr-generation run when specified
+                attrs_query = Attr.select(Attr.attribute_key, Attr.value).where(
+                    Attr.persona_uuid_id == row.uuid
+                )
+                if self.attr_generation_run_id is not None:
+                    attrs_query = attrs_query.where(
+                        Attr.attr_generation_run_id == int(self.attr_generation_run_id)
+                    )
+                attr_map = {a.attribute_key: a.value for a in attrs_query}
+
+                persona_ctx = {
+                    "name": attr_map.get("name"),
+                    "appearance": attr_map.get("appearance"),
+                    "biography": attr_map.get("biography"),
+                    "Alter": row.age,
+                    "Geschlecht": translator.translate(row.gender),
+                    "Herkunft": origin_name,
+                    "Bildung": row.education,
+                    "Beruf": row.occupation,
+                    "Familienstand": translator.translate(row.marriage_status),
+                    "Religion": translator.translate(row.religion),
+                    "Sexualität": translator.translate(row.sexuality),
+                }
+
+                yield BenchWorkItem(
+                    dataset_id=self.dataset_id,
+                    persona_uuid=PersonaUUID(str(row.uuid)),
+                    persona_context=persona_ctx,
+                    case_id="",
+                    adjective="",
+                    case_template=None,
+                )
 
     def count(self, dataset_id: int) -> int:
         _ = get_db()

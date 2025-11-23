@@ -192,3 +192,28 @@ export function useStopQueue() {
     },
   });
 }
+
+export function useRetryTask() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ taskId, deleteResults }: { taskId: number; deleteResults: boolean }) => 
+      queueApi.retryTask(taskId, deleteResults),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUEUE_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: QUEUE_STATS_KEY });
+      notifications.show({
+        color: 'green',
+        title: 'Task wird wiederholt',
+        message: 'Der Task wurde zurück in die Queue gesetzt',
+      });
+    },
+    onError: (error: any) => {
+      notifications.show({
+        color: 'red',
+        title: 'Fehler',
+        message: error.response?.data?.detail || 'Task konnte nicht wiederholt werden',
+      });
+    },
+  });
+}

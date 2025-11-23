@@ -9,7 +9,7 @@ from backend.domain.benchmarking.adapters.postprocess.postprocessor_likert impor
 )
 from backend.domain.benchmarking.adapters.prompting import LikertPromptFactory
 from backend.domain.benchmarking.benchmark import run_benchmark_pipeline
-from backend.infrastructure.benchmark.persister_bench_sqlite import (
+from backend.infrastructure.benchmark.persister_bench import (
     BenchPersisterPeewee,
     BenchPersisterPrint,
 )

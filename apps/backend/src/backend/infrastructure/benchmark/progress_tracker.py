@@ -60,22 +60,49 @@ def update_progress(run_id: int, dataset_id: int) -> None:
     now = time.time()
     last_count_update = existing_info.get("_last_count_update", 0)
 
-    # Only update count every 30 seconds to avoid expensive DB queries
-    # (COUNT DISTINCT on large tables is slow, especially on PostgreSQL)
+    # OPTIMIZATION: Use in-memory counter from persister instead of expensive COUNT query
+    # Only fall back to DB COUNT if counter is not available (e.g. after restart)
     needs_count_update = (now - last_count_update) > 30.0
 
     if needs_count_update:
-        # Count completed triples incl. order
-        done = (
-            BenchmarkResult.select(
-                BenchmarkResult.persona_uuid_id,
-                BenchmarkResult.case_id,
-                BenchmarkResult.scale_order,
+        import logging
+
+        _LOG = logging.getLogger(__name__)
+
+        # Try to get count from in-memory persister counter first (instant, no DB query!)
+        try:
+            from backend.infrastructure.benchmark.persister_bench import (
+                BenchPersisterPeewee,
             )
-            .where(BenchmarkResult.benchmark_run_id == run_id)
-            .distinct()
-            .count()
-        )
+
+            done = BenchPersisterPeewee.get_progress_count(run_id)
+
+            # If counter is 0, might be after restart - fall back to DB COUNT once
+            if done == 0 and existing_info.get("status") in {"running", "cancelling"}:
+                _LOG.info(
+                    f"[ProgressTracker] In-memory counter empty for run_id={run_id}, querying DB once"
+                )
+                query_start = time.time()
+                done = (
+                    BenchmarkResult.select()
+                    .where(BenchmarkResult.benchmark_run_id == run_id)
+                    .count()
+                )
+                query_elapsed = time.time() - query_start
+                if query_elapsed > 2.0:
+                    _LOG.warning(
+                        f"[ProgressTracker] Slow COUNT query: {query_elapsed:.2f}s for run_id={run_id}"
+                    )
+                elif query_elapsed > 1.0:
+                    _LOG.info(
+                        f"[ProgressTracker] COUNT query: {query_elapsed:.2f}s for run_id={run_id}"
+                    )
+        except Exception as e:
+            # If counter access fails, use cached value
+            _LOG.error(
+                f"[ProgressTracker] Failed to get progress count: {e}, using cached value"
+            )
+            done = existing_info.get("done", 0)
     else:
         # Use cached count
         done = existing_info.get("done", 0)
@@ -93,15 +120,38 @@ def update_progress(run_id: int, dataset_id: int) -> None:
 
         if needs_total_update:
             try:
-                traits = TraitRepository().count()
-            except Exception:
-                traits = 0
-            total_personas = (
-                DatasetPersona.select()
-                .where(DatasetPersona.dataset_id == dataset_id)
-                .count()
-            )
-            base_total = total_personas * traits if traits and total_personas else 0
+                # CRITICAL: Wrap COUNT queries in try/except to prevent deadlocks
+                try:
+                    traits = TraitRepository().count()
+                except Exception as e:
+                    _LOG.warning(
+                        f"[ProgressTracker] TraitRepository.count() failed: {e}, using cached"
+                    )
+                    traits = existing_info.get("_cached_traits", 0)
+
+                try:
+                    total_personas = (
+                        DatasetPersona.select()
+                        .where(DatasetPersona.dataset_id == dataset_id)
+                        .count()
+                    )
+                except Exception as e:
+                    _LOG.warning(
+                        f"[ProgressTracker] DatasetPersona.count() failed: {e}, using cached"
+                    )
+                    total_personas = existing_info.get("_cached_personas", 0)
+
+                base_total = total_personas * traits if traits and total_personas else 0
+
+                # Cache intermediate values for fallback
+                existing_info["_cached_traits"] = traits
+                existing_info["_cached_personas"] = total_personas
+            except Exception as e:
+                _LOG.error(
+                    f"[ProgressTracker] Total calculation failed: {e}, using previous value"
+                )
+                base_total = existing_info.get("_cached_base_total", 0)
+
             # Estimate duplicates by dual_fraction
             try:
                 br = BenchmarkRun.get_by_id(run_id)
@@ -112,8 +162,9 @@ def update_progress(run_id: int, dataset_id: int) -> None:
             total = base_total + extra
             if done > total:
                 total = done
-            # Cache the total
+            # Cache the total and base
             existing_info["_cached_total"] = total
+            existing_info["_cached_base_total"] = base_total
             existing_info["_last_total_update"] = now
         else:
             # Use cached total

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import logging
 import threading
 import time
-from concurrent.futures import Future, ThreadPoolExecutor, as_completed
+from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError, as_completed
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, Iterator
 
@@ -16,6 +17,8 @@ from backend.domain.benchmarking.ports import (  # preprocessing pipeline
 from backend.domain.benchmarking.ports_bench import BenchPromptSpec
 from backend.domain.benchmarking.ports_bench import LLMClient as BenchLLMClient
 from backend.domain.benchmarking.ports_bench import LLMResult as BenchLLMResult
+
+_LOG = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -169,12 +172,14 @@ class _BaseVLLMClient:
     # --- concurrency driver ----------------------------------------------
     def _run_stream_generic(self, specs: Iterable, result_ctor) -> Iterator:
         pending: Dict[Future, Any] = {}
+        start_times: Dict[Future, float] = {}
 
         def submit(executor: ThreadPoolExecutor, spec) -> None:
             fut = executor.submit(
                 self._post_completion, spec.prompt_text, spec.max_new_tokens
             )
             pending[fut] = spec
+            start_times[fut] = time.time()
 
         with ThreadPoolExecutor(max_workers=self.concurrency) as ex:
             # fill pipeline up to concurrency then drain as we go
@@ -187,20 +192,56 @@ class _BaseVLLMClient:
             except StopIteration:
                 pass
 
+            last_log_time = 0.0
+
             while pending:
-                for fut in as_completed(list(pending.keys())):
-                    spec = pending.pop(fut)
-                    text, dt = fut.result()
-                    yield result_ctor(spec=spec, raw_text=text, gen_time_ms=dt)
-                    # Try to keep the window full by submitting the next task
-                    try:
-                        s = next(it)
-                        submit(ex, s)
-                    except StopIteration:
-                        # Exhausted input; continue draining
-                        pass
-                    # Break to re-enter as_completed with a fresh snapshot of keys
-                    break
+                # Check for stuck requests
+                now = time.time()
+                if start_times:
+                    oldest = min(start_times.values())
+                    duration = now - oldest
+                    if duration > 60.0 and (now - last_log_time > 30.0):
+                        _LOG.warning(
+                            f"[LLM Client] Pipeline stalled? Oldest request pending for {duration:.1f}s. Pending: {len(pending)}"
+                        )
+                        last_log_time = now
+
+                try:
+                    # Use timeout to keep the loop alive and logging even if vLLM hangs
+                    # Wait up to 5 seconds for a result
+                    for fut in as_completed(list(pending.keys()), timeout=5.0):
+                        spec = pending.pop(fut)
+                        start_times.pop(fut, None)
+                        text, dt = fut.result()
+                        yield result_ctor(spec=spec, raw_text=text, gen_time_ms=dt)
+
+                        # Try to keep the window full by submitting the next task
+                        try:
+                            t_next = time.time()
+                            s = next(it)
+                            if time.time() - t_next > 1.0:
+                                _LOG.info(
+                                    f"[LLM Client] Fetching next item took {time.time() - t_next:.2f}s"
+                                )
+                            submit(ex, s)
+                        except StopIteration:
+                            # Exhausted input; continue draining
+                            pass
+                        except Exception as e:
+                            _LOG.error(
+                                f"[LLM Client] Error fetching next item from generator: {e}"
+                            )
+                            # Stop submitting but continue draining pending
+
+                        # Break to re-enter as_completed with a fresh snapshot of keys
+                        break
+                except TimeoutError:
+                    # No request finished in 5s - loop continues to check timeouts/logging
+                    continue
+                except Exception as e:
+                    _LOG.error(f"[LLM Client] Unexpected error in loop: {e}")
+                    if not pending:
+                        break
 
 
 # --- Attr-Gen vLLM client ----------------------------------------------------

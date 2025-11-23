@@ -3,6 +3,12 @@ import { api } from '../../lib/apiClient';
 export type TaskType = 'benchmark' | 'attrgen' | 'pool_gen' | 'balanced_gen';
 export type TaskStatus = 'queued' | 'waiting' | 'running' | 'done' | 'failed' | 'cancelled' | 'skipped';
 
+export type TaskProgress = {
+  done: number;
+  total: number;
+  percent: number;
+};
+
 export type QueueTask = {
   id: number;
   task_type: TaskType;
@@ -17,6 +23,7 @@ export type QueueTask = {
   result_run_id: number | null;
   result_run_type: string | null;
   config: Record<string, any>;
+  progress?: TaskProgress;
 };
 
 export type QueueStats = {
@@ -65,6 +72,13 @@ export async function removeTaskFromQueue(taskId: number) {
 
 export async function cancelTask(taskId: number) {
   const res = await api.post<{ ok: boolean; message?: string }>(`/queue/${taskId}/cancel`);
+  return res.data;
+}
+
+export async function retryTask(taskId: number, deleteResults = false) {
+  const params = new URLSearchParams();
+  if (deleteResults) params.set('delete_results', 'true');
+  const res = await api.post<{ ok: boolean; message?: string }>(`/queue/${taskId}/retry?${params}`);
   return res.data;
 }
 
