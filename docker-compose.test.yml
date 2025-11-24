@@ -1,0 +1,26 @@
+# Docker Compose für Tests
+# Basierend auf docker-compose.yml aber optimiert für Tests
+
+services:
+  test-runner:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.test
+    working_dir: /app
+    environment:
+      TZ: Europe/Berlin
+      PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONPATH: /app/apps/backend/src
+      # SQLite für Tests (schneller und einfacher)
+      DB_URL: sqlite:////tmp/test.db
+      # Für Tests die vLLM benötigen (optional)
+      VLLM_BASE_URL: http://host.docker.internal:8000
+      # Test-spezifische Env-Vars
+      INTEGRATION_FULL: "0"  # Setze auf "1" für volle Integration-Tests
+      INTEGRATION_LLM: "fake"  # Nutze fake-LLM per default
+    volumes:
+      - .:/app:cached
+    # Default: run all tests
+    # Nutze python -m pytest da pytest evtl. nicht in $PATH ist
+    command: ["python", "-m", "pytest", "apps/backend/tests/", "-v"]

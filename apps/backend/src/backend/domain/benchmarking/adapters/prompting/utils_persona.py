@@ -11,13 +11,21 @@ def describe_persona_de(ctx: Mapping[str, object]) -> str:
     if name:
         p.append(f"Name: {name}")
 
-    if (age := ctx.get("Alter")) is not None:
+    # Support both 'age' and 'Alter' keys for flexibility
+    age = ctx.get("Alter") or ctx.get("age")
+    if age is not None:
         p.append(f"Alter: {age} Jahre")
-    if gender := ctx.get("Geschlecht"):
+    # Support both 'gender' and 'Geschlecht' keys
+    gender = ctx.get("Geschlecht") or ctx.get("gender")
+    if gender:
         p.append(f"Geschlecht: {gender}")
-    if edu := ctx.get("Bildung"):
+    # Support both 'education' and 'Bildung' keys
+    edu = ctx.get("Bildung") or ctx.get("education")
+    if edu:
         p.append(f"Bildungsstand: {edu}")
-    if occ := ctx.get("Beruf"):
+    # Support both 'occupation' and 'Beruf' keys
+    occ = ctx.get("Beruf") or ctx.get("occupation")
+    if occ:
         p.append(f"Beruf: {occ}")
     if ms := ctx.get("Familienstand"):
         p.append(f"Familienstand: {ms}")
@@ -46,4 +54,6 @@ def likert_5_de(adjective: str, reverse: bool = False) -> str:
     ]
     if reverse:
         scale = list(reversed(scale))
+        # When reversed, numbering should go 5->1 instead of 1->5
+        return "\n".join(f"{5-i}. {opt}" for i, opt in enumerate(scale))
     return "\n".join(f"{i+1}. {opt}" for i, opt in enumerate(scale))

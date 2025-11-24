@@ -52,12 +52,25 @@ class LikertPostProcessor(AbstractPostProcessor, BenchPostProcessor):
                 f"This might indicate vLLM cache pollution or prompt leak. Rationale: {data['rationale'][:100]}"
             )
 
+        # Validate rating key exists
+        if "rating" not in data:
+            raise ValueError("missing_rating_key")
+
         rating_val = data.get("rating")
+
+        # Validate rating is not null
+        if rating_val is None:
+            raise ValueError("rating_is_null")
+
         rating = None
         if isinstance(rating_val, (int, float)):
             rating_i = int(round(float(rating_val)))
-            if 1 <= rating_i <= 5:
-                rating = rating_i
+            # Validate rating is in valid range
+            if not (1 <= rating_i <= 5):
+                raise ValueError(f"rating_out_of_range: {rating_i}")
+            rating = rating_i
+        else:
+            raise ValueError(f"rating_not_numeric: {type(rating_val).__name__}")
 
         spec = res.spec
         ans = BenchAnswerDto(

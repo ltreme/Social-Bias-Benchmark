@@ -76,6 +76,16 @@ Advanced: CLI (optional)
   - Attr-gen: `PYTHONPATH=apps/backend/src python apps/backend/src/backend/application/cli/run_attr_generation.py --dataset-id <ID> --llm vllm --vllm-model "..." --vllm-base-url http://localhost:8000`
   - Benchmark: `PYTHONPATH=apps/backend/src python apps/backend/src/backend/application/cli/run_core_benchmark.py --dataset-id <ID> --llm vllm --vllm-model "..." --vllm-base-url http://localhost:8000`
 
+Tests
+- Docker-basierte Tests (empfohlen):
+  - Vor GPU-Runs: `./scripts/run_tests.sh critical`
+  - Alle Tests: `./scripts/run_tests.sh all`
+  - Unit-Tests: `./scripts/run_tests.sh unit`
+  - Integration-Tests: `./scripts/run_tests.sh integration`
+  - Mit Coverage: `./scripts/run_tests.sh cov`
+  - Shell für Debugging: `./scripts/run_tests.sh shell`
+- Vollständige Teststrategie & Planung: siehe `TESTING_STRATEGY.md`
+
 Notes
 - Reproducibility: datasets store seed/config; balanced/reality reference their pool `gen_id`.
 - Performance: prefer dataset-scoped attr-gen/benchmark. Keep batch sizes modest on small GPUs.
