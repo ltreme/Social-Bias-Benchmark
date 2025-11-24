@@ -2,7 +2,7 @@ import { Alert, Button, Card, Grid, Group, Spoiler, Text, Title, MultiSelect, Pr
 import { useEffect, useState } from 'react';
 import { Link, useParams } from '@tanstack/react-router';
 import { ChartPanel } from '../../components/ChartPanel';
-import { useRunDeltas, useRunMetrics, useRun, useRunMissing, useRunOrderMetrics, useRunMeans, useRunForests, useRunWarmup } from './hooks';
+import { useRunDeltas, useRunMetrics, useRun, useRunMissing, useRunOrderMetrics, useRunForests, useRunWarmup, useRunAllMeans, useRunAllDeltas } from './hooks';
 import { useStartBenchmark, useBenchmarkStatus } from '../datasets/hooks';
 import { OrderMetricsCard } from './components/OrderMetricsCard';
 import { SignificanceTable } from './components/SignificanceTable';
@@ -70,8 +70,8 @@ export function RunDetailPage() {
   const warmCurrentStepLabel = warmRunningStep
     ? formatWarmStepName(warmRunningStep.name)
     : warmStatus?.current_step
-    ? formatWarmStepName(warmStatus.current_step)
-    : null;
+      ? formatWarmStepName(warmStatus.current_step)
+      : null;
   const warmStepErrors = warmSteps.filter((s) => s.status === 'error');
   const warmStepErrorMessage = warmStepErrors.length
     ? warmStepErrors.map((s) => `${formatWarmStepName(s.name)}: ${s.error ?? 'Fehler'}`).join(' • ')
@@ -106,7 +106,8 @@ export function RunDetailPage() {
   const attrLabel = ATTRS.find((x) => x.value === attr)?.label || attr;
 
   const liveStatus = (benchStatus.data?.status || '').toLowerCase();
-  const isActive = ['queued', 'running', 'partial', 'cancelling'].includes(liveStatus);
+  // Only truly active statuses - 'partial' means incomplete but not running
+  const isActive = ['queued', 'running', 'cancelling'].includes(liveStatus);
 
   // keep baseline in sync when attribute changes or metrics load
   useEffect(() => {
@@ -135,39 +136,29 @@ export function RunDetailPage() {
   const loadingForest = forestsQueries.length > 0 ? forestsQueries.some((q) => q.isLoading) : false;
   const errorForest = forestsQueries.length > 0 ? forestsQueries.some((q) => q.isError) : false;
   const forestError = forestsQueries.find((q) => q.isError)?.error as any;
-  // Means for fixed attribute set (avoid calling hooks in loops)
-  const meansGender = useRunMeans(idNum, 'gender', undefined, { enabled: warmReady, traitCategory: traitCategoryFilter });
-  const meansSubregion = useRunMeans(idNum, 'origin_subregion', undefined, { enabled: warmReady, traitCategory: traitCategoryFilter });
-  const meansReligion = useRunMeans(idNum, 'religion', undefined, { enabled: warmReady, traitCategory: traitCategoryFilter });
-  const meansMigration = useRunMeans(idNum, 'migration_status', undefined, { enabled: warmReady, traitCategory: traitCategoryFilter });
-  const meansSexuality = useRunMeans(idNum, 'sexuality', undefined, { enabled: warmReady, traitCategory: traitCategoryFilter });
-  const meansMarriage = useRunMeans(idNum, 'marriage_status', undefined, { enabled: warmReady, traitCategory: traitCategoryFilter });
-  const meansEducation = useRunMeans(idNum, 'education', undefined, { enabled: warmReady, traitCategory: traitCategoryFilter });
+
+  // AGGREGATED CALLS
+  const { data: allMeans, isLoading: loadingAllMeans, isError: errorAllMeans, error: allMeansError } = useRunAllMeans(idNum, { enabled: warmReady });
+  const { data: allDeltas, isLoading: loadingAllDeltas, isError: errorAllDeltas, error: allDeltasError } = useRunAllDeltas(idNum, { enabled: warmReady });
+
   const meansData = [
-    { a: 'gender', q: meansGender },
-    { a: 'origin_subregion', q: meansSubregion },
-    { a: 'religion', q: meansReligion },
-    { a: 'migration_status', q: meansMigration },
-    { a: 'sexuality', q: meansSexuality },
-    { a: 'marriage_status', q: meansMarriage },
-    { a: 'education', q: meansEducation },
+    { a: 'gender', q: { data: { rows: allMeans?.data?.gender || [] }, isLoading: loadingAllMeans, isError: errorAllMeans, error: allMeansError } },
+    { a: 'origin_subregion', q: { data: { rows: allMeans?.data?.origin_subregion || [] }, isLoading: loadingAllMeans, isError: errorAllMeans, error: allMeansError } },
+    { a: 'religion', q: { data: { rows: allMeans?.data?.religion || [] }, isLoading: loadingAllMeans, isError: errorAllMeans, error: allMeansError } },
+    { a: 'migration_status', q: { data: { rows: allMeans?.data?.migration_status || [] }, isLoading: loadingAllMeans, isError: errorAllMeans, error: allMeansError } },
+    { a: 'sexuality', q: { data: { rows: allMeans?.data?.sexuality || [] }, isLoading: loadingAllMeans, isError: errorAllMeans, error: allMeansError } },
+    { a: 'marriage_status', q: { data: { rows: allMeans?.data?.marriage_status || [] }, isLoading: loadingAllMeans, isError: errorAllMeans, error: allMeansError } },
+    { a: 'education', q: { data: { rows: allMeans?.data?.education || [] }, isLoading: loadingAllMeans, isError: errorAllMeans, error: allMeansError } },
   ];
-  // Deltas (significance tables)
-  const deltasGender = useRunDeltas(idNum, 'gender', undefined, { enabled: warmReady, traitCategory: traitCategoryFilter });
-  const deltasSubregion = useRunDeltas(idNum, 'origin_subregion', undefined, { enabled: warmReady, traitCategory: traitCategoryFilter });
-  const deltasReligion = useRunDeltas(idNum, 'religion', undefined, { enabled: warmReady, traitCategory: traitCategoryFilter });
-  const deltasMigration = useRunDeltas(idNum, 'migration_status', undefined, { enabled: warmReady, traitCategory: traitCategoryFilter });
-  const deltasSexuality = useRunDeltas(idNum, 'sexuality', undefined, { enabled: warmReady, traitCategory: traitCategoryFilter });
-  const deltasMarriage = useRunDeltas(idNum, 'marriage_status', undefined, { enabled: warmReady, traitCategory: traitCategoryFilter });
-  const deltasEducation = useRunDeltas(idNum, 'education', undefined, { enabled: warmReady, traitCategory: traitCategoryFilter });
+
   const deltasData = [
-    { a: 'gender', q: deltasGender },
-    { a: 'origin_subregion', q: deltasSubregion },
-    { a: 'religion', q: deltasReligion },
-    { a: 'migration_status', q: deltasMigration },
-    { a: 'sexuality', q: deltasSexuality },
-    { a: 'marriage_status', q: deltasMarriage },
-    { a: 'education', q: deltasEducation },
+    { a: 'gender', q: { data: allDeltas?.data?.gender, isLoading: loadingAllDeltas, isError: errorAllDeltas, error: allDeltasError } },
+    { a: 'origin_subregion', q: { data: allDeltas?.data?.origin_subregion, isLoading: loadingAllDeltas, isError: errorAllDeltas, error: allDeltasError } },
+    { a: 'religion', q: { data: allDeltas?.data?.religion, isLoading: loadingAllDeltas, isError: errorAllDeltas, error: allDeltasError } },
+    { a: 'migration_status', q: { data: allDeltas?.data?.migration_status, isLoading: loadingAllDeltas, isError: errorAllDeltas, error: allDeltasError } },
+    { a: 'sexuality', q: { data: allDeltas?.data?.sexuality, isLoading: loadingAllDeltas, isError: errorAllDeltas, error: allDeltasError } },
+    { a: 'marriage_status', q: { data: allDeltas?.data?.marriage_status, isLoading: loadingAllDeltas, isError: errorAllDeltas, error: allDeltasError } },
+    { a: 'education', q: { data: allDeltas?.data?.education, isLoading: loadingAllDeltas, isError: errorAllDeltas, error: allDeltasError } },
   ];
 
   if (isActive) {
@@ -186,6 +177,16 @@ export function RunDetailPage() {
             Zur Dataset-Seite
           </Button>
         ) : null}
+      </Card>
+    );
+  }
+
+  // Show loading state while warmup is initializing (not when it's running)
+  if (warmState === 'idle' && warmup.status.isLoading) {
+    return (
+      <Card>
+        <Title order={2} mb="sm">Run {runId} wird geladen…</Title>
+        <Text>Lade Run-Informationen…</Text>
       </Card>
     );
   }
@@ -235,46 +236,58 @@ export function RunDetailPage() {
     <Card>
       <Title order={2} mb="md">Run {runId} – Analyse</Title>
       {isLoadingRun ? ('') : run ? (
-          <div style={{ marginBottom: '1em' }}>
-              <b>Datensatz:</b> <Link to={`/datasets/${run.dataset?.id}`}>{run.dataset?.id}: {run.dataset?.name}</Link> | <b>Modell:</b> {run.model_name} | {run.created_at ? (<><b>Erstellt:</b> {new Date(run.created_at).toLocaleDateString()} | <b>Ergebnisse:</b> {run.n_results} | </>) : null}
-              {run.include_rationale ? (<><b>Mit Begründung (with_rational):</b> {run.include_rationale ? 'Ja' : 'Nein'} </>) : null}
-              {benchStatus.data ? (
+        <div style={{ marginBottom: '1em' }}>
+          <b>Datensatz:</b> <Link to={`/datasets/${run.dataset?.id}`}>{run.dataset?.id}: {run.dataset?.name}</Link> | <b>Modell:</b> {run.model_name} | {run.created_at ? (<><b>Erstellt:</b> {new Date(run.created_at).toLocaleDateString()} | <b>Ergebnisse:</b> {run.n_results} | </>) : null}
+          {run.include_rationale ? (<><b>Mit Begründung (with_rational):</b> {run.include_rationale ? 'Ja' : 'Nein'} </>) : null}
+          {benchStatus.data ? (
+            <>
+              <br />
+              <b>Benchmark-Status:</b> {(benchStatus.data.status || 'unbekannt')}
+              {benchDone !== null && benchTotal !== null ? (
+                <> · Fortschritt: {benchPct !== null ? `${benchPct.toFixed(1)}%` : ''} ({benchDone}/{benchTotal})</>
+              ) : null}
+            </>
+          ) : null}
+          {loadingMissing ? null : (missing && typeof missing.missing === 'number' && typeof missing.total === 'number' ? (
+            <>
+              <br />
+              <Text size="sm">
+                <b>Ergebnisse:</b> {missing.total - missing.missing}/{missing.total}
+                {missing.failed && missing.failed > 0 ? (
+                  <span style={{ color: 'var(--mantine-color-orange-6)', marginLeft: 8 }}>
+                    ({missing.failed} fehlgeschlagen nach max. Versuchen)
+                  </span>
+                ) : null}
+              </Text>
+              {missing.failed && missing.failed > 0 && missing.missing === 0 ? (
+                <Text size="xs" c="dimmed" mt={4}>
+                  Hinweis: {missing.failed} Items konnten auch nach 3 Versuchen nicht erfolgreich verarbeitet werden und werden als fehlgeschlagen markiert. Sie fließen in die Gesamtzahl ein, aber nicht in die Auswertung.
+                </Text>
+              ) : null}
+              {missing.missing > 0 ? (
                 <>
-                  <br />
-                  <b>Benchmark-Status:</b> {(benchStatus.data.status || 'unbekannt')}
-                  {benchDone !== null && benchTotal !== null ? (
-                    <> · Fortschritt: {benchPct !== null ? `${benchPct.toFixed(1)}%` : ''} ({benchDone}/{benchTotal})</>
-                  ) : null}
+                  <div style={{ marginTop: 6 }}>
+                    {missing.samples && missing.samples.length > 0 ? (
+                      <>
+                        Fehlende Beispiele: {missing.samples.slice(0, 5).map(s => `(${s.persona_uuid.slice(0, 8)}…, ${s.case_id}${s.adjective ? ' · ' + s.adjective : ''})`).join(', ')}
+                      </>
+                    ) : null}
+                  </div>
+                  <div style={{ marginTop: 6 }}>
+                    <Button size="xs" onClick={async () => {
+                      if (!run.dataset?.id) return;
+                      try {
+                        const rs = await startBench.mutateAsync({ dataset_id: run.dataset.id, resume_run_id: idNum });
+                      } catch (e) { }
+                    }}>Run fortsetzen</Button>
+                  </div>
                 </>
               ) : null}
-              {loadingMissing ? null : (missing && typeof missing.missing === 'number' && typeof missing.total === 'number' ? (
-                <>
-                  <br />
-                  <b>Status:</b> {missing.missing > 0 ? `partial ${missing.total - missing.missing}/${missing.total}` : `done ${missing.total}/${missing.total}`}
-                  {missing.missing > 0 ? (
-                    <>
-                      <div style={{ marginTop: 6 }}>
-                        {missing.samples && missing.samples.length > 0 ? (
-                          <>
-                            Fehlende Beispiele: {missing.samples.slice(0,5).map(s => `(${s.persona_uuid.slice(0,8)}…, ${s.case_id}${s.adjective ? ' · ' + s.adjective : ''})`).join(', ')}
-                          </>
-                        ) : null}
-                      </div>
-                      <div style={{ marginTop: 6 }}>
-                        <Button size="xs" onClick={async ()=>{
-                          if (!run.dataset?.id) return;
-                          try {
-                            const rs = await startBench.mutateAsync({ dataset_id: run.dataset.id, resume_run_id: idNum });
-                          } catch(e){}
-                        }}>Run fortsetzen</Button>
-                      </div>
-                    </>
-                  ) : null}
-                </>
-              ) : null)}
-          </div>
+            </>
+          ) : null)}
+        </div>
       ) : (
-          <div style={{ marginBottom: '1em' }}>Run nicht gefunden.</div>
+        <div style={{ marginBottom: '1em' }}>Run nicht gefunden.</div>
       )}
       {metrics?.trait_categories?.summary?.length ? (
         <Card withBorder padding="sm" mb="md">
@@ -344,8 +357,8 @@ export function RunDetailPage() {
                   step.status === 'done'
                     ? `fertig (${formatDuration(step.duration_ms)})`
                     : step.status === 'error'
-                    ? 'Fehler'
-                    : 'läuft …';
+                      ? 'Fehler'
+                      : 'läuft …';
                 const color =
                   step.status === 'done' ? '#2ca25f' : step.status === 'error' ? '#d62828' : '#1f77b4';
                 return (
@@ -381,104 +394,104 @@ export function RunDetailPage() {
         </Alert>
       ) : null}
       <AsyncContent isLoading={warmLoading} loadingLabel="Bereite Auswertungen vor…">
-      <Grid>
+        <Grid>
 
-        <Grid.Col span={{ base: 12 }}>
-          <AsyncContent isLoading={order.isLoading} isError={order.isError} error={order.error}>
-            <OrderMetricsCard data={order.data} />
-          </AsyncContent>
-        </Grid.Col>
-        
-        <Grid.Col span={{ base: 12 }}>
-          <Group align="end" mb="sm">
-            <AttributeBaselineSelector
-              attributes={ATTRS}
-              attribute={attr}
-              onAttributeChange={(v) => { setAttr(v); setBaseline(undefined); setTargets([]); }}
-              categories={availableCats.map((c) => c.category)}
-              baseline={baseline}
-              defaultBaseline={defaultBaseline}
-              onBaselineChange={setBaseline}
-            />
-            <Select
-              label="Trait-Kategorie"
-              data={[{ value: '__all', label: 'Alle Kategorien' }, ...traitCategoryOptions.map((c) => ({ value: c, label: c }))]}
-              value={traitCategory}
-              onChange={(val) => setTraitCategory(val ?? '__all')}
-              style={{ minWidth: 220 }}
-            />
-            <MultiSelect
-              label="Forest: Kategorien"
-              data={availableCats.map(c => ({ value: c.category, label: c.category })).filter(c => c.value !== (baseline || defaultBaseline))}
-              value={targets}
-              onChange={(vals) => setTargets(vals)}
-              placeholder="Kategorien wählen"
-              searchable
-              style={{ minWidth: 280 }}
-              maxDropdownHeight={240}
-            />
-          </Group>
-          <Text size="sm" className="print-only" c="dimmed">
-            Einstellungen: Merkmal {attrLabel}; Baseline {baseline || defaultBaseline || 'auto'}; Kategorien: {targets.join(', ') || '—'}
-          </Text>
-        </Grid.Col>
-        <Grid.Col span={{ base: 12, md: 6 }}>
-          <AsyncContent isLoading={loadingDeltas} isError={errorDeltas} error={deltasError}>
-            <DeltaBarsPanel deltas={deltas as any} title={`Delta vs. Baseline (${baseline || defaultBaseline || 'auto'})`} />
-          </AsyncContent>
-        </Grid.Col>
-        <Grid.Col span={{ base: 12, md: 6 }}>
-          {targets.length > 0 ? (
-            <AsyncContent isLoading={loadingForest} isError={errorForest} error={forestError}>
-              <MultiForestPlotPanel
-                datasets={forestsQueries.map((q, i) => ({ target: targets[i], rows: (q.data as any)?.rows || [], overall: (q.data as any)?.overall }))}
-                attr={attr}
+          <Grid.Col span={{ base: 12 }}>
+            <AsyncContent isLoading={order.isLoading} isError={order.isError} error={order.error}>
+              <OrderMetricsCard data={order.data} />
+            </AsyncContent>
+          </Grid.Col>
+
+          <Grid.Col span={{ base: 12 }}>
+            <Group align="end" mb="sm">
+              <AttributeBaselineSelector
+                attributes={ATTRS}
+                attribute={attr}
+                onAttributeChange={(v) => { setAttr(v); setBaseline(undefined); setTargets([]); }}
+                categories={availableCats.map((c) => c.category)}
                 baseline={baseline}
                 defaultBaseline={defaultBaseline}
+                onBaselineChange={setBaseline}
               />
-            </AsyncContent>
-          ) : (<div>Bitte Kategorie(n) für Forest wählen.</div>)}
-        </Grid.Col>
-        <Grid.Col span={{ base: 12, md: 6 }}>
-          <AsyncContent isLoading={loadingMetrics} isError={errorMetrics} error={metricsError}>
-            <ChartPanel title="Rating-Verteilung" data={histBars} layout={{
-              barmode: 'group',
-              yaxis: { tickformat: '.0%', rangemode: 'tozero', title: 'Anteil' },
-              yaxis2: { overlaying: 'y', side: 'right', title: 'Anzahl', rangemode: 'tozero', showgrid: false },
-            }} />
-            <Text size="sm" c="dimmed">Skala: 1 = gar nicht &lt;adjektiv&gt; … 5 = sehr &lt;adjektiv&gt;</Text>
-          </AsyncContent>
-        </Grid.Col>
-        <Grid.Col span={12}>
-          <Card withBorder padding="md" style={{ marginBottom: 12 }}>
-            <Title order={4}>Mittelwerte pro Merkmal</Title>
-            <AsyncContent
-              isLoading={meansData.some(({ q }) => q.isLoading)}
-              isError={meansData.some(({ q }) => q.isError)}
-              error={meansData.find(({ q }) => q.isError)?.error}
-            >
-              <MeansSummary
-                items={meansData.map(({ a, q }) => ({ key: a, rows: q.data?.rows }))}
-                getLabel={(key) => ATTRS.find((x) => x.value === key)?.label || key}
+              <Select
+                label="Trait-Kategorie"
+                data={[{ value: '__all', label: 'Alle Kategorien' }, ...traitCategoryOptions.map((c) => ({ value: c, label: c }))]}
+                value={traitCategory}
+                onChange={(val) => setTraitCategory(val ?? '__all')}
+                style={{ minWidth: 220 }}
               />
+              <MultiSelect
+                label="Forest: Kategorien"
+                data={availableCats.map(c => ({ value: c.category, label: c.category })).filter(c => c.value !== (baseline || defaultBaseline))}
+                value={targets}
+                onChange={(vals) => setTargets(vals)}
+                placeholder="Kategorien wählen"
+                searchable
+                style={{ minWidth: 280 }}
+                maxDropdownHeight={240}
+              />
+            </Group>
+            <Text size="sm" className="print-only" c="dimmed">
+              Einstellungen: Merkmal {attrLabel}; Baseline {baseline || defaultBaseline || 'auto'}; Kategorien: {targets.join(', ') || '—'}
+            </Text>
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, md: 6 }}>
+            <AsyncContent isLoading={loadingDeltas} isError={errorDeltas} error={deltasError}>
+              <DeltaBarsPanel deltas={deltas as any} title={`Delta vs. Baseline (${baseline || defaultBaseline || 'auto'})`} />
             </AsyncContent>
-          </Card>
-        </Grid.Col>
-        <Grid.Col span={12}>
-          <Card withBorder padding="md" style={{ marginBottom: 12 }}>
-            <Title order={4}>Signifikanz-Tabellen (p, q, Cliff’s δ)</Title>
-            {deltasData.map(({a,q}) => (
-              <div key={a} style={{ marginTop: 12 }}>
-                <b>{ATTRS.find(x=>x.value===a)?.label || a}</b>
-                <AsyncContent isLoading={q.isLoading} isError={q.isError} error={q.error}>
-                  <SignificanceTable rows={q.data?.rows || []} />
-                </AsyncContent>
-              </div>
-            ))}
-          </Card>
-        </Grid.Col>
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, md: 6 }}>
+            {targets.length > 0 ? (
+              <AsyncContent isLoading={loadingForest} isError={errorForest} error={forestError}>
+                <MultiForestPlotPanel
+                  datasets={forestsQueries.map((q, i) => ({ target: targets[i], rows: (q.data as any)?.rows || [], overall: (q.data as any)?.overall }))}
+                  attr={attr}
+                  baseline={baseline}
+                  defaultBaseline={defaultBaseline}
+                />
+              </AsyncContent>
+            ) : (<div>Bitte Kategorie(n) für Forest wählen.</div>)}
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, md: 6 }}>
+            <AsyncContent isLoading={loadingMetrics} isError={errorMetrics} error={metricsError}>
+              <ChartPanel title="Rating-Verteilung" data={histBars} layout={{
+                barmode: 'group',
+                yaxis: { tickformat: '.0%', rangemode: 'tozero', title: 'Anteil' },
+                yaxis2: { overlaying: 'y', side: 'right', title: 'Anzahl', rangemode: 'tozero', showgrid: false },
+              }} />
+              <Text size="sm" c="dimmed">Skala: 1 = gar nicht &lt;adjektiv&gt; … 5 = sehr &lt;adjektiv&gt;</Text>
+            </AsyncContent>
+          </Grid.Col>
+          <Grid.Col span={12}>
+            <Card withBorder padding="md" style={{ marginBottom: 12 }}>
+              <Title order={4}>Mittelwerte pro Merkmal</Title>
+              <AsyncContent
+                isLoading={meansData.some(({ q }) => q.isLoading)}
+                isError={meansData.some(({ q }) => q.isError)}
+                error={meansData.find(({ q }) => q.isError)?.q.error}
+              >
+                <MeansSummary
+                  items={meansData.map(({ a, q }) => ({ key: a, rows: q.data?.rows }))}
+                  getLabel={(key) => ATTRS.find((x) => x.value === key)?.label || key}
+                />
+              </AsyncContent>
+            </Card>
+          </Grid.Col>
+          <Grid.Col span={12}>
+            <Card withBorder padding="md" style={{ marginBottom: 12 }}>
+              <Title order={4}>Signifikanz-Tabellen (p, q, Cliff’s δ)</Title>
+              {deltasData.map(({ a, q }) => (
+                <div key={a} style={{ marginTop: 12 }}>
+                  <b>{ATTRS.find(x => x.value === a)?.label || a}</b>
+                  <AsyncContent isLoading={q.isLoading} isError={q.isError} error={q.error}>
+                    <SignificanceTable rows={q.data?.rows || []} />
+                  </AsyncContent>
+                </div>
+              ))}
+            </Card>
+          </Grid.Col>
 
-      </Grid>
+        </Grid>
       </AsyncContent>
     </Card>
   );

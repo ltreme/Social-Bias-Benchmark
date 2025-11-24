@@ -1,5 +1,5 @@
 import { ActionIcon, Badge, Button, Card, Group, Menu, Progress, Stack, Text, Title, Tooltip } from '@mantine/core';
-import { IconPlayerPause, IconPlayerPlay, IconPlayerStop, IconTrash, IconX, IconRefresh, IconRefreshAlert } from '@tabler/icons-react';
+import { IconPlayerPause, IconPlayerPlay, IconPlayerStop, IconTrash, IconX, IconRefresh, IconRefreshAlert, IconUsers, IconChartBar, IconDatabase } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import { useCancelTask, usePauseQueue, useQueueStats, useQueueTasks, useRemoveTask, useResumeQueue, useRetryTask, useStartQueue, useStopQueue } from './hooks';
 import type { QueueTask, TaskStatus } from './api';
@@ -49,17 +49,62 @@ function formatDuration(startedAt: string | null, finishedAt: string | null): st
   return `${hours}h ${remainingMinutes}m`;
 }
 
+function formatSmartDate(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  const dateDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  
+  const timeStr = date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  
+  if (dateDay.getTime() === today.getTime()) {
+    return `Heute ${timeStr} Uhr`;
+  } else if (dateDay.getTime() === yesterday.getTime()) {
+    return `Gestern ${timeStr} Uhr`;
+  } else {
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}.${month}.${year} ${timeStr}`;
+  }
+}
+
+function getTaskIcon(type: string) {
+  switch (type) {
+    case 'attrgen': return <IconUsers size={14} />;
+    case 'benchmark': return <IconChartBar size={14} />;
+    case 'pool_gen': return <IconDatabase size={14} />;
+    case 'balanced_gen': return <IconUsers size={14} />;
+    default: return null;
+  }
+}
+
+function getTaskColor(type: string) {
+  switch (type) {
+    case 'attrgen': return 'violet';
+    case 'benchmark': return 'cyan';
+    case 'pool_gen': return 'indigo';
+    case 'balanced_gen': return 'grape';
+    default: return 'gray';
+  }
+}
+
 function TaskCard({ task }: { task: QueueTask }) {
   const removeTask = useRemoveTask();
   const cancelTask = useCancelTask();
   const retryTask = useRetryTask();
+  
+  const taskColor = getTaskColor(task.task_type);
   
   const canRemove = task.status === 'queued' || task.status === 'waiting';
   const canCancel = task.status === 'queued' || task.status === 'waiting' || task.status === 'running';
   const canRetry = task.status === 'failed' || task.status === 'cancelled';
   
   return (
-    <Card withBorder padding="md" style={{ position: 'relative' }}>
+    <Card withBorder padding="md" style={{ position: 'relative', borderLeft: `4px solid var(--mantine-color-${taskColor}-6)` }}>
       <Group justify="space-between" mb="xs">
         <Group gap="sm">
           <Badge color={getStatusColor(task.status)} variant="filled">
@@ -129,7 +174,9 @@ function TaskCard({ task }: { task: QueueTask }) {
       
       <Stack gap="xs">
         <Group gap="sm">
-          <Badge variant="light" size="sm">{task.task_type}</Badge>
+          <Badge color={taskColor} variant="light" size="sm" leftSection={getTaskIcon(task.task_type)}>
+            {task.task_type}
+          </Badge>
           <Text size="sm" fw={500}>{task.label || `Task #${task.id}`}</Text>
         </Group>
         
@@ -183,7 +230,7 @@ function TaskCard({ task }: { task: QueueTask }) {
         <Group gap="md">
           {task.started_at && (
             <Text size="xs" c="dimmed">
-              Gestartet: {new Date(task.started_at).toLocaleTimeString('de-DE')}
+              Gestartet: {formatSmartDate(task.started_at)}
             </Text>
           )}
           {task.finished_at && (
@@ -267,6 +314,7 @@ export function QueuePage() {
             <Badge color="green" variant="light">Running: {stats.running}</Badge>
             <Badge color="teal" variant="light">Done: {stats.done}</Badge>
             <Badge color="red" variant="light">Failed: {stats.failed}</Badge>
+            <Badge color="gray" variant="light">Cancelled: {stats.cancelled}</Badge>
             <Badge color="gray" variant="light">Total: {stats.total}</Badge>
           </Group>
         )}

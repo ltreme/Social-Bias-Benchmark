@@ -107,65 +107,75 @@ export async function deleteRun(runId: number) {
     return res.data;
 }
 
-export type RunMissing = { ok: boolean; dataset_id?: number; total?: number; done?: number; missing?: number; samples?: Array<{ persona_uuid: string; case_id: string; adjective?: string | null }> };
+export type RunMissing = { ok: boolean; dataset_id?: number; total?: number; done?: number; missing?: number; failed?: number; samples?: Array<{ persona_uuid: string; case_id: string; adjective?: string | null }> };
 export async function fetchRunMissing(runId: number) {
     const res = await api.get<RunMissing>(`/runs/${runId}/missing`);
     return res.data;
 }
 
 export type OrderMetrics = {
-  ok: boolean;
-  n_pairs: number;
-  rma: { exact_rate?: number; mae?: number; cliffs_delta?: number };
-  obe: { mean_diff?: number; ci_low?: number; ci_high?: number; sd?: number };
-  usage: { eei?: number; mni?: number; sv?: number };
-  test_retest: { within1_rate?: number; mean_abs_diff?: number };
-  correlation: { pearson?: number; spearman?: number; kendall?: number };
-  by_case: Array<{ case_id: string; adjective?: string | null; trait_category?: string | null; n_pairs: number; exact_rate: number; mae: number }>;
-  by_trait_category?: Array<{ trait_category: string; n_pairs: number; exact_rate?: number; mae?: number }>;
+    ok: boolean;
+    n_pairs: number;
+    rma: { exact_rate?: number; mae?: number; cliffs_delta?: number };
+    obe: { mean_diff?: number; ci_low?: number; ci_high?: number; sd?: number };
+    usage: { eei?: number; mni?: number; sv?: number };
+    test_retest: { within1_rate?: number; mean_abs_diff?: number };
+    correlation: { pearson?: number; spearman?: number; kendall?: number };
+    by_case: Array<{ case_id: string; adjective?: string | null; trait_category?: string | null; n_pairs: number; exact_rate: number; mae: number }>;
+    by_trait_category?: Array<{ trait_category: string; n_pairs: number; exact_rate?: number; mae?: number }>;
 };
 
 export async function fetchRunOrderMetrics(runId: number) {
-  const res = await api.get<OrderMetrics>(`/runs/${runId}/order-metrics`);
-  return res.data;
+    const res = await api.get<OrderMetrics>(`/runs/${runId}/order-metrics`);
+    return res.data;
 }
 
 export type MeansRow = { category: string; count: number; mean: number };
 export async function fetchRunMeans(runId: number, attribute: string, top_n?: number, trait_category?: string) {
-  const params: Record<string, any> = { attribute };
-  if (typeof top_n === 'number') params.top_n = top_n;
-  if (trait_category) params.trait_category = trait_category;
-  const res = await api.get<{ ok: boolean; rows: MeansRow[] }>(`/runs/${runId}/means`, { params });
-  return res.data;
+    const params: Record<string, any> = { attribute };
+    if (typeof top_n === 'number') params.top_n = top_n;
+    if (trait_category) params.trait_category = trait_category;
+    const res = await api.get<{ ok: boolean; rows: MeansRow[] }>(`/runs/${runId}/means`, { params });
+    return res.data;
+}
+
+export async function fetchRunAllMeans(runId: number) {
+    const res = await api.get<{ ok: boolean; data: Record<string, MeansRow[]> }>(`/runs/${runId}/means/all`);
+    return res.data;
+}
+
+export async function fetchRunAllDeltas(runId: number) {
+    const res = await api.get<{ ok: boolean; data: Record<string, RunDeltas> }>(`/runs/${runId}/deltas/all`);
+    return res.data;
 }
 
 export type WarmCacheStep = {
-  name: string;
-  status: 'running' | 'done' | 'error';
-  ok?: boolean | null;
-  duration_ms?: number | null;
-  started_at?: string | null;
-  finished_at?: string | null;
-  error?: string | null;
+    name: string;
+    status: 'running' | 'done' | 'error';
+    ok?: boolean | null;
+    duration_ms?: number | null;
+    started_at?: string | null;
+    finished_at?: string | null;
+    error?: string | null;
 };
 export type RunWarmupStatus = {
-  ok: boolean;
-  run_id?: number;
-  status: 'idle' | 'running' | 'done' | 'done_with_errors' | 'error';
-  started_at?: string | null;
-  updated_at?: string | null;
-  finished_at?: string | null;
-  duration_ms?: number | null;
-  current_step?: string | null;
-  steps: WarmCacheStep[];
-  had_errors?: boolean;
-  error?: string | null;
+    ok: boolean;
+    run_id?: number;
+    status: 'idle' | 'running' | 'done' | 'done_with_errors' | 'error';
+    started_at?: string | null;
+    updated_at?: string | null;
+    finished_at?: string | null;
+    duration_ms?: number | null;
+    current_step?: string | null;
+    steps: WarmCacheStep[];
+    had_errors?: boolean;
+    error?: string | null;
 };
 export async function startRunWarmup(runId: number) {
-  const res = await api.post<RunWarmupStatus>(`/runs/${runId}/warm-cache`);
-  return res.data;
+    const res = await api.post<RunWarmupStatus>(`/runs/${runId}/warm-cache`);
+    return res.data;
 }
 export async function fetchRunWarmupStatus(runId: number) {
-  const res = await api.get<RunWarmupStatus>(`/runs/${runId}/warm-cache`);
-  return res.data;
+    const res = await api.get<RunWarmupStatus>(`/runs/${runId}/warm-cache`);
+    return res.data;
 }

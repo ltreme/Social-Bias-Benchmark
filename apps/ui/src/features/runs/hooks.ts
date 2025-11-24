@@ -92,6 +92,26 @@ export function useRunMeans(runId: number, attribute: string, topN?: number, opt
     });
 }
 
+export function useRunAllMeans(runId: number, opts?: { enabled?: boolean }) {
+    const enabled = Number.isFinite(runId) && (opts?.enabled ?? true);
+    return useQuery({
+        queryKey: ['run-means-all', runId],
+        queryFn: () => import('./api').then(m => m.fetchRunAllMeans(runId)),
+        enabled,
+        staleTime: 60 * 60 * 1000,
+    });
+}
+
+export function useRunAllDeltas(runId: number, opts?: { enabled?: boolean }) {
+    const enabled = Number.isFinite(runId) && (opts?.enabled ?? true);
+    return useQuery({
+        queryKey: ['run-deltas-all', runId],
+        queryFn: () => import('./api').then(m => m.fetchRunAllDeltas(runId)),
+        enabled,
+        staleTime: 60 * 60 * 1000,
+    });
+}
+
 export function useRunWarmup(runId: number) {
     const startedRef = useRef<number | null>(null);
     const start = useMutation({
@@ -103,7 +123,8 @@ export function useRunWarmup(runId: number) {
         enabled: Number.isFinite(runId),
         refetchInterval: (data) => {
             const s = (data?.status || '').toLowerCase();
-            return (!data || ['idle', 'queued', 'running', 'partial', 'cancelling'].includes(s)) ? 2000 : false;
+            // Only poll while warmup is actually running (not partial - that's a benchmark status)
+            return (!data || ['idle', 'queued', 'running'].includes(s)) ? 2000 : false;
         },
         refetchIntervalInBackground: true,
     });
