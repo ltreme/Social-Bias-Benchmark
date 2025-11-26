@@ -90,7 +90,7 @@ class LikertPostProcessor(AbstractPostProcessor, BenchPostProcessor):
     def build_retry(self, res: LLMResult, reason: str):
         return RetryDecision(kind="retry", reason=reason, retry_spec=res.spec)
 
-    def build_fail(self, res: LLMResult, raw_text: str):
-        return FailDecision(
-            kind="fail", reason="unparseable_output", raw_text_snippet=raw_text
-        )
+    def build_fail(
+        self, res: LLMResult, raw_text: str, reason: str = "unparseable_output"
+    ):
+        return FailDecision(kind="fail", reason=reason, raw_text_snippet=raw_text)

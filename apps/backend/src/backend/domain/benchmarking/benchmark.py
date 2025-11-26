@@ -219,6 +219,10 @@ def run_benchmark_pipeline(
                             valence=getattr(c, "valence", None),
                         )
 
+    # Set attempt limit in postprocessor to match max_attempts
+    if hasattr(post, "set_attempt_limit"):
+        post.set_attempt_limit(max_attempts)
+
     attempt = 1
     base_items: Iterable[BenchWorkItem] = iter_items()
     pending_specs: Iterable[BenchPromptSpec] = prompt_factory.prompts(

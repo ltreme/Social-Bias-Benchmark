@@ -78,9 +78,11 @@ class AttributePostProcessor(AbstractPostProcessor, PostProcessor):
             kind=DecisionKind.RETRY, reason=reason, retry_spec=res.spec
         )
 
-    def build_fail(self, res: LLMResult, raw_text: str):
+    def build_fail(
+        self, res: LLMResult, raw_text: str, reason: str = "unparseable_output"
+    ):
         return FailDecision(
             kind=DecisionKind.FAIL,
-            reason="unparseable_output",
+            reason=reason,
             raw_text_snippet=raw_text,
         )

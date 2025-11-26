@@ -19,13 +19,17 @@ _LOG = logging.getLogger(__name__)
 class AbstractPostProcessor(ABC):
     """Template for post-processors with shared sanitize/parse/retry logic."""
 
-    attempt_limit: int = 2
+    attempt_limit: int = 2  # Default, can be overridden
     fail_snippet_len: int = 300
     debug_snippet_len: int = 200
 
     # Toggle sanitizer flags per subclass
     use_llama_sanitize: bool = False
     use_thinking_strip: bool = False
+
+    def set_attempt_limit(self, limit: int) -> None:
+        """Set the maximum number of attempts before failing permanently."""
+        self.attempt_limit = limit
 
     @abstractmethod
     def strict_suffix(self) -> str:
@@ -46,7 +50,9 @@ class AbstractPostProcessor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def build_fail(self, res: LLMResult, raw_text: str):
+    def build_fail(
+        self, res: LLMResult, raw_text: str, reason: str = "unparseable_output"
+    ):
         raise NotImplementedError
 
     def sanitize(self, text: str) -> str:
@@ -87,4 +93,6 @@ class AbstractPostProcessor(ABC):
                 reason="parse_error",
             )
 
-        return self.build_fail(res, raw_text=text[: self.fail_snippet_len])
+        return self.build_fail(
+            res, raw_text=text[: self.fail_snippet_len], reason="max_attempts_exceeded"
+        )
