@@ -121,6 +121,7 @@ def create_tables() -> None:
     db.create_tables(ALL_MODELS, safe=True)
     _fix_legacy_indexes(db)
     _ensure_new_columns(db)
+    _ensure_token_usage_columns(db)
     _migrate_benchmarkresult_unique_index(db)
     _migrate_additional_attrs_unique_index(db)
     _rebuild_benchmarkresult_if_legacy_unique(db)
@@ -179,20 +180,101 @@ def _ensure_new_columns(db: pw.Database) -> None:
             )
     except Exception:
         pass
+
+    # Check for 'scale_mode' and 'dual_fraction' in 'benchmarkrun'
     try:
-        cur = db.execute_sql("PRAGMA table_info(benchmarkrun)")
-        cols = {row[1] for row in cur.fetchall()}
+        if isinstance(db, pw.SqliteDatabase):
+            cur = db.execute_sql("PRAGMA table_info(benchmarkrun)")
+            cols = {row[1] for row in cur.fetchall()}
+        else:
+            # Postgres
+            cur = db.execute_sql(
+                "SELECT column_name FROM information_schema.columns WHERE table_name='benchmarkrun'"
+            )
+            cols = {row[0] for row in cur.fetchall()}
+
         if "scale_mode" not in cols:
             db.execute_sql("ALTER TABLE benchmarkrun ADD COLUMN scale_mode TEXT NULL")
-    except Exception:
-        pass
-    try:
-        cur = db.execute_sql("PRAGMA table_info(benchmarkrun)")
-        cols = {row[1] for row in cur.fetchall()}
         if "dual_fraction" not in cols:
             db.execute_sql(
                 "ALTER TABLE benchmarkrun ADD COLUMN dual_fraction REAL NULL"
             )
+    except Exception:
+        pass
+
+
+def _ensure_token_usage_columns(db: pw.Database) -> None:
+    """Add token usage tracking columns to BenchmarkRun and AttrGenerationRun if missing."""
+    # Support both SQLite and Postgres
+    try:
+        if isinstance(db, pw.SqliteDatabase):
+            # BenchmarkRun token columns
+            cur = db.execute_sql("PRAGMA table_info(benchmarkrun)")
+            cols = {row[1] for row in cur.fetchall()}
+            if "total_prompt_tokens" not in cols:
+                db.execute_sql(
+                    "ALTER TABLE benchmarkrun ADD COLUMN total_prompt_tokens INTEGER DEFAULT 0"
+                )
+            if "total_completion_tokens" not in cols:
+                db.execute_sql(
+                    "ALTER TABLE benchmarkrun ADD COLUMN total_completion_tokens INTEGER DEFAULT 0"
+                )
+            if "total_tokens" not in cols:
+                db.execute_sql(
+                    "ALTER TABLE benchmarkrun ADD COLUMN total_tokens INTEGER DEFAULT 0"
+                )
+
+            # AttrGenerationRun token columns
+            cur = db.execute_sql("PRAGMA table_info(attrgenerationrun)")
+            cols = {row[1] for row in cur.fetchall()}
+            if "total_prompt_tokens" not in cols:
+                db.execute_sql(
+                    "ALTER TABLE attrgenerationrun ADD COLUMN total_prompt_tokens INTEGER DEFAULT 0"
+                )
+            if "total_completion_tokens" not in cols:
+                db.execute_sql(
+                    "ALTER TABLE attrgenerationrun ADD COLUMN total_completion_tokens INTEGER DEFAULT 0"
+                )
+            if "total_tokens" not in cols:
+                db.execute_sql(
+                    "ALTER TABLE attrgenerationrun ADD COLUMN total_tokens INTEGER DEFAULT 0"
+                )
+        else:
+            # PostgreSQL
+            cur = db.execute_sql(
+                "SELECT column_name FROM information_schema.columns WHERE table_name='benchmarkrun'"
+            )
+            cols = {row[0] for row in cur.fetchall()}
+            if "total_prompt_tokens" not in cols:
+                db.execute_sql(
+                    "ALTER TABLE benchmarkrun ADD COLUMN total_prompt_tokens INTEGER DEFAULT 0"
+                )
+            if "total_completion_tokens" not in cols:
+                db.execute_sql(
+                    "ALTER TABLE benchmarkrun ADD COLUMN total_completion_tokens INTEGER DEFAULT 0"
+                )
+            if "total_tokens" not in cols:
+                db.execute_sql(
+                    "ALTER TABLE benchmarkrun ADD COLUMN total_tokens INTEGER DEFAULT 0"
+                )
+
+            # AttrGenerationRun token columns
+            cur = db.execute_sql(
+                "SELECT column_name FROM information_schema.columns WHERE table_name='attrgenerationrun'"
+            )
+            cols = {row[0] for row in cur.fetchall()}
+            if "total_prompt_tokens" not in cols:
+                db.execute_sql(
+                    "ALTER TABLE attrgenerationrun ADD COLUMN total_prompt_tokens INTEGER DEFAULT 0"
+                )
+            if "total_completion_tokens" not in cols:
+                db.execute_sql(
+                    "ALTER TABLE attrgenerationrun ADD COLUMN total_completion_tokens INTEGER DEFAULT 0"
+                )
+            if "total_tokens" not in cols:
+                db.execute_sql(
+                    "ALTER TABLE attrgenerationrun ADD COLUMN total_tokens INTEGER DEFAULT 0"
+                )
     except Exception:
         pass
 

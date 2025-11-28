@@ -91,8 +91,10 @@ class _BaseVLLMClient:
             h["Authorization"] = f"Bearer {self.cfg.api_key}"
         return h
 
-    def _post_completion(self, prompt: str, max_new_tokens: int) -> tuple[str, int]:
-        """Call /v1/completions and return (text, gen_time_ms)."""
+    def _post_completion(
+        self, prompt: str, max_new_tokens: int
+    ) -> tuple[str, int, dict]:
+        """Call /v1/completions and return (text, gen_time_ms, usage_dict)."""
         url = f"{self.cfg.base_url}/v1/completions"
         payload: Dict[str, Any] = {
             "model": self.cfg.model,
@@ -111,8 +113,10 @@ class _BaseVLLMClient:
                 # If the completions endpoint isn't available, try chat fallback
                 if resp.status_code in (404, 405):
                     return self._post_chat_completion(prompt, max_new_tokens)
-                return (f"[error http {resp.status_code}] {resp.text[:300]}", dt)
+                return (f"[error http {resp.status_code}] {resp.text[:300]}", dt, {})
             data = resp.json()
+            # Extract usage information if available
+            usage = data.get("usage", {})
             # OpenAI completions format: choices[0].text
             choices = data.get("choices") or []
             if not choices:
@@ -127,15 +131,15 @@ class _BaseVLLMClient:
             if not text:
                 # Last resort: chat fallback
                 return self._post_chat_completion(prompt, max_new_tokens)
-            return (text, dt)
+            return (text, dt, usage)
         except requests.RequestException as e:
             dt = int((time.perf_counter() - t0) * 1000)
-            return (f"[error request] {e}", dt)
+            return (f"[error request] {e}", dt, {})
 
     def _post_chat_completion(
         self, prompt: str, max_new_tokens: int
-    ) -> tuple[str, int]:
-        """Call /v1/chat/completions and return (text, gen_time_ms)."""
+    ) -> tuple[str, int, dict]:
+        """Call /v1/chat/completions and return (text, gen_time_ms, usage_dict)."""
         url = f"{self.cfg.base_url}/v1/chat/completions"
         payload: Dict[str, Any] = {
             "model": self.cfg.model,
@@ -153,21 +157,23 @@ class _BaseVLLMClient:
             )
             dt = int((time.perf_counter() - t0) * 1000)
             if resp.status_code != 200:
-                return (f"[error http {resp.status_code}] {resp.text[:300]}", dt)
+                return (f"[error http {resp.status_code}] {resp.text[:300]}", dt, {})
             data = resp.json()
+            # Extract usage information if available
+            usage = data.get("usage", {})
             choices = data.get("choices") or []
             if not choices:
-                return ("", dt)
+                return ("", dt, usage)
             first = choices[0] or {}
             msg = first.get("message") or {}
             content = msg.get("content")
             # Some servers may still return 'text'
             if not content:
                 content = first.get("text", "")
-            return (content or "", dt)
+            return (content or "", dt, usage)
         except requests.RequestException as e:
             dt = int((time.perf_counter() - t0) * 1000)
-            return (f"[error request] {e}", dt)
+            return (f"[error request] {e}", dt, {})
 
     # --- concurrency driver ----------------------------------------------
     def _run_stream_generic(self, specs: Iterable, result_ctor) -> Iterator:
@@ -212,8 +218,15 @@ class _BaseVLLMClient:
                     for fut in as_completed(list(pending.keys()), timeout=5.0):
                         spec = pending.pop(fut)
                         start_times.pop(fut, None)
-                        text, dt = fut.result()
-                        yield result_ctor(spec=spec, raw_text=text, gen_time_ms=dt)
+                        text, dt, usage = fut.result()
+                        yield result_ctor(
+                            spec=spec,
+                            raw_text=text,
+                            gen_time_ms=dt,
+                            prompt_tokens=usage.get("prompt_tokens"),
+                            completion_tokens=usage.get("completion_tokens"),
+                            total_tokens=usage.get("total_tokens"),
+                        )
 
                         # Try to keep the window full by submitting the next task
                         try:

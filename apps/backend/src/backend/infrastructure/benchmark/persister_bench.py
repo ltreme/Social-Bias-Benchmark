@@ -29,6 +29,19 @@ class BenchPersisterPrint(BenchPersister):
     def persist_failure(self, fail) -> None:
         print("FAIL  ", fail.persona_uuid, fail.error_kind, "attempt", fail.attempt)
 
+    def update_token_usage(
+        self,
+        benchmark_run_id: int,
+        prompt_tokens: int,
+        completion_tokens: int,
+        total_tokens: int,
+    ) -> None:
+        """Print token usage (no persistence in print-only mode)."""
+        print(
+            f"TOKEN_USAGE run_id={benchmark_run_id} prompt={prompt_tokens} "
+            f"completion={completion_tokens} total={total_tokens}"
+        )
+
 
 class BenchPersisterPeewee(BenchPersister):
     # Class-level lock to ensure only ONE persist operation at a time across all instances
@@ -217,3 +230,20 @@ class BenchPersisterPeewee(BenchPersister):
                 benchmark_run_id=getattr(fail, "benchmark_run_id", None),
                 case_id=getattr(fail, "case_id", None),
             )
+
+    def update_token_usage(
+        self,
+        benchmark_run_id: int,
+        prompt_tokens: int,
+        completion_tokens: int,
+        total_tokens: int,
+    ) -> None:
+        """Update the token usage counters for a benchmark run."""
+        with self.db.atomic():
+            run = self.models.BenchmarkRun.get_by_id(benchmark_run_id)
+            run.total_prompt_tokens = (run.total_prompt_tokens or 0) + prompt_tokens
+            run.total_completion_tokens = (
+                run.total_completion_tokens or 0
+            ) + completion_tokens
+            run.total_tokens = (run.total_tokens or 0) + total_tokens
+            run.save()

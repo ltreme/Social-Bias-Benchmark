@@ -15,6 +15,19 @@ class PersisterPrint(Persister):
     def persist_failure(self, fail: FailureDto) -> None:
         print("FAIL  ", fail.persona_uuid, fail.error_kind, "attempt", fail.attempt)
 
+    def update_token_usage(
+        self,
+        attr_generation_run_id: int,
+        prompt_tokens: int,
+        completion_tokens: int,
+        total_tokens: int,
+    ) -> None:
+        """Print token usage (no persistence in print-only mode)."""
+        print(
+            f"TOKEN_USAGE attrgen_run_id={attr_generation_run_id} prompt={prompt_tokens} "
+            f"completion={completion_tokens} total={total_tokens}"
+        )
+
 
 class PersisterPeewee(Persister):
     def __init__(self):
@@ -96,3 +109,20 @@ class PersisterPeewee(Persister):
                 raw_text_snippet=fail.raw_text_snippet,
                 prompt_snippet=fail.prompt_snippet,
             )
+
+    def update_token_usage(
+        self,
+        attr_generation_run_id: int,
+        prompt_tokens: int,
+        completion_tokens: int,
+        total_tokens: int,
+    ) -> None:
+        """Update the token usage counters for an attribute generation run."""
+        with self.db.atomic():
+            run = self.models.AttrGenerationRun.get_by_id(attr_generation_run_id)
+            run.total_prompt_tokens = (run.total_prompt_tokens or 0) + prompt_tokens
+            run.total_completion_tokens = (
+                run.total_completion_tokens or 0
+            ) + completion_tokens
+            run.total_tokens = (run.total_tokens or 0) + total_tokens
+            run.save()

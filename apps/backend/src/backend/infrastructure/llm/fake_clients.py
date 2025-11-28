@@ -26,7 +26,18 @@ class _BaseFake:
             outs = [payload for _ in batch]
             dt = int((time.perf_counter() - t0) * 1000)
             for spec, raw in zip(batch, outs):
-                yield result_ctor(spec=spec, raw_text=raw, gen_time_ms=dt)
+                # Estimate token counts for fake responses
+                prompt_tokens = len(spec.prompt_text.split()) * 2  # Rough estimate
+                completion_tokens = len(raw.split()) * 2
+                total_tokens = prompt_tokens + completion_tokens
+                yield result_ctor(
+                    spec=spec,
+                    raw_text=raw,
+                    gen_time_ms=dt,
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
+                    total_tokens=total_tokens,
+                )
             batch.clear()
 
         for s in specs:

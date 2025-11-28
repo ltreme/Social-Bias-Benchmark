@@ -37,6 +37,9 @@ class LLMResult:
     spec: BenchPromptSpec
     raw_text: str
     gen_time_ms: int
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    total_tokens: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,3 +111,11 @@ class BenchPersister(Protocol):
 
     # Reuse FailureDto from preprocess.ports in pipeline where needed.
     def persist_failure(self, fail) -> None: ...
+
+    def update_token_usage(
+        self,
+        benchmark_run_id: int,
+        prompt_tokens: int,
+        completion_tokens: int,
+        total_tokens: int,
+    ) -> None: ...

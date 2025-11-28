@@ -233,6 +233,11 @@ def run_benchmark_pipeline(
         benchmark_run_id=benchmark_run_id,
     )
 
+    # Token usage tracking
+    total_prompt_tokens = 0
+    total_completion_tokens = 0
+    total_tokens_used = 0
+
     # Note: We intentionally do NOT buffer persistence anymore. LLM batching remains.
 
     debug = os.getenv("BENCH_DEBUG", "").lower() in ("1", "true", "yes")
@@ -243,6 +248,15 @@ def run_benchmark_pipeline(
 
         for res in results:
             _check_cancel()
+
+            # Accumulate token usage
+            if res.prompt_tokens is not None:
+                total_prompt_tokens += res.prompt_tokens
+            if res.completion_tokens is not None:
+                total_completion_tokens += res.completion_tokens
+            if res.total_tokens is not None:
+                total_tokens_used += res.total_tokens
+
             spec = res.spec  # BenchPromptSpec
             decision = post.decide(res)
 
@@ -328,3 +342,19 @@ def run_benchmark_pipeline(
             break
 
         pending_specs = iter(next_retry_specs)
+
+    # Update token usage in database at the end
+    if total_tokens_used > 0:
+        try:
+            persist.update_token_usage(
+                benchmark_run_id=benchmark_run_id,
+                prompt_tokens=total_prompt_tokens,
+                completion_tokens=total_completion_tokens,
+                total_tokens=total_tokens_used,
+            )
+            _LOG.info(
+                f"[Benchmark] Token usage: prompt={total_prompt_tokens:,}, "
+                f"completion={total_completion_tokens:,}, total={total_tokens_used:,}"
+            )
+        except Exception as e:
+            _LOG.warning(f"[Benchmark] Failed to update token usage: {e}")

@@ -138,6 +138,11 @@ class BenchmarkRun(BaseModel):
     # Fraction (0..1) of pairs asked in both directions
     dual_fraction = pw.FloatField(null=True)
 
+    # Token usage tracking
+    total_prompt_tokens = pw.IntegerField(null=True, default=0)
+    total_completion_tokens = pw.IntegerField(null=True, default=0)
+    total_tokens = pw.IntegerField(null=True, default=0)
+
     class Meta:
         indexes = ((("dataset_id", "created_at"), False),)
 
@@ -193,6 +198,11 @@ class AttrGenerationRun(BaseModel):
     max_new_tokens = pw.IntegerField(null=True)
     max_attempts = pw.IntegerField(null=True)
     system_prompt = pw.TextField(null=True)
+
+    # Token usage tracking
+    total_prompt_tokens = pw.IntegerField(null=True, default=0)
+    total_completion_tokens = pw.IntegerField(null=True, default=0)
+    total_tokens = pw.IntegerField(null=True, default=0)
 
 
 class AdditionalPersonaAttributes(BaseModel):

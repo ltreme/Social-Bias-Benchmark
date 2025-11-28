@@ -122,11 +122,24 @@ def run_attr_gen_pipeline(
 
     attr_buf: List[AttributeDto] = []
 
+    # Token usage tracking
+    total_prompt_tokens = 0
+    total_completion_tokens = 0
+    total_tokens_used = 0
+
     while attempt <= max_attempts:
         results: Iterable[LLMResult] = llm.run_stream(pending_specs)
         next_retry_specs: List[PromptSpec] = []
 
         for res in results:
+            # Accumulate token usage
+            if res.prompt_tokens is not None:
+                total_prompt_tokens += res.prompt_tokens
+            if res.completion_tokens is not None:
+                total_completion_tokens += res.completion_tokens
+            if res.total_tokens is not None:
+                total_tokens_used += res.total_tokens
+
             spec = res.spec
             decision = post.decide(res, attr_generation_run_id)
 
@@ -193,3 +206,22 @@ def run_attr_gen_pipeline(
             break
 
         pending_specs = iter(next_retry_specs)
+
+    # Update token usage in database at the end
+    if total_tokens_used > 0 and attr_generation_run_id is not None:
+        try:
+            persist.update_token_usage(
+                attr_generation_run_id=attr_generation_run_id,
+                prompt_tokens=total_prompt_tokens,
+                completion_tokens=total_completion_tokens,
+                total_tokens=total_tokens_used,
+            )
+            print(
+                f"[AttrGen] Token usage: prompt={total_prompt_tokens:,}, "
+                f"completion={total_completion_tokens:,}, total={total_tokens_used:,}"
+            )
+        except Exception as e:
+            import logging
+
+            _LOG = logging.getLogger(__name__)
+            _LOG.warning(f"[AttrGen] Failed to update token usage: {e}")

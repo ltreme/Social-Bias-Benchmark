@@ -112,3 +112,10 @@ class PostProcessor(Protocol):
 class Persister(Protocol):
     def persist_attributes(self, rows: List[AttributeDto]) -> None: ...
     def persist_failure(self, fail: FailureDto) -> None: ...
+    def update_token_usage(
+        self,
+        attr_generation_run_id: int,
+        prompt_tokens: int,
+        completion_tokens: int,
+        total_tokens: int,
+    ) -> None: ...

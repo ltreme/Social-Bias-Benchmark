@@ -60,10 +60,11 @@ class TestVLLMClientErrorHandling:
             session.post.return_value = mock_response
             mock_session.return_value = session
 
-            text, gen_time = client._post_completion("test prompt", 128)
+            text, gen_time, usage = client._post_completion("test prompt", 128)
 
             assert "[error http 500]" in text
             assert gen_time >= 0
+            assert usage == {}
 
     def test_connection_error(self):
         """Client should handle connection errors gracefully."""
@@ -76,12 +77,13 @@ class TestVLLMClientErrorHandling:
             session.post.side_effect = requests.ConnectionError("Connection refused")
             mock_session.return_value = session
 
-            text, gen_time = client._post_completion("test prompt", 128)
+            text, gen_time, usage = client._post_completion("test prompt", 128)
 
             # Should catch and convert to error message
             assert "[error request]" in text
             assert "Connection refused" in text
             assert gen_time >= 0
+            assert usage == {}
 
     def test_timeout_error(self):
         """Client should handle timeout errors."""
@@ -97,10 +99,11 @@ class TestVLLMClientErrorHandling:
             session.post.side_effect = requests.Timeout("Request timeout")
             mock_session.return_value = session
 
-            text, gen_time = client._post_completion("test prompt", 128)
+            text, gen_time, usage = client._post_completion("test prompt", 128)
 
             assert "[error request]" in text
             assert gen_time >= 0
+            assert usage == {}
 
 
 class TestVLLMClientResponseParsing:
@@ -121,7 +124,7 @@ class TestVLLMClientResponseParsing:
             session.post.return_value = mock_response
             mock_session.return_value = session
 
-            text, gen_time = client._post_completion("test prompt", 128)
+            text, gen_time, usage = client._post_completion("test prompt", 128)
 
             assert text == "This is the generated text"
             assert gen_time >= 0
@@ -148,7 +151,7 @@ class TestVLLMClientResponseParsing:
             session.post.side_effect = [completions_response, chat_response]
             mock_session.return_value = session
 
-            text, gen_time = client._post_completion("test prompt", 128)
+            text, gen_time, usage = client._post_completion("test prompt", 128)
 
             assert text == "Chat response text"
 
@@ -171,7 +174,7 @@ class TestVLLMClientResponseParsing:
             session.post.side_effect = [completions_response, chat_response]
             mock_session.return_value = session
 
-            text, gen_time = client._post_completion("test prompt", 128)
+            text, gen_time, usage = client._post_completion("test prompt", 128)
 
             assert text == "Fallback text"
 
