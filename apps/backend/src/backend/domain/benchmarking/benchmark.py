@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import os
+import random
 import time
 from typing import Iterable, List, Optional, Set, Tuple
 
@@ -159,6 +160,30 @@ def run_benchmark_pipeline(
         return False
 
     def iter_items() -> Iterable[BenchWorkItem]:
+        # Pre-select dual items deterministically with exact quota
+        dual_pairs: Set[Tuple[str, str]] = set()
+        if (
+            isinstance(dual_fraction, (int, float))
+            and dual_fraction
+            and dual_fraction > 0
+        ):
+            # Collect all persona-case pairs
+            all_pairs = [
+                (str(p.persona_uuid), str(c.id))
+                for p in persona_repo.iter_personas(dataset_id)
+                for c in traits
+            ]
+            # Deterministic shuffle based on benchmark_run_id
+            rng = random.Random(benchmark_run_id)
+            rng.shuffle(all_pairs)
+            # Select exact percentage
+            num_dual = int(len(all_pairs) * float(dual_fraction))
+            dual_pairs = set(all_pairs[:num_dual])
+            _LOG.info(
+                f"[Benchmark] Selected {num_dual}/{len(all_pairs)} pairs "
+                f"({100*dual_fraction:.1f}%) for dual direction"
+            )
+
         for p in persona_repo.iter_personas(dataset_id):
             _check_cancel()
             for c in traits:
@@ -167,20 +192,8 @@ def run_benchmark_pipeline(
                 case_s = str(c.id)
                 scale_rev = _decide_reversed(persona_s, case_s)
 
-                # Decide duplication
-                def _hash01(a: str) -> float:
-                    h = hashlib.md5(a.encode("utf-8")).digest()
-                    return int.from_bytes(h, "big") / (2**128)
-
-                dup = False
-                if (
-                    isinstance(dual_fraction, (int, float))
-                    and dual_fraction
-                    and dual_fraction > 0
-                ):
-                    dup = _hash01(
-                        f"dup:{benchmark_run_id}:{persona_s}:{case_s}"
-                    ) < float(dual_fraction)
+                # Check if this pair is in dual set
+                dup = (persona_s, case_s) in dual_pairs
 
                 # Primary direction
                 if not (
@@ -358,3 +371,17 @@ def run_benchmark_pipeline(
             )
         except Exception as e:
             _LOG.warning(f"[Benchmark] Failed to update token usage: {e}")
+
+    # Post-run validation: Check if we got all expected results
+    if total_items and len(done_items) < total_items:
+        missing = total_items - len(done_items)
+        missing_pct = 100.0 * missing / total_items
+        _LOG.warning(
+            f"[Benchmark] ⚠️  INCOMPLETE RUN: {missing}/{total_items} items missing ({missing_pct:.2f}%). "
+            f"Expected {total_items} results but only processed {len(done_items)}. "
+            "Check logs for constraint violations or race conditions."
+        )
+    elif total_items:
+        _LOG.info(
+            f"[Benchmark] ✓ Run complete: {len(done_items)}/{total_items} items processed successfully"
+        )

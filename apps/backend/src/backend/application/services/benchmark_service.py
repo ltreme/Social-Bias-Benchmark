@@ -50,6 +50,7 @@ class BenchmarkService:
                     "id": int(r.id),
                     "model_name": str(r.model_id.name),
                     "include_rationale": bool(r.include_rationale),
+                    "system_prompt": str(r.system_prompt) if r.system_prompt else None,
                     "dataset_id": int(r.dataset_id.id) if r.dataset_id else None,
                     "created_at": str(r.created_at),
                     "n_results": BenchmarkResult.select()
@@ -74,6 +75,7 @@ class BenchmarkService:
             "id": int(r.id),
             "model_name": str(r.model_id.name),
             "include_rationale": bool(r.include_rationale),
+            "system_prompt": str(r.system_prompt) if r.system_prompt else None,
             "n_results": BenchmarkResult.select()
             .where(BenchmarkResult.benchmark_run_id == r.id)
             .count(),
@@ -496,15 +498,21 @@ class BenchmarkService:
         # Per-case breakdown
         if "scale_order" in df.columns:
             work = df.copy()
+            # Use rating_pre_valence (after scale-order norm, before valence norm)
+            rating_col = (
+                "rating_pre_valence"
+                if "rating_pre_valence" in work.columns
+                else "rating"
+            )
             sub = work.loc[
-                work["scale_order"].isin(["in", "rev"]) & work["rating"].notna(),
-                ["persona_uuid", "case_id", "rating", "scale_order"],
+                work["scale_order"].isin(["in", "rev"]) & work[rating_col].notna(),
+                ["persona_uuid", "case_id", rating_col, "scale_order"],
             ]
             if not sub.empty:
                 piv = sub.pivot_table(
                     index=["persona_uuid", "case_id"],
                     columns="scale_order",
-                    values="rating",
+                    values=rating_col,
                     aggfunc="first",
                 ).reset_index()
                 if "in" in piv.columns and "rev" in piv.columns:

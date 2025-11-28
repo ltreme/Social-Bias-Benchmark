@@ -4,6 +4,7 @@ export type Run = {
     id: number;
     model_name: string;
     include_rationale: boolean;
+    system_prompt?: string | null;
     dataset_id?: number | null;
     created_at: string;
     n_results: number;
@@ -13,6 +14,7 @@ export type RunDetail = {
     id: number;
     model_name: string;
     include_rationale: boolean;
+    system_prompt?: string | null;
     n_results: number;
     dataset?: {
         id: number | null;

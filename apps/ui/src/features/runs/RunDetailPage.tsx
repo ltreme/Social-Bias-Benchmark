@@ -237,8 +237,18 @@ export function RunDetailPage() {
       <Title order={2} mb="md">Run {runId} – Analyse</Title>
       {isLoadingRun ? ('') : run ? (
         <div style={{ marginBottom: '1em' }}>
-          <b>Datensatz:</b> <Link to={`/datasets/${run.dataset?.id}`}>{run.dataset?.id}: {run.dataset?.name}</Link> | <b>Modell:</b> {run.model_name} | {run.created_at ? (<><b>Erstellt:</b> {new Date(run.created_at).toLocaleDateString()} | <b>Ergebnisse:</b> {run.n_results} | </>) : null}
+          <b>Datensatz:</b> <Link to={`/datasets/${run.dataset?.id}`}>{run.dataset?.id}: {run.dataset?.name}</Link> | <b>Modell:</b> {run.model_name} {run.system_prompt ? <span title="Custom System Prompt verwendet" style={{ color: '#fd7e14', fontWeight: 'bold' }}>⚠️</span> : null} | {run.created_at ? (<><b>Erstellt:</b> {new Date(run.created_at).toLocaleDateString()} | <b>Ergebnisse:</b> {run.n_results} | </>) : null}
           {run.include_rationale ? (<><b>Mit Begründung (with_rational):</b> {run.include_rationale ? 'Ja' : 'Nein'} </>) : null}
+          {run.system_prompt ? (
+            <>
+              <br />
+              <Spoiler maxHeight={0} showLabel="System Prompt anzeigen" hideLabel="System Prompt verbergen">
+                <Text size="sm" c="dimmed" style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', background: '#f8f9fa', padding: '0.5rem', borderRadius: '4px', marginTop: '0.5rem' }}>
+                  {run.system_prompt}
+                </Text>
+              </Spoiler>
+            </>
+          ) : null}
           {benchStatus.data ? (
             <>
               <br />

@@ -128,8 +128,21 @@ class BenchPersisterPeewee(BenchPersister):
                     start_time = time.time()
                     with self.db.atomic():
                         # SQLite: use OR IGNORE to be robust to legacy index names/orders.
-                        (self._Res.insert_many(payload).on_conflict_ignore().execute())
+                        cursor = (
+                            self._Res.insert_many(payload)
+                            .on_conflict_ignore()
+                            .execute()
+                        )
                     elapsed = time.time() - start_time
+
+                    # Check how many rows were actually inserted
+                    rows_inserted = cursor if isinstance(cursor, int) else len(payload)
+                    skipped = len(payload) - rows_inserted
+                    if skipped > 0:
+                        _LOG.warning(
+                            f"[Persister] {skipped}/{len(payload)} rows skipped due to UNIQUE constraint. "
+                            "This may indicate duplicate work items or race conditions."
+                        )
 
                     # Update in-memory progress counter
                     # Extract benchmark_run_id from first item (all rows have same run_id)
@@ -139,7 +152,9 @@ class BenchPersisterPeewee(BenchPersister):
                             counter = self._progress_counters.setdefault(
                                 run_id, {"count": 0, "last_update": time.time()}
                             )
-                            counter["count"] += len(payload)
+                            counter[
+                                "count"
+                            ] += rows_inserted  # Use actual inserted count
                             counter["last_update"] = time.time()
 
                     if elapsed > 1.0:

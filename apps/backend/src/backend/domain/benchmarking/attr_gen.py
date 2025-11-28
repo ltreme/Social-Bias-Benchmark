@@ -113,8 +113,29 @@ def run_attr_gen_pipeline(
 
     attempt = 1
     base_items: Iterable[WorkItem] = persona_repo.iter_personas(dataset_id)
+
+    # Convert to list to check if there are any personas and log count
+    base_items_list = list(base_items)
+    import logging
+
+    _LOG = logging.getLogger(__name__)
+    _LOG.info(
+        f"[AttrGen] Starting pipeline: run_id={attr_generation_run_id}, "
+        f"dataset_id={dataset_id}, model={model_name}, "
+        f"personas_to_process={len(base_items_list)}, "
+        f"total_expected={total_personas}"
+    )
+
+    if not base_items_list:
+        _LOG.warning(
+            f"[AttrGen] No personas to process for run_id={attr_generation_run_id}, "
+            f"dataset_id={dataset_id}. Check dataset or skip_completed settings."
+        )
+        # Return early - nothing to do
+        return
+
     pending_specs: Iterable[PromptSpec] = prompt_factory.prompts(
-        base_items,
+        iter(base_items_list),  # Convert back to iterator
         model_name=model_name,
         template_version=template_version,
         attempt=attempt,

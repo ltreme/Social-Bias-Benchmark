@@ -30,6 +30,9 @@ class LLMResult:
     spec: PromptSpec
     raw_text: str
     gen_time_ms: int  # we'll convert to seconds in the Persister
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    total_tokens: int | None = None
 
 
 @dataclass(frozen=True, slots=True)

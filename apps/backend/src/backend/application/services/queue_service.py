@@ -176,20 +176,38 @@ class QueueService:
             limit: Maximum number of tasks to return (default: all)
 
         Returns:
-            List of task status dicts
+            List of task status dicts, with active tasks (queued/waiting/running) sorted
+            by position ascending (oldest first) and completed tasks sorted descending (newest first)
         """
-        query = TaskQueue.select().order_by(TaskQueue.position.desc())
+        # Fetch active (queued/waiting/running) and completed tasks separately
+        active_statuses = ["queued", "waiting", "running", "cancelling"]
+        completed_statuses = ["done", "failed", "cancelled", "skipped"]
 
-        if not include_done:
-            query = query.where(
-                TaskQueue.status.not_in(["done", "failed", "cancelled", "skipped"])
-            )
+        # Active tasks: oldest first (ascending position)
+        active_query = (
+            TaskQueue.select()
+            .where(TaskQueue.status.in_(active_statuses))
+            .order_by(TaskQueue.position.asc())
+        )
 
+        # Completed tasks: newest first (descending position)
+        completed_query = (
+            TaskQueue.select()
+            .where(TaskQueue.status.in_(completed_statuses))
+            .order_by(TaskQueue.position.desc())
+        )
+
+        # Combine results: active tasks first, then completed (if requested)
+        tasks_list = list(active_query)
+        if include_done:
+            tasks_list.extend(list(completed_query))
+
+        # Apply limit if specified
         if limit:
-            query = query.limit(limit)
+            tasks_list = tasks_list[:limit]
 
         tasks = []
-        for task in query:
+        for task in tasks_list:
             task_dict = {
                 "id": int(task.id),
                 "task_type": str(task.task_type),

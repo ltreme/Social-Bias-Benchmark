@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict, List
 
 from backend.domain.benchmarking.adapters.postprocess.postprocessor_attr import (
@@ -31,6 +32,8 @@ from backend.infrastructure.common.background_jobs import (
 from backend.infrastructure.llm import LlmClientFake, LlmClientVLLM
 from backend.infrastructure.llm.vllm_connection import select_vllm_base_for_model
 from backend.infrastructure.storage.models import AttrGenerationRun, Model
+
+_LOG = logging.getLogger(__name__)
 
 
 class AttrGenService:
@@ -220,10 +223,20 @@ class AttrGenService:
                 run_id, status="running", done=0, total=0, pct=0.0
             )
 
+            _LOG.info(
+                f"[AttrGen] Pipeline setup: run_id={run_id}, dataset_id={dataset_id}, "
+                f"model={model_name}, skip_completed={skip_completed}, "
+                f"batch_size={batch_size}"
+            )
+
             # Filter to incomplete personas if needed
             if skip_completed and dataset_id is not None:
                 allowed_uuids = self.repository.get_incomplete_persona_uuids(
                     run_id, dataset_id
+                )
+                _LOG.info(
+                    f"[AttrGen] Filtering to {len(allowed_uuids)} incomplete personas "
+                    f"(skip_completed=True)"
                 )
 
                 # Create filtering wrapper

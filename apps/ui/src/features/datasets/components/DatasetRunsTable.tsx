@@ -18,7 +18,20 @@ export function DatasetRunsTable({ datasetId, runs }: Props) {
 
   const columns: ColumnDef<Run & { include_rationale: boolean }>[] = [
     { header: 'ID', accessorKey: 'id', cell: ({ row }) => <>#{row.original.id}</> },
-    { header: 'Model', accessorKey: 'model_name' },
+    { 
+      header: 'Model', 
+      accessorKey: 'model_name',
+      cell: ({ row }) => (
+        <>
+          {row.original.model_name}
+          {row.original.system_prompt ? (
+            <span title="Custom System Prompt verwendet" style={{ marginLeft: '0.5em', color: '#fd7e14', fontWeight: 'bold' }}>
+              ⚠️
+            </span>
+          ) : null}
+        </>
+      )
+    },
     { header: 'Rationale', accessorKey: 'include_rationale', cell: ({ row }) => (row.original.include_rationale ? 'Ja' : 'Nein') },
     { header: 'Erstellt', accessorKey: 'created_at', cell: ({ row }) => (row.original.created_at ? new Date(row.original.created_at).toLocaleString() : '') },
     {

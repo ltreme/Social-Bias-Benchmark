@@ -65,7 +65,7 @@ def init_database(db_url: str | None = None) -> pw.Database:
                 password=parsed.password,
                 host=host,
                 port=port,
-                max_connections=32,  # Connection pool size
+                max_connections=64,  # Increased pool size for analysis endpoints
                 stale_timeout=300,  # 5 minutes
             )
 

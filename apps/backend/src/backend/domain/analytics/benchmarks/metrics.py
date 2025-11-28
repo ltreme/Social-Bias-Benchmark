@@ -167,10 +167,17 @@ def compute_order_effect_metrics(df: pd.DataFrame) -> Dict[str, Any]:
         }
 
     work = df.copy()
+    # Use rating_pre_valence (after scale-order norm, before valence norm)
+    # to compare semantic equivalence between in/rev independent of trait polarity
+    rating_col = (
+        "rating_pre_valence" if "rating_pre_valence" in work.columns else "rating"
+    )
     sub = work.loc[
-        work["scale_order"].isin(["in", "rev"]) & work["rating"].notna(),
-        ["persona_uuid", "case_id", "rating", "scale_order"],
-    ]
+        work["scale_order"].isin(["in", "rev"]) & work[rating_col].notna(),
+        ["persona_uuid", "case_id", rating_col, "scale_order"],
+    ].copy()
+    if rating_col != "rating":
+        sub = sub.rename(columns={rating_col: "rating"})
 
     if sub.empty:
         return {
@@ -269,7 +276,7 @@ def compute_order_effect_metrics(df: pd.DataFrame) -> Dict[str, Any]:
 
     return {
         "n_pairs": int(len(pairs)),
-        "rma": {"exact_rate": exact, "mae": mae, "cliffs_delta": cliffs},
+        "rma": {"exact": exact, "mae": mae, "cliffs": cliffs},
         "obe": {"mean_diff": mu, "ci_low": ci_low, "ci_high": ci_high, "sd": sd},
         "usage": {"eei": eei, "mni": mni, "sv": sv},
         "test_retest": {"within1_rate": within1, "mean_abs_diff": mae},
