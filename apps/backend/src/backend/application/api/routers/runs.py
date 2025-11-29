@@ -177,3 +177,83 @@ def warm_run_cache(run_id: int) -> Dict[str, Any]:
 def warm_run_cache_status(run_id: int) -> Dict[str, Any]:
     """Get status of cache warming job."""
     return _get_service().get_warm_cache_status(run_id)
+
+
+# ============================================================================
+# Analysis Endpoints (Queue-based)
+# ============================================================================
+
+
+def _get_analysis_service():
+    """Get analysis service instance."""
+    from backend.application.services.analysis_service import get_analysis_service
+
+    ensure_db()
+    return get_analysis_service()
+
+
+@router.get("/runs/{run_id}/analysis")
+def get_analysis_status(run_id: int) -> Dict[str, Any]:
+    """Get status of all analyses for a run.
+
+    Returns:
+        Dict with status of each analysis type (quick, order, bias:*, export)
+    """
+    return _get_analysis_service().get_analysis_status(run_id)
+
+
+@router.get("/runs/{run_id}/analysis/quick")
+def get_quick_analysis(run_id: int) -> Dict[str, Any]:
+    """Get quick analysis summary for a run.
+
+    Quick analysis is automatically run after benchmark completion.
+    Returns the cached result if available.
+    """
+    summary = _get_analysis_service().get_quick_summary(run_id)
+    if summary is None:
+        # Not yet computed - run it now (should be fast)
+        summary = _get_analysis_service().run_quick_analysis(run_id)
+    return summary
+
+
+@router.post("/runs/{run_id}/analyze")
+def request_analysis(run_id: int, body: dict) -> Dict[str, Any]:
+    """Request a deep analysis to be queued.
+
+    Body: {
+        type: 'order' | 'bias' | 'export',
+        attribute?: str (required for bias),
+        format?: str (for export, default 'csv')
+    }
+
+    Returns:
+        Dict with job_id, task_id, status, message
+    """
+    analysis_type = body.get("type")
+    if not analysis_type:
+        raise HTTPException(status_code=400, detail="Missing 'type' in request body")
+
+    if analysis_type not in ("order", "bias", "export"):
+        raise HTTPException(
+            status_code=400, detail=f"Invalid analysis type: {analysis_type}"
+        )
+
+    params = {}
+    if analysis_type == "bias":
+        attribute = body.get("attribute")
+        if not attribute:
+            raise HTTPException(
+                status_code=400, detail="Bias analysis requires 'attribute'"
+            )
+        params["attribute"] = attribute
+    elif analysis_type == "export":
+        params["format"] = body.get("format", "csv")
+
+    force = body.get("force", False)
+
+    try:
+        return _get_analysis_service().request_deep_analysis(
+            run_id=run_id, analysis_type=analysis_type, params=params, force=force
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

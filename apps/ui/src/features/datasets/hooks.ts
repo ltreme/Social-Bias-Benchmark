@@ -66,8 +66,8 @@ export function useBenchmarkStatus(runId?: number) {
         queryKey: ['bench-status', runId],
         queryFn: () => fetchBenchmarkStatus(runId!),
         enabled: !!runId,
-        refetchInterval: (data) => {
-            const status = (data?.status || '').toLowerCase();
+        refetchInterval: (query) => {
+            const status = (query.state.data?.status || '').toLowerCase();
             return ['queued', 'running', 'partial', 'cancelling'].includes(status) ? 2000 : false;
         },
     });

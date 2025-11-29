@@ -104,7 +104,7 @@ export function DatasetBuilderModal({ opened, onClose, defaultMode = 'pool', dat
         <>
           <Group grow mb="md">
             <NumberInput label="Anzahl n" value={n} onChange={(v) => setN(Number(v || 0))} min={1} />
-            <NumberInput label="Temperature" value={temperature} onChange={(v) => setTemperature(Number(v || 0))} step={0.05} precision={2} min={0} max={2} />
+            <NumberInput label="Temperature" value={temperature} onChange={(v) => setTemperature(Number(v || 0))} step={0.05} decimalScale={2} min={0} max={2} />
           </Group>
           <Group grow mb="md">
             <NumberInput label="Alter von" value={ageFrom} onChange={(v) => setAgeFrom(Number(v || 0))} min={0} />

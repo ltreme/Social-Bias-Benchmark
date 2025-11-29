@@ -16,8 +16,8 @@ export function PersonaBrowserPage() {
   const runsList = useAttrgenRuns(idNum);
   useEffect(() => {
     // keep URL in sync when selection changes
-    navigate({ to: '/datasets/$datasetId/personas', params: { datasetId: String(datasetId) }, search: prev => ({ ...prev, attrgenRunId }) });
-  }, [attrgenRunId]);
+    navigate({ to: '/datasets/$datasetId/personas', params: { datasetId: String(datasetId) }, search: (prev: Record<string, unknown>) => ({ ...prev, attrgenRunId }) });
+  }, [attrgenRunId, datasetId, navigate]);
 
   // Filter state
   const pageSize = 50;

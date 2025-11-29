@@ -93,7 +93,7 @@ export function DatasetDetailPage() {
             <Title order={2} mb="md">Dataset {datasetId}: {dataset_info?.name} – Zusammensetzung</Title>
             {isLoadingDataset ? ('') : dataset_info ? (
                 <div style={{ marginBottom: '1em' }}>
-                    <b>Art:</b> {dataset_info.kind} | <b>Größe:</b> {dataset_info.size} | {dataset_info.created_at ? (<><b>Erstellt:</b> {new Date(dataset_info.created_at).toLocaleDateString()} | <b>Anteil Personas mit generierten Attributen:</b> {dataset_info.enriched_percentage.toFixed(2)}% | </> ) : null}
+                    <b>Art:</b> {dataset_info.kind} | <b>Größe:</b> {dataset_info.size} | {dataset_info.created_at ? (<><b>Erstellt:</b> {new Date(dataset_info.created_at).toLocaleDateString()} | <b>Anteil Personas mit generierten Attributen:</b> {(dataset_info.enriched_percentage ?? 0).toFixed(2)}% | </> ) : null}
                     {dataset_info.seed ? (<><b>Seed:</b> {dataset_info.seed} </>) : null}
                     {dataset_info.config_json ? (<div><b>Config:</b> <Spoiler maxHeight={0} showLabel="anzeigen" hideLabel="verstecken"><pre style={{ margin: 0, fontFamily: 'monospace' }}>{JSON.stringify(dataset_info.config_json, null, 2)}</pre></Spoiler></div>) : null}
                 </div>
@@ -103,7 +103,7 @@ export function DatasetDetailPage() {
 
             <Group justify="space-between" mb="md">
               <Group>
-                <Button component={Link} to={'/datasets/$datasetId/personas'} params={{ datasetId: String(datasetId) }}>Personas anzeigen</Button>
+                <Button component={Link} to={`/datasets/${datasetId}/personas`}>Personas anzeigen</Button>
               </Group>
               <Group>
                 <Button variant="light" onClick={() => setBenchModalOpen(true)}>Benchmark starten…</Button>
@@ -195,7 +195,7 @@ export function DatasetDetailPage() {
                         <ChartPanel title="Herkunft – Länder (Top)" data={toBar(originCountry, { horizontal: true })} />
                     </Grid.Col>
                     <Grid.Col span={12}>
-                        <ChartPanel title="Alterspyramide" data={traces} layout={{ barmode: 'relative', xaxis: { title: 'Anzahl', tickformat: '', separatethousands: true }, yaxis: { title: 'Alter' } }} />
+                        <ChartPanel title="Alterspyramide" data={traces} layout={{ barmode: 'relative', xaxis: { title: { text: 'Anzahl' }, tickformat: '', separatethousands: true }, yaxis: { title: { text: 'Alter' } } }} />
                     </Grid.Col>
                 </Grid>
             )}

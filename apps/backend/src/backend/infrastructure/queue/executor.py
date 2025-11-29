@@ -348,6 +348,8 @@ class QueueExecutor:
                 self._execute_pool_gen(task, config)
             elif task.task_type == "balanced_gen":
                 self._execute_balanced_gen(task, config)
+            elif task.task_type.startswith("analysis:"):
+                self._execute_analysis(task, config)
             else:
                 raise ValueError(f"Unknown task type: {task.task_type}")
 
@@ -456,6 +458,72 @@ class QueueExecutor:
         """
         # TODO: Implement balanced generation queue support
         raise NotImplementedError("Balanced generation not yet supported in queue")
+
+    def _execute_analysis(self, task: TaskQueue, config: Dict[str, Any]) -> None:
+        """Execute an analysis task.
+
+        Analysis tasks run deep analysis operations (order-consistency, bias, export)
+        which are computationally expensive and should run sequentially.
+
+        Task types:
+            - analysis:order - Order consistency analysis
+            - analysis:bias - Bias analysis for a specific attribute
+            - analysis:export - Export results
+
+        Args:
+            task: The task record
+            config: Analysis configuration containing:
+                - run_id: Benchmark run to analyze
+                - attribute: (for bias) Which attribute to analyze
+        """
+        from backend.application.services.analysis_service import AnalysisService
+
+        analysis_type = (
+            task.task_type.split(":", 1)[1] if ":" in task.task_type else "order"
+        )
+        run_id = config.get("run_id")
+
+        if not run_id:
+            raise ValueError("Analysis task requires run_id in config")
+
+        _LOG.info(f"[QueueExecutor] Starting {analysis_type} analysis for run {run_id}")
+
+        analysis_service = AnalysisService()
+
+        if analysis_type == "order":
+            # Deep order-consistency analysis
+            job = analysis_service.run_order_analysis(run_id)
+            if job.status == "failed":
+                raise RuntimeError(f"Order analysis failed: {job.error}")
+            _LOG.info(f"[QueueExecutor] Order analysis completed for run {run_id}")
+
+        elif analysis_type.startswith("bias"):
+            # Bias analysis - attribute may be in task_type (bias:gender) or config
+            parts = analysis_type.split(":", 1)
+            attribute = parts[1] if len(parts) > 1 else config.get("attribute")
+            if not attribute:
+                raise ValueError("Bias analysis requires attribute")
+
+            job = analysis_service.run_bias_analysis(run_id, attribute)
+            if job.status == "failed":
+                raise RuntimeError(f"Bias analysis failed: {job.error}")
+            _LOG.info(
+                f"[QueueExecutor] Bias analysis ({attribute}) completed for run {run_id}"
+            )
+
+        elif analysis_type == "export":
+            # Export results
+            export_format = config.get("format", "csv")
+            job = analysis_service.run_export(run_id, export_format)
+            if job.status == "failed":
+                raise RuntimeError(f"Export failed: {job.error}")
+            _LOG.info(f"[QueueExecutor] Export completed for run {run_id}")
+
+        else:
+            raise ValueError(f"Unknown analysis type: {analysis_type}")
+
+        # Store job ID in task result
+        task.result_run_id = job.id
 
     def _wait_for_benchmark_completion(
         self, run_id: int, poll_interval: float = 5.0

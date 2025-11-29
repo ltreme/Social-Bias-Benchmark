@@ -1,5 +1,5 @@
 import { Alert, Center, Loader, Text } from '@mantine/core';
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 type Props = {
   isLoading?: boolean;

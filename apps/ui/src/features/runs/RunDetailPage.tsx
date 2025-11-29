@@ -1,16 +1,25 @@
-import { Alert, Button, Card, Grid, Group, Spoiler, Text, Title, MultiSelect, Progress, Select } from '@mantine/core';
+import { Alert, Button, Card, Group, Spoiler, Text, Title, Progress, Tabs } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from '@tanstack/react-router';
-import { ChartPanel } from '../../components/ChartPanel';
-import { useRunDeltas, useRunMetrics, useRun, useRunMissing, useRunOrderMetrics, useRunForests, useRunWarmup, useRunAllMeans, useRunAllDeltas } from './hooks';
+import { 
+  useRunMetrics, 
+  useRun, 
+  useRunMissing, 
+  useRunWarmup, 
+  useQuickAnalysis, 
+  useAnalysisStatus, 
+  useRequestAnalysis,
+  useRunOrderMetrics,
+  useRunDeltas,
+  useRunForests,
+  useRunAllMeans,
+  useRunAllDeltas,
+} from './hooks';
 import { useStartBenchmark, useBenchmarkStatus } from '../datasets/hooks';
-import { OrderMetricsCard } from './components/OrderMetricsCard';
-import { SignificanceTable } from './components/SignificanceTable';
-import { AttributeBaselineSelector } from './components/AttributeBaselineSelector';
-import { DeltaBarsPanel } from './components/DeltaBarsPanel';
-import { MultiForestPlotPanel } from './components/MultiForestPlotPanel';
-import { MeansSummary } from './components/MeansSummary';
 import { AsyncContent } from '../../components/AsyncContent';
+import { OverviewTab } from './components/OverviewTab';
+import { OrderConsistencyTab } from './components/OrderConsistencyTab';
+import { BiasTab } from './components/BiasTab';
 
 const ATTRS = [
   { value: 'gender', label: 'Geschlecht' },
@@ -82,7 +91,9 @@ export function RunDetailPage() {
     warmStatus?.error ||
     warmStepErrorMessage ||
     null;
-  const { data: metrics, isLoading: loadingMetrics, isError: errorMetrics, error: metricsError } = useRunMetrics(idNum, { enabled: warmReady });
+
+  // Core data hooks
+  const { data: metrics, isLoading: loadingMetrics, error: metricsError } = useRunMetrics(idNum, { enabled: warmReady });
   const { data: missing, isLoading: loadingMissing } = useRunMissing(idNum, { enabled: warmReady });
   const startBench = useStartBenchmark();
   const benchStatus = useBenchmarkStatus(idNum);
@@ -93,7 +104,15 @@ export function RunDetailPage() {
     ? benchStatus.data.pct
     : benchDone !== null && benchTotal ? (benchDone / Math.max(benchTotal, 1)) * 100 : null;
 
-  // grade helpers moved into ./components/Grades
+  // Analysis hooks
+  const quickAnalysis = useQuickAnalysis(idNum, { enabled: warmReady });
+  const analysisStatus = useAnalysisStatus(idNum, { enabled: warmReady, polling: true });
+  const requestAnalysis = useRequestAnalysis();
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<string | null>('overview');
+
+  // Bias tab state
   const [attr, setAttr] = useState<string>('gender');
   const availableCats = metrics?.attributes?.[attr]?.categories || [];
   const defaultBaseline = metrics?.attributes?.[attr]?.baseline || undefined;
@@ -103,16 +122,14 @@ export function RunDetailPage() {
   const traitCategoryOptions = traitCategorySummary.map((c) => c.category);
   const [traitCategory, setTraitCategory] = useState<string>('__all');
   const traitCategoryFilter = traitCategory === '__all' ? undefined : traitCategory;
-  const attrLabel = ATTRS.find((x) => x.value === attr)?.label || attr;
 
   const liveStatus = (benchStatus.data?.status || '').toLowerCase();
-  // Only truly active statuses - 'partial' means incomplete but not running
   const isActive = ['queued', 'running', 'cancelling'].includes(liveStatus);
 
-  // keep baseline in sync when attribute changes or metrics load
+  // Keep baseline in sync when attribute changes or metrics load
   useEffect(() => {
     if (!baseline && defaultBaseline) setBaseline(defaultBaseline);
-  }, [defaultBaseline]);
+  }, [defaultBaseline, baseline]);
 
   // Auto-select a sensible forest category whenever attribute/baseline changes
   useEffect(() => {
@@ -125,19 +142,18 @@ export function RunDetailPage() {
     if (!first) return;
     setTargets([first]);
   }, [attr, baseline, defaultBaseline, availableCats.length]);
+
   useEffect(() => {
     if (traitCategoryFilter && !traitCategoryOptions.includes(traitCategoryFilter)) {
       setTraitCategory('__all');
     }
   }, [traitCategoryOptions.join(','), traitCategoryFilter]);
 
-  const { data: deltas, isLoading: loadingDeltas, isError: errorDeltas, error: deltasError } = useRunDeltas(idNum, attr, baseline, { enabled: warmReady, traitCategory: traitCategoryFilter });
+  // Bias data hooks
+  const { data: deltas, isLoading: loadingDeltas, error: deltasError } = useRunDeltas(idNum, attr, baseline, { enabled: warmReady, traitCategory: traitCategoryFilter });
   const forestsQueries = useRunForests(idNum, attr, baseline, targets, { enabled: warmReady, traitCategory: traitCategoryFilter });
-  const loadingForest = forestsQueries.length > 0 ? forestsQueries.some((q) => q.isLoading) : false;
-  const errorForest = forestsQueries.length > 0 ? forestsQueries.some((q) => q.isError) : false;
-  const forestError = forestsQueries.find((q) => q.isError)?.error as any;
 
-  // AGGREGATED CALLS
+  // Aggregated data
   const { data: allMeans, isLoading: loadingAllMeans, isError: errorAllMeans, error: allMeansError } = useRunAllMeans(idNum, { enabled: warmReady });
   const { data: allDeltas, isLoading: loadingAllDeltas, isError: errorAllDeltas, error: allDeltasError } = useRunAllDeltas(idNum, { enabled: warmReady });
 
@@ -173,7 +189,7 @@ export function RunDetailPage() {
           <Progress value={benchStatus.data?.pct ?? 0} mt="xs" />
         </div>
         {run?.dataset?.id ? (
-          <Button component={Link} to={'/datasets/$datasetId'} params={{ datasetId: String(run.dataset.id) }}>
+          <Button component={Link} to={`/datasets/${run.dataset.id}`}>
             Zur Dataset-Seite
           </Button>
         ) : null}
@@ -190,47 +206,6 @@ export function RunDetailPage() {
       </Card>
     );
   }
-
-  const histCounts = metrics?.hist?.counts || (metrics ? metrics.hist.shares.map((p) => Math.round(p * (metrics.n || 0))) : []);
-  const palette = ['#3182bd', '#e6550d', '#31a354', '#756bb1'];
-  let histBars: Partial<Plotly.Data>[] = [];
-  if (metrics) {
-    if (!traitCategoryFilter && metrics.trait_categories?.histograms?.length) {
-      histBars = metrics.trait_categories.histograms.map((h, idx) => ({
-        type: 'bar',
-        name: h.category,
-        x: h.bins,
-        y: h.shares,
-        marker: { color: palette[idx % palette.length], opacity: 0.85 },
-        hovertemplate: '%{x}: %{y:.0%} (n=%{customdata})',
-        customdata: h.counts,
-      }));
-    } else {
-      const selectedHist = traitCategoryFilter
-        ? metrics.trait_categories?.histograms?.find((h) => h.category === traitCategoryFilter)
-        : undefined;
-      const baseHist = selectedHist || {
-        bins: metrics.hist.bins,
-        shares: metrics.hist.shares,
-        counts: histCounts,
-      };
-      histBars = [
-        {
-          type: 'bar',
-          x: baseHist.bins,
-          y: baseHist.shares,
-          marker: { color: '#3182bd' },
-          text: baseHist.shares.map((p: number, i: number) => `${(p * 100).toFixed(0)}% (n=${baseHist.counts?.[i] ?? 0})`),
-          textposition: 'outside',
-          hovertemplate: '%{x}: %{y:.0%} (n=%{customdata})',
-          customdata: baseHist.counts,
-        },
-        { type: 'scatter', mode: 'markers', x: baseHist.bins, y: baseHist.counts, yaxis: 'y2', opacity: 0, showlegend: false },
-      ];
-    }
-  }
-
-  // delta bars moved into DeltaBarsPanel; forest rendering handled in MultiForestPlotPanel
 
   return (
     <Card>
@@ -287,7 +262,7 @@ export function RunDetailPage() {
                     <Button size="xs" onClick={async () => {
                       if (!run.dataset?.id) return;
                       try {
-                        const rs = await startBench.mutateAsync({ dataset_id: run.dataset.id, resume_run_id: idNum });
+                        await startBench.mutateAsync({ dataset_id: run.dataset.id, resume_run_id: idNum });
                       } catch (e) { }
                     }}>Run fortsetzen</Button>
                   </div>
@@ -302,7 +277,7 @@ export function RunDetailPage() {
       {metrics?.trait_categories?.summary?.length ? (
         <Card withBorder padding="sm" mb="md">
           <Title order={5}>Trait-Kategorien – Überblick</Title>
-          <Text size="sm" c="dimmed">Mittelwerte pro Trait-Kategorie helfen einzuschätzen, ob „sozial“ vs. „Kompetenz“ unterschiedlich bewertet werden. Nutze den Filter über den Diagrammen, um alle Auswertungen darauf einzuschränken.</Text>
+          <Text size="sm" c="dimmed">Mittelwerte pro Trait-Kategorie helfen einzuschätzen, ob „sozial" vs. „Kompetenz" unterschiedlich bewertet werden. Nutze den Filter über den Diagrammen, um alle Auswertungen darauf einzuschränken.</Text>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 8 }}>
             {metrics.trait_categories.summary.map((cat) => (
               <div key={cat.category} style={{ minWidth: 180 }}>
@@ -330,11 +305,11 @@ export function RunDetailPage() {
           <ul style={{ margin: 0, paddingLeft: 18 }}>
             <li>
               Verteilungen und Mittelwerte fassen Bewertungen über alle Antworten zusammen. Die
-              „Rating‑Verteilung“ zeigt die Häufigkeit der Skalenwerte.
+              „Rating‑Verteilung" zeigt die Häufigkeit der Skalenwerte.
             </li>
             <li>
               Deltas zeigen Mittelwerts‑Unterschiede zwischen einer Baseline‑Gruppe und einer
-              Zielkategorie je Merkmal (z. B. weiblich vs. männlich). Positive Werte bedeuten höhere
+              Zielkategorie je Merkmal (z. B. weiblich vs. männlich). Positive Werte bedeuten höhere
               Bewertungen als die Baseline.
             </li>
             <li>
@@ -342,7 +317,7 @@ export function RunDetailPage() {
               fasst die Effekte über Traits zusammen.
             </li>
             <li>
-              Signifikanz‑Tabellen enthalten p‑Werte, q‑Werte (FDR‑Korrektur) und Cliff’s δ
+              Signifikanz‑Tabellen enthalten p‑Werte, q‑Werte (FDR‑Korrektur) und Cliff's δ
               (Effektstärke) zur Interpretation der Unterschiede.
             </li>
             <li>
@@ -404,104 +379,60 @@ export function RunDetailPage() {
         </Alert>
       ) : null}
       <AsyncContent isLoading={warmLoading} loadingLabel="Bereite Auswertungen vor…">
-        <Grid>
+        <Tabs value={activeTab} onChange={(v) => setActiveTab(v || 'overview')}>
+          <Tabs.List mb="md">
+            <Tabs.Tab value="overview">Übersicht</Tabs.Tab>
+            <Tabs.Tab value="order">Order-Consistency</Tabs.Tab>
+            <Tabs.Tab value="bias">Bias-Analyse</Tabs.Tab>
+          </Tabs.List>
 
-          <Grid.Col span={{ base: 12 }}>
-            <AsyncContent isLoading={order.isLoading} isError={order.isError} error={order.error}>
-              <OrderMetricsCard data={order.data} />
-            </AsyncContent>
-          </Grid.Col>
+          <Tabs.Panel value="overview">
+            <OverviewTab
+              quickAnalysis={quickAnalysis.data}
+              isLoadingQuick={quickAnalysis.isLoading}
+              metrics={metrics}
+              isLoadingMetrics={loadingMetrics}
+              metricsError={metricsError}
+              traitCategoryFilter={traitCategoryFilter}
+            />
+          </Tabs.Panel>
 
-          <Grid.Col span={{ base: 12 }}>
-            <Group align="end" mb="sm">
-              <AttributeBaselineSelector
-                attributes={ATTRS}
-                attribute={attr}
-                onAttributeChange={(v) => { setAttr(v); setBaseline(undefined); setTargets([]); }}
-                categories={availableCats.map((c) => c.category)}
-                baseline={baseline}
-                defaultBaseline={defaultBaseline}
-                onBaselineChange={setBaseline}
-              />
-              <Select
-                label="Trait-Kategorie"
-                data={[{ value: '__all', label: 'Alle Kategorien' }, ...traitCategoryOptions.map((c) => ({ value: c, label: c }))]}
-                value={traitCategory}
-                onChange={(val) => setTraitCategory(val ?? '__all')}
-                style={{ minWidth: 220 }}
-              />
-              <MultiSelect
-                label="Forest: Kategorien"
-                data={availableCats.map(c => ({ value: c.category, label: c.category })).filter(c => c.value !== (baseline || defaultBaseline))}
-                value={targets}
-                onChange={(vals) => setTargets(vals)}
-                placeholder="Kategorien wählen"
-                searchable
-                style={{ minWidth: 280 }}
-                maxDropdownHeight={240}
-              />
-            </Group>
-            <Text size="sm" className="print-only" c="dimmed">
-              Einstellungen: Merkmal {attrLabel}; Baseline {baseline || defaultBaseline || 'auto'}; Kategorien: {targets.join(', ') || '—'}
-            </Text>
-          </Grid.Col>
-          <Grid.Col span={{ base: 12, md: 6 }}>
-            <AsyncContent isLoading={loadingDeltas} isError={errorDeltas} error={deltasError}>
-              <DeltaBarsPanel deltas={deltas as any} title={`Delta vs. Baseline (${baseline || defaultBaseline || 'auto'})`} />
-            </AsyncContent>
-          </Grid.Col>
-          <Grid.Col span={{ base: 12, md: 6 }}>
-            {targets.length > 0 ? (
-              <AsyncContent isLoading={loadingForest} isError={errorForest} error={forestError}>
-                <MultiForestPlotPanel
-                  datasets={forestsQueries.map((q, i) => ({ target: targets[i], rows: (q.data as any)?.rows || [], overall: (q.data as any)?.overall }))}
-                  attr={attr}
-                  baseline={baseline}
-                  defaultBaseline={defaultBaseline}
-                />
-              </AsyncContent>
-            ) : (<div>Bitte Kategorie(n) für Forest wählen.</div>)}
-          </Grid.Col>
-          <Grid.Col span={{ base: 12, md: 6 }}>
-            <AsyncContent isLoading={loadingMetrics} isError={errorMetrics} error={metricsError}>
-              <ChartPanel title="Rating-Verteilung" data={histBars} layout={{
-                barmode: 'group',
-                yaxis: { tickformat: '.0%', rangemode: 'tozero', title: 'Anteil' },
-                yaxis2: { overlaying: 'y', side: 'right', title: 'Anzahl', rangemode: 'tozero', showgrid: false },
-              }} />
-              <Text size="sm" c="dimmed">Skala: 1 = gar nicht &lt;adjektiv&gt; … 5 = sehr &lt;adjektiv&gt;</Text>
-            </AsyncContent>
-          </Grid.Col>
-          <Grid.Col span={12}>
-            <Card withBorder padding="md" style={{ marginBottom: 12 }}>
-              <Title order={4}>Mittelwerte pro Merkmal</Title>
-              <AsyncContent
-                isLoading={meansData.some(({ q }) => q.isLoading)}
-                isError={meansData.some(({ q }) => q.isError)}
-                error={meansData.find(({ q }) => q.isError)?.q.error}
-              >
-                <MeansSummary
-                  items={meansData.map(({ a, q }) => ({ key: a, rows: q.data?.rows }))}
-                  getLabel={(key) => ATTRS.find((x) => x.value === key)?.label || key}
-                />
-              </AsyncContent>
-            </Card>
-          </Grid.Col>
-          <Grid.Col span={12}>
-            <Card withBorder padding="md" style={{ marginBottom: 12 }}>
-              <Title order={4}>Signifikanz-Tabellen (p, q, Cliff’s δ)</Title>
-              {deltasData.map(({ a, q }) => (
-                <div key={a} style={{ marginTop: 12 }}>
-                  <b>{ATTRS.find(x => x.value === a)?.label || a}</b>
-                  <AsyncContent isLoading={q.isLoading} isError={q.isError} error={q.error}>
-                    <SignificanceTable rows={q.data?.rows || []} />
-                  </AsyncContent>
-                </div>
-              ))}
-            </Card>
-          </Grid.Col>
+          <Tabs.Panel value="order">
+            <OrderConsistencyTab
+              orderMetrics={order.data}
+              isLoadingOrder={order.isLoading}
+              orderError={order.error}
+              analysisStatus={analysisStatus.data}
+              onRequestAnalysis={() => requestAnalysis.mutate({ runId: idNum, request: { type: 'order', force: true } })}
+              isRequestingAnalysis={requestAnalysis.isPending}
+            />
+          </Tabs.Panel>
 
-        </Grid>
+          <Tabs.Panel value="bias">
+            <BiasTab
+              attribute={attr}
+              onAttributeChange={(v) => { setAttr(v); setBaseline(undefined); setTargets([]); }}
+              availableCategories={availableCats}
+              baseline={baseline}
+              defaultBaseline={defaultBaseline}
+              onBaselineChange={(v) => setBaseline(v ?? undefined)}
+              targets={targets}
+              onTargetsChange={setTargets}
+              traitCategoryOptions={traitCategoryOptions}
+              traitCategory={traitCategory}
+              onTraitCategoryChange={(v) => setTraitCategory(v)}
+              deltas={deltas}
+              isLoadingDeltas={loadingDeltas}
+              deltasError={deltasError}
+              forestsQueries={forestsQueries}
+              meansData={meansData}
+              deltasData={deltasData}
+              analysisStatus={analysisStatus.data}
+              onRequestBiasAnalysis={(attribute: string) => requestAnalysis.mutate({ runId: idNum, request: { type: 'bias', attribute } })}
+              isRequestingAnalysis={requestAnalysis.isPending}
+            />
+          </Tabs.Panel>
+        </Tabs>
       </AsyncContent>
     </Card>
   );

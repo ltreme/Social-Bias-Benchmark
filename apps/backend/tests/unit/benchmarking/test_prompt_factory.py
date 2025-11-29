@@ -110,7 +110,13 @@ class TestLikertPromptFactory:
         assert "5" in prompt_text and "sehr" in prompt_text.lower()
 
     def test_scale_reversed_correct(self, factory_with_rationale):
-        """Reversed-Scale muss 5-1 sein."""
+        """Reversed-Scale: Optionen umgekehrt, aber Nummerierung 1-5.
+
+        Bei reversed werden die Optionen in umgekehrter Reihenfolge präsentiert:
+        1 = "sehr [adj]", 5 = "gar nicht [adj]"
+
+        So gilt bei konsistenten Antworten: rating_in + rating_rev = 6
+        """
         work_item = BenchWorkItem(
             dataset_id=1,
             persona_uuid="test-uuid-456",
@@ -132,9 +138,23 @@ class TestLikertPromptFactory:
         )
 
         prompt_text = prompts[0].prompt_text
-        # Bei reversed: 5 = "gar nicht", 1 = "sehr"
-        assert "5" in prompt_text and "gar nicht" in prompt_text.lower()
-        assert "1" in prompt_text and "sehr" in prompt_text.lower()
+
+        # Bei reversed: 1 = "sehr", 5 = "gar nicht"
+        # Die Optionen sollten so erscheinen:
+        # 1. sehr intelligent
+        # 2. eher intelligent
+        # 3. neutral
+        # 4. eher nicht intelligent
+        # 5. gar nicht intelligent
+        assert "1." in prompt_text and "sehr intelligent" in prompt_text.lower()
+        assert "5." in prompt_text and "gar nicht intelligent" in prompt_text.lower()
+
+        # "sehr" sollte vor "gar nicht" im Text erscheinen
+        idx_sehr = prompt_text.lower().find("sehr intelligent")
+        idx_gar_nicht = prompt_text.lower().find("gar nicht intelligent")
+        assert (
+            idx_sehr < idx_gar_nicht
+        ), "Bei reversed sollte 'sehr' vor 'gar nicht' erscheinen"
 
     def test_rationale_requested_when_enabled(
         self, factory_with_rationale, sample_work_item
@@ -273,16 +293,21 @@ class TestLikertPromptFactory:
         assert "die Person" in prompt_text
 
     @pytest.mark.parametrize(
-        "scale_reversed,expected_order",
+        "scale_reversed,expected_first_option",
         [
-            (False, "1-5"),  # In-order
-            (True, "5-1"),  # Reversed
+            (False, "gar nicht"),  # In-order: "gar nicht" first
+            (True, "sehr"),  # Reversed: "sehr" first
         ],
     )
     def test_scale_order_parametrized(
-        self, factory_with_rationale, scale_reversed, expected_order
+        self, factory_with_rationale, scale_reversed, expected_first_option
     ):
-        """Parametrisierter Test für Scale-Order."""
+        """Parametrisierter Test für Scale-Order.
+
+        Bei reversed scale werden die Optionen umgekehrt (sehr → gar nicht),
+        aber die Nummerierung bleibt 1-5. So gilt bei konsistenten Antworten:
+        rating_in + rating_rev = 6
+        """
         work_item = BenchWorkItem(
             dataset_id=1,
             persona_uuid="uuid-param",
@@ -304,17 +329,21 @@ class TestLikertPromptFactory:
         )
 
         prompt_text = prompts[0].prompt_text
-        if expected_order == "1-5":
-            # 1 sollte vor 5 erscheinen im Prompt
-            idx_1 = prompt_text.find("1")
-            idx_5 = prompt_text.find("5")
-            # Naive Prüfung - in realem Code würde man die genaue Formatierung prüfen
-            assert idx_1 < idx_5
+
+        # Die erste Option nach "1." sollte die erwartete sein
+        idx_sehr = prompt_text.find("sehr test")
+        idx_gar_nicht = prompt_text.find("gar nicht test")
+
+        if expected_first_option == "gar nicht":
+            # Normal order: "gar nicht" appears before "sehr"
+            assert (
+                idx_gar_nicht < idx_sehr
+            ), f"Expected 'gar nicht' before 'sehr' in normal order"
         else:
-            # Bei reversed: 5 vor 1
-            idx_1 = prompt_text.find("1")
-            idx_5 = prompt_text.find("5")
-            assert idx_5 < idx_1
+            # Reversed order: "sehr" appears before "gar nicht"
+            assert (
+                idx_sehr < idx_gar_nicht
+            ), f"Expected 'sehr' before 'gar nicht' in reversed order"
 
 
 class TestPromptConsistency:

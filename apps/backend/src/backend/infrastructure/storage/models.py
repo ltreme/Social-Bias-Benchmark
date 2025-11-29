@@ -306,6 +306,50 @@ class TaskQueue(BaseModel):
         )
 
 
+class AnalysisJob(BaseModel):
+    """Tracks analysis jobs for benchmark runs (order-consistency, bias, etc.)."""
+
+    id = pw.AutoField()
+    run = pw.ForeignKeyField(BenchmarkRun, backref="analysis_jobs", on_delete="CASCADE")
+
+    # Analysis type and parameters
+    analysis_type = pw.CharField(null=False)  # 'quick' | 'order' | 'bias' | 'export'
+    params_hash = pw.CharField(
+        null=True
+    )  # Hash of parameters (for attribute-specific analyses)
+    params_json = pw.TextField(
+        null=True
+    )  # JSON with analysis parameters (e.g., {"attribute": "gender"})
+
+    # Status tracking
+    status = pw.CharField(
+        null=False, default="pending"
+    )  # 'pending' | 'running' | 'completed' | 'failed'
+
+    # Results (JSON) - for quick access without re-querying BenchCache
+    summary_json = pw.TextField(
+        null=True
+    )  # Key metrics summary (used for Telegram, overview tab)
+
+    # Timing
+    created_at = pw.DateTimeField(default=utcnow, null=False)
+    started_at = pw.DateTimeField(null=True)
+    completed_at = pw.DateTimeField(null=True)
+    duration_ms = pw.IntegerField(null=True)
+
+    # Error tracking
+    error = pw.TextField(null=True)
+
+    class Meta:
+        indexes = (
+            (
+                ("run", "analysis_type", "params_hash"),
+                True,
+            ),  # Unique per run+type+params
+            (("status",), False),  # Fast lookup for pending jobs
+        )
+
+
 # ================================
 # == Lookup / statistics tables ==
 # ================================
@@ -460,6 +504,7 @@ ALL_MODELS = [
     Occupation,
     FailLog,
     TaskQueue,
+    AnalysisJob,
 ]
 
 

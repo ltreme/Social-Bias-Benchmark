@@ -71,6 +71,7 @@ def load_benchmark_dataframe(cfg: BenchQuery) -> pd.DataFrame:
 
     q = (
         BenchmarkResult.select(
+            BenchmarkResult.id.alias("result_id"),  # Include ID for deduplication
             BenchmarkResult.persona_uuid_id.alias("persona_uuid"),
             BenchmarkResult.case_id,
             Model.name.alias("model_name"),
@@ -125,6 +126,11 @@ def load_benchmark_dataframe(cfg: BenchQuery) -> pd.DataFrame:
     df = pd.DataFrame(rows)
     if df.empty:
         return df
+
+    # Deduplicate if no dataset filter was applied (JOIN on DatasetPersona causes duplicates)
+    if not cfg.dataset_ids and "result_id" in df.columns:
+        df = df.drop_duplicates(subset=["result_id"], keep="first")
+
     df["dataset_id"] = df["dataset_id"].astype(int)
 
     if "run_id" in df.columns:

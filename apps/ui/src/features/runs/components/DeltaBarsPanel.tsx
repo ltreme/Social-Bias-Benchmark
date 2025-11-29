@@ -37,7 +37,7 @@ export function DeltaBarsPanel({ deltas, title }: { deltas?: Deltas; title: stri
   const approxSigThreshold = computeApproxSigThreshold(deltas);
   const data: Partial<Plotly.Data>[] = deltas ? [{
     type: 'bar',
-    x: deltas.rows.map((r) => r.delta),
+    x: deltas.rows.map((r) => r.delta ?? 0),
     y: deltas.rows.map((r) => r.category),
     orientation: 'h',
     marker: { color: '#3182bd' },
@@ -65,10 +65,10 @@ export function DeltaBarsPanel({ deltas, title }: { deltas?: Deltas; title: stri
     <>
       <ChartPanel title={title} data={data} layout={{
         shapes: [
-          { type: 'line', x0: 0, x1: 0, y0: 0, y1: 1, xref: 'x', yref: 'paper', line: { color: '#222', width: 1 } },
+          { type: 'line' as const, x0: 0, x1: 0, y0: 0, y1: 1, xref: 'x' as const, yref: 'paper' as const, line: { color: '#222', width: 1 } },
           ...(approxSigThreshold ? [
-            { type: 'line', x0: approxSigThreshold, x1: approxSigThreshold, y0: 0, y1: 1, xref: 'x', yref: 'paper', line: { color: '#2ca25f', width: 1, dash: 'dot' } },
-            { type: 'line', x0: -approxSigThreshold, x1: -approxSigThreshold, y0: 0, y1: 1, xref: 'x', yref: 'paper', line: { color: '#2ca25f', width: 1, dash: 'dot' } },
+            { type: 'line' as const, x0: approxSigThreshold, x1: approxSigThreshold, y0: 0, y1: 1, xref: 'x' as const, yref: 'paper' as const, line: { color: '#2ca25f', width: 1, dash: 'dot' as const } },
+            { type: 'line' as const, x0: -approxSigThreshold, x1: -approxSigThreshold, y0: 0, y1: 1, xref: 'x' as const, yref: 'paper' as const, line: { color: '#2ca25f', width: 1, dash: 'dot' as const } },
           ] : []),
         ],
       }} />

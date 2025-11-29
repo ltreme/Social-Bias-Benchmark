@@ -32,7 +32,7 @@ export function ForestPlotPanel({
   const forestTrace: Partial<Plotly.Data> | null = forest && forest.rows.length > 0 ? {
     type: 'scatter',
     mode: 'markers',
-    x: forest.rows.map((r) => r.delta),
+    x: forest.rows.map((r) => r.delta ?? 0),
     y: forestLabels,
     error_x: {
       type: 'data',
@@ -78,7 +78,7 @@ export function ForestPlotPanel({
               })(),
             ],
             margin: { l: 180, r: 40, t: 24, b: 40 },
-            yaxis: { title: 'Adjektiv', automargin: true, categoryorder: 'array', categoryarray: forestLabels },
+            yaxis: { title: { text: 'Adjektiv' }, automargin: true, categoryorder: 'array', categoryarray: forestLabels },
             xaxis: (() => {
               const vals = [
                 ...(forest?.rows?.map((r) => r.delta) || []),
@@ -88,7 +88,7 @@ export function ForestPlotPanel({
               ].filter((v) => v != null && v === v) as number[];
               const M = vals.length ? Math.max(...vals.map((v) => Math.abs(v))) : 1;
               const pad = Math.max(0.5, M * 0.1);
-              return { title: `Delta vs Baseline (${baseline || defaultBaseline || ''})`, range: [-(M + pad), (M + pad)] };
+              return { title: { text: `Delta vs Baseline (${baseline || defaultBaseline || ''})` }, range: [-(M + pad), (M + pad)] };
             })(),
             showlegend: false,
           }}

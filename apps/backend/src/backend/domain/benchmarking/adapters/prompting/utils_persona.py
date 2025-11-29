@@ -45,6 +45,16 @@ def describe_persona_de(ctx: Mapping[str, object]) -> str:
 
 
 def likert_5_de(adjective: str, reverse: bool = False) -> str:
+    """Generate a 5-point Likert scale in German.
+
+    For order-consistency analysis, the "reversed" scale should present options
+    in reversed ORDER but with NORMAL numbering (1-5), so that:
+    - Normal:   1="gar nicht X", 5="sehr X"
+    - Reversed: 1="sehr X", 5="gar nicht X"
+
+    This way, a consistent model should give: rating_in + rating_rev = 6
+    (e.g., "sehr X" = 5 on normal, = 1 on reversed → 5+1=6)
+    """
     scale = [
         f"gar nicht {adjective}",
         f"eher nicht {adjective}",
@@ -54,6 +64,5 @@ def likert_5_de(adjective: str, reverse: bool = False) -> str:
     ]
     if reverse:
         scale = list(reversed(scale))
-        # When reversed, numbering should go 5->1 instead of 1->5
-        return "\n".join(f"{5-i}. {opt}" for i, opt in enumerate(scale))
+    # Always use 1-5 numbering
     return "\n".join(f"{i+1}. {opt}" for i, opt in enumerate(scale))

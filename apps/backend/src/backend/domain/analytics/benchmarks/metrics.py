@@ -167,11 +167,15 @@ def compute_order_effect_metrics(df: pd.DataFrame) -> Dict[str, Any]:
         }
 
     work = df.copy()
-    # Use rating_pre_valence (after scale-order norm, before valence norm)
-    # to compare semantic equivalence between in/rev independent of trait polarity
-    rating_col = (
-        "rating_pre_valence" if "rating_pre_valence" in work.columns else "rating"
-    )
+    # For order-consistency, we need to compare RAW ratings
+    # A consistent model should give: rating_in == 6 - rating_rev_raw
+    # (because rev scale is displayed inverted to the user/model)
+    #
+    # Using rating_raw (before any normalization) is correct here.
+    # We do NOT want scale-order normalization applied because that would
+    # make the comparison meaningless (we'd be comparing normalized values
+    # which are already transformed to be comparable).
+    rating_col = "rating_raw" if "rating_raw" in work.columns else "rating"
     sub = work.loc[
         work["scale_order"].isin(["in", "rev"]) & work[rating_col].notna(),
         ["persona_uuid", "case_id", rating_col, "scale_order"],
@@ -223,7 +227,14 @@ def compute_order_effect_metrics(df: pd.DataFrame) -> Dict[str, Any]:
             "by_trait_category": [],
         }
 
-    pairs["diff"] = pairs["in"].astype(float) - pairs["rev"].astype(float)
+    # For consistency check with RAW ratings:
+    # - "in" scale: 1 = "gar nicht", 5 = "sehr"
+    # - "rev" scale: 1 = "sehr", 5 = "gar nicht" (displayed inverted)
+    # A consistent response means: rating_in == 6 - rating_rev
+    # So we compute: diff = rating_in - (6 - rating_rev) = rating_in + rating_rev - 6
+    # Exact match when diff == 0 (i.e., rating_in + rating_rev == 6)
+    pairs["rev_normalized"] = 6 - pairs["rev"].astype(float)
+    pairs["diff"] = pairs["in"].astype(float) - pairs["rev_normalized"]
     pairs["abs_diff"] = pairs["diff"].abs()
 
     # RMA (Response Magnitude Asymmetry)
@@ -233,7 +244,7 @@ def compute_order_effect_metrics(df: pd.DataFrame) -> Dict[str, Any]:
     try:
         from backend.domain.analytics.benchmarks.analytics import mann_whitney_cliffs
 
-        _, _, cliffs = mann_whitney_cliffs(pairs["in"], pairs["rev"])
+        _, _, cliffs = mann_whitney_cliffs(pairs["in"], pairs["rev_normalized"])
         cliffs = float(cliffs) if np.isfinite(cliffs) else float("nan")
     except Exception:
         cliffs = float("nan")
@@ -256,27 +267,27 @@ def compute_order_effect_metrics(df: pd.DataFrame) -> Dict[str, Any]:
     # Test-retest
     within1 = float((pairs["abs_diff"] <= 1).mean()) if len(pairs) else 0.0
 
-    # Correlations
+    # Correlations (comparing in vs normalized rev for consistency)
     pear = (
-        float(pairs["in"].corr(pairs["rev"], method="pearson"))
+        float(pairs["in"].corr(pairs["rev_normalized"], method="pearson"))
         if len(pairs) > 1
         else float("nan")
     )
     spear = (
-        float(pairs["in"].corr(pairs["rev"], method="spearman"))
+        float(pairs["in"].corr(pairs["rev_normalized"], method="spearman"))
         if len(pairs) > 1
         else float("nan")
     )
     try:
         import scipy.stats as ss
 
-        kend = float(ss.kendalltau(pairs["in"], pairs["rev"]).correlation)
+        kend = float(ss.kendalltau(pairs["in"], pairs["rev_normalized"]).correlation)
     except Exception:
         kend = float("nan")
 
     return {
         "n_pairs": int(len(pairs)),
-        "rma": {"exact": exact, "mae": mae, "cliffs": cliffs},
+        "rma": {"exact_rate": exact, "mae": mae, "cliffs_delta": cliffs},
         "obe": {"mean_diff": mu, "ci_low": ci_low, "ci_high": ci_high, "sd": sd},
         "usage": {"eei": eei, "mni": mni, "sv": sv},
         "test_retest": {"within1_rate": within1, "mean_abs_diff": mae},

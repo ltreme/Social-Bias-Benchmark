@@ -33,6 +33,11 @@ def create_app() -> FastAPI:
     executor = QueueExecutor.get_instance()
     executor.set_notification_callback(notification_service.handle_task_notification)
 
+    # Auto-start queue executor
+    if not executor.is_running():
+        logging.getLogger(__name__).info("Auto-starting queue executor...")
+        executor.start()
+
     origins = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",

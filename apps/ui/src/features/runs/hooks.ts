@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient, useQueries } from '@tanstack/react-query';
-import { fetchRunDeltas, fetchRunForest, fetchRunMetrics, fetchRuns, startRun, fetchRun, deleteRun as apiDeleteRun, fetchRunMissing, fetchRunOrderMetrics, fetchRunMeans, startRunWarmup, fetchRunWarmupStatus } from './api';
+import { fetchRunDeltas, fetchRunForest, fetchRunMetrics, fetchRuns, startRun, fetchRun, deleteRun as apiDeleteRun, fetchRunMissing, fetchRunOrderMetrics, fetchRunMeans, startRunWarmup, fetchRunWarmupStatus, fetchAnalysisStatus, fetchQuickAnalysis, requestAnalysis, type AnalyzeRequest } from './api';
 
-export function useRuns(status?: string) {
+export function useRuns() {
     return useQuery({ queryKey: ['runs'], queryFn: () => fetchRuns(), refetchInterval: 10000 });
 }
 
@@ -121,10 +121,10 @@ export function useRunWarmup(runId: number) {
         queryKey: ['run-warmup', runId],
         queryFn: () => fetchRunWarmupStatus(runId),
         enabled: Number.isFinite(runId),
-        refetchInterval: (data) => {
-            const s = (data?.status || '').toLowerCase();
+        refetchInterval: (query) => {
+            const s = (query.state.data?.status || '').toLowerCase();
             // Only poll while warmup is actually running (not partial - that's a benchmark status)
-            return (!data || ['idle', 'queued', 'running'].includes(s)) ? 2000 : false;
+            return (!query.state.data || ['idle', 'queued', 'running'].includes(s)) ? 2000 : false;
         },
         refetchIntervalInBackground: true,
     });
@@ -136,4 +136,42 @@ export function useRunWarmup(runId: number) {
         startedRef.current = runId;
     }, [runId, triggerWarmup]);
     return { start, status };
+}
+
+// ============================================================================
+// Analysis Hooks (Queue-based)
+// ============================================================================
+
+export function useAnalysisStatus(runId: number, opts?: { enabled?: boolean; polling?: boolean }) {
+    const enabled = Number.isFinite(runId) && (opts?.enabled ?? true);
+    const polling = opts?.polling ?? false;
+    return useQuery({
+        queryKey: ['analysis-status', runId],
+        queryFn: () => fetchAnalysisStatus(runId),
+        enabled,
+        staleTime: polling ? 0 : 30 * 1000,
+        refetchInterval: polling ? 3000 : false,
+    });
+}
+
+export function useQuickAnalysis(runId: number, opts?: { enabled?: boolean }) {
+    const enabled = Number.isFinite(runId) && (opts?.enabled ?? true);
+    return useQuery({
+        queryKey: ['quick-analysis', runId],
+        queryFn: () => fetchQuickAnalysis(runId),
+        enabled,
+        staleTime: 60 * 60 * 1000, // 1 hour - quick analysis rarely changes
+    });
+}
+
+export function useRequestAnalysis() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ runId, request }: { runId: number; request: AnalyzeRequest }) =>
+            requestAnalysis(runId, request),
+        onSuccess: (_, { runId }) => {
+            // Invalidate analysis status to trigger refetch
+            qc.invalidateQueries({ queryKey: ['analysis-status', runId] });
+        },
+    });
 }

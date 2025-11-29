@@ -115,6 +115,11 @@ class NotificationService:
         Args:
             task: The completed task
         """
+        # Special handling for benchmark tasks: run quick analysis
+        if task.task_type == "benchmark" and task.result_run_id:
+            self._send_benchmark_success(task)
+            return
+
         # Calculate duration
         duration = self._format_duration(task)
 
@@ -134,6 +139,43 @@ class NotificationService:
 
         self.telegram.send_message(msg)
         _LOG.info(f"Sent success notification for task #{task.id}")
+
+    def _send_benchmark_success(self, task: TaskQueue) -> None:
+        """Send enhanced notification for benchmark completion with quick analysis.
+
+        Args:
+            task: The completed benchmark task
+        """
+        from backend.application.services.analysis_service import get_analysis_service
+
+        run_id = task.result_run_id
+        duration = self._format_duration(task)
+
+        # Run quick analysis
+        try:
+            analysis_service = get_analysis_service()
+            summary = analysis_service.run_quick_analysis(run_id)
+
+            # Format message with analysis results
+            msg = analysis_service.format_telegram_message(run_id, summary)
+            msg += f"\n⏱️ Dauer: {duration}"
+
+            self.telegram.send_message(msg)
+            _LOG.info(
+                f"Sent benchmark success notification with analysis for run #{run_id}"
+            )
+
+        except Exception as e:
+            _LOG.error(f"Quick analysis failed for run {run_id}: {e}")
+            # Fallback to simple notification
+            msg = (
+                f"✅ *Benchmark Completed*\n\n"
+                f"*Run:* #{run_id}\n"
+                f"*Label:* {task.label or f'Task #{task.id}'}\n"
+                f"*Duration:* {duration}\n"
+                f"⚠️ Quick analysis failed: {str(e)[:100]}"
+            )
+            self.telegram.send_message(msg)
 
     def send_task_failure(
         self, task: TaskQueue, error: Optional[Exception] = None

@@ -181,3 +181,64 @@ export async function fetchRunWarmupStatus(runId: number) {
     const res = await api.get<RunWarmupStatus>(`/runs/${runId}/warm-cache`);
     return res.data;
 }
+
+// ============================================================================
+// Analysis API (Queue-based)
+// ============================================================================
+
+export type AnalysisStatus = {
+    run_id: number;
+    analyses: Record<string, {
+        status: 'pending' | 'running' | 'completed' | 'failed';
+        created_at: string | null;
+        completed_at: string | null;
+        duration_ms: number | null;
+        error: string | null;
+        summary: Record<string, any> | null;
+    }>;
+};
+
+export type QuickAnalysis = {
+    run_id: number;
+    total_results: number;
+    total_rated: number;
+    error_count: number;
+    error_rate: number;
+    rating_distribution: Record<string, number>;
+    order_consistency_sample: {
+        n_pairs: number;
+        rma: number | null;
+        mae: number | null;
+        is_sample: boolean;
+    };
+    computed_at: string;
+};
+
+export type AnalyzeRequest = {
+    type: 'order' | 'bias' | 'export';
+    attribute?: string;  // required for bias
+    format?: string;     // for export
+    force?: boolean;     // force re-run even if completed
+};
+
+export type AnalyzeResponse = {
+    job_id: number;
+    task_id?: number;
+    status: 'pending' | 'running' | 'completed';
+    message: string;
+};
+
+export async function fetchAnalysisStatus(runId: number) {
+    const res = await api.get<AnalysisStatus>(`/runs/${runId}/analysis`);
+    return res.data;
+}
+
+export async function fetchQuickAnalysis(runId: number) {
+    const res = await api.get<QuickAnalysis>(`/runs/${runId}/analysis/quick`);
+    return res.data;
+}
+
+export async function requestAnalysis(runId: number, request: AnalyzeRequest) {
+    const res = await api.post<AnalyzeResponse>(`/runs/${runId}/analyze`, request);
+    return res.data;
+}

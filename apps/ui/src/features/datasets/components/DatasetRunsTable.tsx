@@ -16,7 +16,7 @@ export function DatasetRunsTable({ datasetId, runs }: Props) {
   const delRun = useDeleteRun();
   const qc = useQueryClient();
 
-  const columns: ColumnDef<Run & { include_rationale: boolean }>[] = [
+  const columns: ColumnDef<Run & { include_rationale: boolean; system_prompt?: string | null }>[] = [
     { header: 'ID', accessorKey: 'id', cell: ({ row }) => <>#{row.original.id}</> },
     { 
       header: 'Model', 

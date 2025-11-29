@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { ActionIcon, Badge, Button, Card, Checkbox, Group, Menu, Modal, MultiSelect, Stack, Switch, Text, Title } from '@mantine/core';
+import { ActionIcon, Button, Card, Checkbox, Group, Menu, Modal, MultiSelect, Stack, Switch, Text, Title } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import type { ColumnDef } from '@tanstack/react-table';
 import { DataTable } from '../../components/DataTable';

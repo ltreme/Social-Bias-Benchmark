@@ -36,6 +36,7 @@ from backend.infrastructure.storage.models import (
 )
 
 METRICS_CACHE_VERSION = 2
+ORDER_CACHE_VERSION = 3  # Bump when changing order metrics structure
 
 
 class BenchmarkService:
@@ -473,7 +474,7 @@ class BenchmarkService:
 
     def get_order_metrics(self, run_id: int) -> Dict[str, Any]:
         """Get order effect metrics."""
-        ck = benchmark_cache.cache_key(run_id, "order", {})
+        ck = benchmark_cache.cache_key(run_id, "order", {"v": ORDER_CACHE_VERSION})
         cached = benchmark_cache.get_cached(run_id, "order", ck)
         if cached:
             return cached

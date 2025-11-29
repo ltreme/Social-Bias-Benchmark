@@ -41,8 +41,6 @@ export function TraitModal(props: {
           data={props.categoryOptions}
           value={category}
           onChange={setCategory}
-          searchable
-          clearable
         />
         <Select
           label="Valenz"

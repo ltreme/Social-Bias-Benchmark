@@ -39,9 +39,10 @@ class QueueService:
         """
         # Validate task_type
         valid_types = ("benchmark", "attrgen", "pool_gen", "balanced_gen")
-        if task_type not in valid_types:
+        # Also allow analysis:* task types
+        if task_type not in valid_types and not task_type.startswith("analysis:"):
             raise ValueError(
-                f"Invalid task_type '{task_type}'. Must be one of: {valid_types}"
+                f"Invalid task_type '{task_type}'. Must be one of: {valid_types} or analysis:*"
             )
 
         # Validate dependency (hybrid approach: only attrgen -> benchmark)
@@ -119,6 +120,14 @@ class QueueService:
             n = config.get("n", "?")
             ds_id = config.get("dataset_id", "?")
             return f"Balanced Gen: {n} personas - DS#{ds_id}"
+
+        elif task_type.startswith("analysis:"):
+            analysis_type = task_type.split(":", 1)[1]
+            run_id = config.get("run_id", "?")
+            params = config.get("params", {})
+            if analysis_type == "bias" and params.get("attribute"):
+                return f"Analyse: Bias ({params['attribute']}) - Run #{run_id}"
+            return f"Analyse: {analysis_type} - Run #{run_id}"
 
         return f"Task: {task_type}"
 
