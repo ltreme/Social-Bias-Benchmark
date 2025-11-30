@@ -1,5 +1,5 @@
-import { Card, Text, Title, Button, Group, Stack, Badge, Alert } from '@mantine/core';
-import { IconRefresh, IconCheck, IconClock, IconAlertCircle } from '@tabler/icons-react';
+import { Text, Title, Button, Group, Stack, Badge, Alert, Paper, ThemeIcon, Table, ScrollArea } from '@mantine/core';
+import { IconRefresh, IconCheck, IconClock, IconAlertCircle, IconAnalyze } from '@tabler/icons-react';
 import { AsyncContent } from '../../../components/AsyncContent';
 import { OrderMetricsCard } from './OrderMetricsCard';
 import type { OrderMetrics, AnalysisStatus } from '../api';
@@ -44,39 +44,47 @@ export function OrderConsistencyTab({
     return (
         <Stack gap="md">
             {/* Analysis Status & Request Button */}
-            <Card withBorder padding="md">
-                <Group justify="space-between" align="center">
-                    <div>
-                        <Title order={4}>Order-Consistency Analyse</Title>
-                        <Text size="sm" c="dimmed" mt={4}>
-                            Vollständige Berechnung aller Metriken für Dual-Paare (in/rev Scale-Order)
-                        </Text>
-                    </div>
+            <Paper p="md" withBorder radius="md">
+                <Group justify="space-between" align="flex-start">
                     <Group gap="sm">
-                        {getAnalysisStatusBadge(status)}
-                        <Button
-                            leftSection={<IconRefresh size={16} />}
-                            onClick={onRequestAnalysis}
-                            loading={isRequestingAnalysis || isRunning}
-                            disabled={isRunning}
-                            variant={status === 'completed' ? 'light' : 'filled'}
-                        >
-                            {status === 'completed' ? 'Neu berechnen' : 'Analysieren'}
-                        </Button>
+                        <ThemeIcon size={44} radius="md" variant="light" color="indigo">
+                            <IconAnalyze size={24} />
+                        </ThemeIcon>
+                        <div>
+                            <Title order={4}>Order-Consistency Analyse</Title>
+                            <Text size="sm" c="dimmed">
+                                Vollständige Berechnung aller Metriken für Dual-Paare
+                            </Text>
+                        </div>
                     </Group>
+                    <Stack gap="xs" align="flex-end">
+                        <Group gap="sm">
+                            {getAnalysisStatusBadge(status)}
+                            <Button
+                                leftSection={<IconRefresh size={16} />}
+                                onClick={onRequestAnalysis}
+                                loading={isRequestingAnalysis || isRunning}
+                                disabled={isRunning}
+                                variant={status === 'completed' ? 'light' : 'filled'}
+                                size="sm"
+                            >
+                                {status === 'completed' ? 'Neu berechnen' : 'Analysieren'}
+                            </Button>
+                        </Group>
+                        {orderAnalysis?.duration_ms && status === 'completed' && (
+                            <Text size="xs" c="dimmed">
+                                Berechnet am {new Date(orderAnalysis.completed_at! + 'Z').toLocaleString('de-DE')} 
+                                ({(orderAnalysis.duration_ms / 1000).toFixed(1)}s)
+                            </Text>
+                        )}
+                    </Stack>
                 </Group>
                 {orderAnalysis?.error && (
-                    <Alert color="red" title="Fehler" mt="sm">
+                    <Alert color="red" title="Fehler" mt="md">
                         {orderAnalysis.error}
                     </Alert>
                 )}
-                {orderAnalysis?.duration_ms && status === 'completed' && (
-                    <Text size="xs" c="dimmed" mt="sm">
-                        Berechnet am {new Date(orderAnalysis.completed_at! + 'Z').toLocaleString()} 
-                        ({(orderAnalysis.duration_ms / 1000).toFixed(1)}s)
-                    </Text>
-                )}
-            </Card>
+            </Paper>
 
             {/* Full Order Metrics from warm-cache (existing) */}
             <AsyncContent isLoading={isLoadingOrder} isError={!!orderError} error={orderError}>
@@ -85,49 +93,61 @@ export function OrderConsistencyTab({
 
             {/* Deep Analysis Results (when available) */}
             {summary && (
-                <Card withBorder padding="md">
-                    <Title order={4} mb="sm">Deep-Analysis Ergebnisse</Title>
-                    <Text size="sm" c="dimmed" mb="md">
-                        Vollständige Analyse über alle {summary.n_dual_pairs?.toLocaleString()} Dual-Paare
-                    </Text>
-                    
-                    {/* Per-Case Breakdown */}
-                    {summary.per_case && summary.per_case.length > 0 && (
-                        <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                                <thead>
-                                    <tr style={{ borderBottom: '2px solid var(--mantine-color-gray-3)' }}>
-                                        <th style={{ textAlign: 'left', padding: '8px 4px' }}>Case</th>
-                                        <th style={{ textAlign: 'left', padding: '8px 4px' }}>Adjektiv</th>
-                                        <th style={{ textAlign: 'right', padding: '8px 4px' }}>n Paare</th>
-                                        <th style={{ textAlign: 'right', padding: '8px 4px' }}>RMA</th>
-                                        <th style={{ textAlign: 'right', padding: '8px 4px' }}>MAE</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {summary.per_case.slice(0, 20).map((row: any, idx: number) => (
-                                        <tr key={row.case_id || idx} style={{ borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
-                                            <td style={{ padding: '8px 4px' }}>{row.case_id}</td>
-                                            <td style={{ padding: '8px 4px' }}>{row.adjective || '–'}</td>
-                                            <td style={{ textAlign: 'right', padding: '8px 4px' }}>{row.n_pairs}</td>
-                                            <td style={{ textAlign: 'right', padding: '8px 4px' }}>
-                                                {row.exact_rate != null ? row.exact_rate.toFixed(3) : '–'}
-                                            </td>
-                                            <td style={{ textAlign: 'right', padding: '8px 4px' }}>
-                                                {row.mae != null ? row.mae.toFixed(3) : '–'}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                            {summary.per_case.length > 20 && (
-                                <Text size="xs" c="dimmed" mt="xs">
-                                    ... und {summary.per_case.length - 20} weitere Cases
-                                </Text>
-                            )}
+                <Paper p="md" withBorder radius="md">
+                    <Group gap="sm" mb="md">
+                        <ThemeIcon size="lg" radius="md" variant="light" color="cyan">
+                            <IconAnalyze size={20} />
+                        </ThemeIcon>
+                        <div>
+                            <Title order={4}>Deep-Analysis Ergebnisse</Title>
+                            <Text size="sm" c="dimmed">
+                                Vollständige Analyse über alle {summary.n_dual_pairs?.toLocaleString('de-DE')} Dual-Paare
+                            </Text>
                         </div>
+                    </Group>
+                    
+                    {/* Per-Trait Breakdown */}
+                    {summary.per_case && summary.per_case.length > 0 && (
+                        <ScrollArea>
+                            <Table striped highlightOnHover withTableBorder>
+                                <Table.Thead>
+                                    <Table.Tr>
+                                        <Table.Th>Trait</Table.Th>
+                                        <Table.Th ta="right">n Paare</Table.Th>
+                                        <Table.Th ta="right">RMA</Table.Th>
+                                        <Table.Th ta="right">MAE</Table.Th>
+                                    </Table.Tr>
+                                </Table.Thead>
+                                <Table.Tbody>
+                                    {summary.per_case.map((row: any, idx: number) => (
+                                        <Table.Tr key={row.case_id || idx}>
+                                            <Table.Td>{row.adjective || row.case_id}{row.case_id ? ` (${row.case_id})` : ''}</Table.Td>
+                                            <Table.Td ta="right">{row.n_pairs}</Table.Td>
+                                            <Table.Td ta="right">
+                                                <Text 
+                                                    size="sm" 
+                                                    c={row.exact_rate >= 0.8 ? 'teal' : row.exact_rate >= 0.6 ? 'yellow.7' : 'red'}
+                                                    fw={500}
+                                                >
+                                                    {row.exact_rate != null ? row.exact_rate.toFixed(3) : '–'}
+                                                </Text>
+                                            </Table.Td>
+                                            <Table.Td ta="right">
+                                                <Text 
+                                                    size="sm" 
+                                                    c={row.mae <= 0.3 ? 'teal' : row.mae <= 0.6 ? 'yellow.7' : 'red'}
+                                                    fw={500}
+                                                >
+                                                    {row.mae != null ? row.mae.toFixed(3) : '–'}
+                                                </Text>
+                                            </Table.Td>
+                                        </Table.Tr>
+                                    ))}
+                                </Table.Tbody>
+                            </Table>
+                        </ScrollArea>
                     )}
-                </Card>
+                </Paper>
             )}
         </Stack>
     );
