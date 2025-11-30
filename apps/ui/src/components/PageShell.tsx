@@ -1,6 +1,6 @@
 import { AppShell, Group, Tabs } from '@mantine/core';
 import { Outlet, Link, useRouterState, useNavigate } from '@tanstack/react-router';
-import { IconDatabase, IconList, IconCpu, IconListCheck } from '@tabler/icons-react';
+import { IconDatabase, IconList, IconCpu, IconListCheck, IconPlayerPlay } from '@tabler/icons-react';
 
 export function PageShell() {
     const state = useRouterState();
@@ -9,6 +9,7 @@ export function PageShell() {
     // Determine active tab based on current path
     const getActiveTab = () => {
         const path = state.location.pathname;
+        if (path.startsWith('/runs')) return 'runs';
         if (path.startsWith('/traits')) return 'traits';
         if (path.startsWith('/models')) return 'models';
         if (path.startsWith('/queue')) return 'queue';
@@ -36,6 +37,7 @@ export function PageShell() {
                         value={getActiveTab()} 
                         onChange={(value) => {
                             if (value === 'datasets') navigate({ to: '/' });
+                            else if (value === 'runs') navigate({ to: '/runs' });
                             else if (value === 'traits') navigate({ to: '/traits' });
                             else if (value === 'models') navigate({ to: '/models' });
                             else if (value === 'queue') navigate({ to: '/queue' });
@@ -45,6 +47,9 @@ export function PageShell() {
                         <Tabs.List>
                             <Tabs.Tab value="datasets" leftSection={<IconDatabase size={16} />}>
                                 Datasets
+                            </Tabs.Tab>
+                            <Tabs.Tab value="runs" leftSection={<IconPlayerPlay size={16} />}>
+                                Runs
                             </Tabs.Tab>
                             <Tabs.Tab value="traits" leftSection={<IconList size={16} />}>
                                 Traits

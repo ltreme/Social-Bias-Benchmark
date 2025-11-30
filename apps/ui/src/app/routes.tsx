@@ -2,6 +2,7 @@ import { createRootRoute, createRoute, createRouter } from '@tanstack/react-rout
 import { PageShell } from '../components/PageShell';
 import { DatasetsPage } from '../features/datasets/DatasetsPage';
 import { DatasetDetailPage } from '../features/datasets/DatasetDetailPage';
+import { RunsPage } from '../features/runs/RunsPage';
 import { RunDetailPage } from '../features/runs/RunDetailPage';
 import { TraitsPage } from '../features/traits/TraitsPage';
 import { PersonaBrowserPage } from '../features/personas/PersonaBrowserPage';
@@ -31,6 +32,12 @@ const runDetailRoute = createRoute({
     component: RunDetailPage,
 });
 
+const runsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/runs',
+    component: RunsPage,
+});
+
 const traitsRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/traits',
@@ -55,5 +62,5 @@ const queueRoute = createRoute({
     component: QueuePage,
 });
 
-export const routeTree = rootRoute.addChildren([datasetsRoute, datasetDetailRoute, runDetailRoute, traitsRoute, datasetPersonasRoute, modelsRoute, queueRoute]);
+export const routeTree = rootRoute.addChildren([datasetsRoute, datasetDetailRoute, runsRoute, runDetailRoute, traitsRoute, datasetPersonasRoute, modelsRoute, queueRoute]);
 export const router = createRouter({ routeTree });
