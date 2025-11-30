@@ -264,7 +264,8 @@ export function BiasTab({
                     <AsyncContent isLoading={isLoadingDeltas} isError={!!deltasError} error={deltasError}>
                         <DeltaBarsPanel 
                             deltas={deltas as any} 
-                            title={`Delta vs. Baseline (${baseline || defaultBaseline || 'auto'})`} 
+                            title="Gruppenvergleich"
+                            baseline={baseline || defaultBaseline}
                         />
                     </AsyncContent>
                 </Grid.Col>
