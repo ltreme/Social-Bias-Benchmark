@@ -23,6 +23,25 @@ from .ports_bench import (
 _LOG = logging.getLogger(__name__)
 _SNIP = 300
 
+# Lazy import for prompt logging to avoid circular imports
+_prompt_logger = None
+
+
+def _get_prompt_logger():
+    """Lazy load prompt logger."""
+    global _prompt_logger
+    if _prompt_logger is None:
+        try:
+            from backend.infrastructure.logging.prompt_logger import (
+                is_enabled,
+                log_prompt_response,
+            )
+
+            _prompt_logger = (log_prompt_response, is_enabled)
+        except ImportError:
+            _prompt_logger = (None, lambda: False)
+    return _prompt_logger
+
 
 def _snippet(s: Optional[str], n: int = _SNIP) -> str:
     return s[:n] if s else ""
@@ -272,6 +291,42 @@ def run_benchmark_pipeline(
 
             spec = res.spec  # BenchPromptSpec
             decision = post.decide(res)
+
+            # Log prompt/response for transparency
+            log_fn, is_enabled_fn = _get_prompt_logger()
+            if log_fn and is_enabled_fn():
+                try:
+                    rating = None
+                    error_reason = None
+                    success = decision.kind == "ok"
+
+                    if decision.kind == "ok" and decision.answers:
+                        rating = decision.answers[0].rating
+                    elif decision.kind == "retry":
+                        error_reason = getattr(decision, "reason", "retry")
+                    elif decision.kind == "fail":
+                        error_reason = getattr(decision, "reason", "fail")
+
+                    log_fn(
+                        benchmark_run_id=spec.benchmark_run_id,
+                        persona_uuid=spec.work.persona_uuid,
+                        case_id=spec.work.case_id,
+                        scale_order=(
+                            "rev"
+                            if getattr(spec.work, "scale_reversed", False)
+                            else "in"
+                        ),
+                        prompt_text=spec.prompt_text,
+                        raw_response=res.raw_text or "",
+                        rating=rating,
+                        gen_time_ms=res.gen_time_ms,
+                        attempt=spec.attempt,
+                        model_name=spec.model_name,
+                        success=success,
+                        error_reason=error_reason,
+                    )
+                except Exception:
+                    pass  # Never let logging break the benchmark
 
             if decision.kind == "ok":
                 if not decision.answers:

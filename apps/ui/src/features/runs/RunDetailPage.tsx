@@ -1,4 +1,5 @@
-import { Alert, Button, Card, Group, Spoiler, Text, Title, Progress, Tabs } from '@mantine/core';
+import { Alert, Button, Card, Group, Spoiler, Text, Title, Progress, Tabs, ActionIcon, Tooltip } from '@mantine/core';
+import { IconDownload } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from '@tanstack/react-router';
 import { 
@@ -209,7 +210,20 @@ export function RunDetailPage() {
 
   return (
     <Card>
-      <Title order={2} mb="md">Run {runId} – Analyse</Title>
+      <Group justify="space-between" mb="md">
+        <Title order={2}>Run {runId} – Analyse</Title>
+        <Tooltip label="Prompt/Response-Logs herunterladen (JSON)">
+          <ActionIcon 
+            variant="light" 
+            size="lg"
+            component="a"
+            href={`${import.meta.env.VITE_API_BASE_URL || ''}/runs/${runId}/logs`}
+            download={`run_${runId}_logs.json`}
+          >
+            <IconDownload size={18} />
+          </ActionIcon>
+        </Tooltip>
+      </Group>
       {isLoadingRun ? ('') : run ? (
         <div style={{ marginBottom: '1em' }}>
           <b>Datensatz:</b> <Link to={`/datasets/${run.dataset?.id}`}>{run.dataset?.id}: {run.dataset?.name}</Link> | <b>Modell:</b> {run.model_name} {run.system_prompt ? <span title="Custom System Prompt verwendet" style={{ color: '#fd7e14', fontWeight: 'bold' }}>⚠️</span> : null} | {run.created_at ? (<><b>Erstellt:</b> {new Date(run.created_at).toLocaleDateString()} | <b>Ergebnisse:</b> {run.n_results} | </>) : null}

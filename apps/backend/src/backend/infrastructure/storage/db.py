@@ -52,8 +52,12 @@ def init_database(db_url: str | None = None) -> pw.Database:
 
         # Use connection pool for PostgreSQL
         if parsed.scheme in ("postgres", "postgresql"):
-            # Extract connection parameters
+            # Extract connection parameters from URL query string
             query_params = parse_qs(parsed.query)
+
+            # Get pool settings from URL or use defaults
+            max_connections = int(query_params.get("max_connections", ["64"])[0])
+            stale_timeout = int(query_params.get("stale_timeout", ["60"])[0])
 
             # Parse host and port
             host = parsed.hostname or "localhost"
@@ -65,8 +69,8 @@ def init_database(db_url: str | None = None) -> pw.Database:
                 password=parsed.password,
                 host=host,
                 port=port,
-                max_connections=64,  # Increased pool size for analysis endpoints
-                stale_timeout=300,  # 5 minutes
+                max_connections=max_connections,
+                stale_timeout=stale_timeout,
             )
 
         else:

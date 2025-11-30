@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import json
+import os
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 
 from backend.application.services.benchmark_service import BenchmarkService
 
@@ -257,3 +261,49 @@ def request_analysis(run_id: int, body: dict) -> Dict[str, Any]:
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/runs/{run_id}/logs")
+def download_run_logs(run_id: int) -> StreamingResponse:
+    """Download prompt/response logs for a benchmark run as JSON.
+
+    Filters the JSONL log files to only include entries for this run.
+    Returns a JSON array of log entries.
+    """
+    log_dir = Path(os.environ.get("PROMPT_LOG_DIR", "/app/logs"))
+
+    def generate():
+        yield "["
+        first = True
+
+        # Find all prompt log files (including rotated ones)
+        log_files = sorted(log_dir.glob("prompts.jsonl*"), reverse=True)
+
+        for log_file in log_files:
+            if not log_file.exists():
+                continue
+            try:
+                with open(log_file, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            entry = json.loads(line)
+                            if entry.get("run_id") == run_id:
+                                if not first:
+                                    yield ","
+                                yield json.dumps(entry, ensure_ascii=False)
+                                first = False
+                        except json.JSONDecodeError:
+                            continue
+            except Exception:
+                continue
+
+        yield "]"
+
+    return StreamingResponse(
+        generate(),
+        media_type="application/json",
+        headers={"Content-Disposition": f"attachment; filename=run_{run_id}_logs.json"},
+    )

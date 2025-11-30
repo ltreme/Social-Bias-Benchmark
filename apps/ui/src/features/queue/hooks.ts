@@ -9,7 +9,7 @@ export function useQueueTasks(includeDone = false, limit?: number) {
   return useQuery({
     queryKey: [...QUEUE_QUERY_KEY, 'list', includeDone, limit],
     queryFn: () => queueApi.fetchQueueTasks(includeDone, limit),
-    refetchInterval: 3000, // Poll every 3 seconds
+    refetchInterval: 10000, // Poll every 10 seconds (reduced to avoid DB exhaustion)
   });
 }
 
@@ -25,7 +25,7 @@ export function useQueueStats() {
   return useQuery({
     queryKey: QUEUE_STATS_KEY,
     queryFn: queueApi.fetchQueueStats,
-    refetchInterval: 2000, // Poll every 2 seconds
+    refetchInterval: 10000, // Poll every 10 seconds (reduced to avoid DB exhaustion)
   });
 }
 

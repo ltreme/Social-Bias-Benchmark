@@ -150,7 +150,7 @@ export function useAnalysisStatus(runId: number, opts?: { enabled?: boolean; pol
         queryFn: () => fetchAnalysisStatus(runId),
         enabled,
         staleTime: polling ? 0 : 30 * 1000,
-        refetchInterval: polling ? 3000 : false,
+        refetchInterval: polling ? 10000 : false, // Reduced from 3s to avoid DB exhaustion
     });
 }
 

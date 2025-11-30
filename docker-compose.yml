@@ -37,10 +37,14 @@ services:
       VLLM_BASE_URL: http://host.docker.internal:8000
       # Optionally override DB with: DB_URL=sqlite:////app/data/benchmark.db
       # Use Peewee pooled connections for PostgreSQL (larger pool for concurrent UI queries)
-      DB_URL: postgresql+pool://sbb:sbb@postgres:5432/sbb?max_connections=20&stale_timeout=300
+      # Increased from 20 to 64 to handle benchmark + UI polling simultaneously
+      DB_URL: postgresql+pool://sbb:sbb@postgres:5432/sbb?max_connections=64&stale_timeout=60
       PYTHONPATH: apps/backend/src
       LOG_LEVEL: DEBUG
       BENCH_PROGRESS_LOG: "true"
+      # Prompt/Response logging: Set to "0" to disable
+      PROMPT_LOG_ENABLED: "true"
+      PROMPT_LOG_DIR: /app/logs
     volumes:
       # Use cached mode for better read performance on macOS
       - .:/app:cached
