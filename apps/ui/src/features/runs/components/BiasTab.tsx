@@ -1,8 +1,9 @@
-import { Card, Grid, Group, MultiSelect, Select, Stack, Text, Title, Button, Badge, Paper, ThemeIcon, SimpleGrid, Tooltip, ActionIcon } from '@mantine/core';
-import { IconRefresh, IconCheck, IconClock, IconAlertCircle, IconChartBar, IconInfoCircle } from '@tabler/icons-react';
+import { Card, Group, MultiSelect, Select, Stack, Text, Title, Button, Badge, Paper, ThemeIcon, SimpleGrid, Tooltip, ActionIcon, Tabs } from '@mantine/core';
+import { IconRefresh, IconCheck, IconClock, IconAlertCircle, IconChartBar, IconInfoCircle, IconChartDots3, IconGridDots, IconChartBar as IconChartBars } from '@tabler/icons-react';
 import { AsyncContent } from '../../../components/AsyncContent';
 import { DeltaBarsPanel } from './DeltaBarsPanel';
-import { MultiForestPlotPanel } from './MultiForestPlotPanel';
+import { ImprovedForestPlot } from './ImprovedForestPlot';
+import { GroupComparisonCards, translateCategory } from './GroupComparisonHeatmap';
 import { SignificanceTable } from './SignificanceTable';
 import { MeansSummary } from './MeansSummary';
 import type { RunDeltas, AnalysisStatus } from '../api';
@@ -155,16 +156,16 @@ export function BiasTab({
                         <Select
                             data={availableCategories.map((c) => ({ 
                                 value: c.category, 
-                                label: `${c.category} (n=${c.count.toLocaleString('de-DE')})` 
+                                label: `${translateCategory(c.category)} (n=${c.count.toLocaleString('de-DE')})` 
                             }))}
                             value={baseline}
                             onChange={onBaselineChange}
                             clearable
-                            placeholder={defaultBaseline ? `Auto: ${defaultBaseline}` : 'Automatisch'}
+                            placeholder={defaultBaseline ? `Auto: ${translateCategory(defaultBaseline)}` : 'Automatisch'}
                             size="sm"
                         />
                         <Text size="xs" c="dimmed" mt="xs">
-                            {baseline ? `Δ = Gruppe − ${baseline}` : `Δ = Gruppe − ${defaultBaseline || 'Auto'}`}
+                            {baseline ? `Δ = Gruppe − ${translateCategory(baseline)}` : `Δ = Gruppe − ${translateCategory(defaultBaseline || 'Auto')}`}
                         </Text>
                     </Paper>
 
@@ -184,7 +185,7 @@ export function BiasTab({
                         <MultiSelect
                             data={availableCategories
                                 .filter(c => c.category !== (baseline || defaultBaseline))
-                                .map(c => ({ value: c.category, label: c.category }))}
+                                .map(c => ({ value: c.category, label: translateCategory(c.category) }))}
                             value={targets}
                             onChange={onTargetsChange}
                             placeholder="Kategorien wählen"
@@ -233,19 +234,19 @@ export function BiasTab({
                         {targets.length > 0 ? (
                             <>
                                 <Text size="xs" c="dimmed">→</Text>
-                                <Badge variant="light" color="violet" size="sm">{baseline || defaultBaseline || 'Auto'}</Badge>
+                                <Badge variant="light" color="violet" size="sm">{translateCategory(baseline || defaultBaseline || 'Auto')}</Badge>
                                 <Text size="xs" c="dimmed">vs.</Text>
                                 {targets.map((t, i) => (
                                     <Group key={t} gap={4}>
                                         {i > 0 && <Text size="xs" c="dimmed">,</Text>}
-                                        <Badge variant="light" color="teal" size="sm">{t}</Badge>
+                                        <Badge variant="light" color="teal" size="sm">{translateCategory(t)}</Badge>
                                     </Group>
                                 ))}
                             </>
                         ) : (
                             <>
                                 <Text size="xs" c="dimmed">| Baseline:</Text>
-                                <Badge variant="light" color="violet" size="sm">{baseline || defaultBaseline || 'Auto'}</Badge>
+                                <Badge variant="light" color="violet" size="sm">{translateCategory(baseline || defaultBaseline || 'Auto')}</Badge>
                             </>
                         )}
                         {traitCategory !== '__all' && (
@@ -258,38 +259,70 @@ export function BiasTab({
                 </Paper>
             </Paper>
 
-            {/* Delta Bars & Forest Plot */}
-            <Grid>
-                <Grid.Col span={{ base: 12, md: 6 }}>
-                    <AsyncContent isLoading={isLoadingDeltas} isError={!!deltasError} error={deltasError}>
-                        <DeltaBarsPanel 
-                            deltas={deltas as any} 
-                            title="Gruppenvergleich"
-                            baseline={baseline || defaultBaseline}
-                        />
-                    </AsyncContent>
-                </Grid.Col>
-                <Grid.Col span={{ base: 12, md: 6 }}>
-                    {targets.length > 0 ? (
-                        <AsyncContent isLoading={loadingForest} isError={errorForest} error={forestError}>
-                            <MultiForestPlotPanel
-                                datasets={forestsQueries.map((q, i) => ({ 
-                                    target: targets[i], 
-                                    rows: (q.data as any)?.rows || [], 
-                                    overall: (q.data as any)?.overall 
-                                }))}
-                                attr={attribute}
-                                baseline={baseline}
-                                defaultBaseline={defaultBaseline}
+            {/* Visualizations with Tabs */}
+            <Paper p="md" withBorder radius="md">
+                <Tabs defaultValue="lollipop">
+                    <Tabs.List mb="md">
+                        <Tabs.Tab value="lollipop" leftSection={<IconChartBars size={16} />}>
+                            Lollipop-Chart
+                        </Tabs.Tab>
+                        <Tabs.Tab value="heatmap" leftSection={<IconGridDots size={16} />}>
+                            Gruppen-Cards
+                        </Tabs.Tab>
+                        <Tabs.Tab value="forest" leftSection={<IconChartDots3 size={16} />}>
+                            Forest Plot
+                        </Tabs.Tab>
+                    </Tabs.List>
+
+                    <Tabs.Panel value="lollipop">
+                        <AsyncContent isLoading={isLoadingDeltas} isError={!!deltasError} error={deltasError}>
+                            <DeltaBarsPanel 
+                                deltas={deltas as any} 
+                                title="Gruppenvergleich (Lollipop)"
+                                baseline={baseline || defaultBaseline}
                             />
                         </AsyncContent>
-                    ) : (
-                        <Card withBorder padding="md" style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Text c="dimmed">Bitte Kategorie(n) für Forest wählen.</Text>
-                        </Card>
-                    )}
-                </Grid.Col>
-            </Grid>
+                    </Tabs.Panel>
+
+                    <Tabs.Panel value="heatmap">
+                        <AsyncContent isLoading={isLoadingDeltas} isError={!!deltasError} error={deltasError}>
+                            <GroupComparisonCards
+                                rows={deltas?.rows || []}
+                                attributeLabel={attrLabel}
+                                baseline={baseline || defaultBaseline}
+                            />
+                        </AsyncContent>
+                    </Tabs.Panel>
+
+                    <Tabs.Panel value="forest">
+                        {targets.length > 0 ? (
+                            <AsyncContent isLoading={loadingForest} isError={errorForest} error={forestError}>
+                                <ImprovedForestPlot
+                                    datasets={forestsQueries.map((q, i) => ({ 
+                                        target: targets[i], 
+                                        rows: (q.data as any)?.rows || [], 
+                                        overall: (q.data as any)?.overall 
+                                    }))}
+                                    attr={attrLabel}
+                                    baseline={baseline}
+                                    defaultBaseline={defaultBaseline}
+                                />
+                            </AsyncContent>
+                        ) : (
+                            <Paper p="xl" bg="gray.0" radius="md" ta="center">
+                                <ThemeIcon size="xl" radius="xl" variant="light" color="gray" mb="md">
+                                    <IconChartDots3 size={24} />
+                                </ThemeIcon>
+                                <Text fw={500} mb="xs">Forest Plot</Text>
+                                <Text size="sm" c="dimmed">
+                                    Wähle unter "Vergleichsgruppen" mindestens eine Kategorie aus,<br />
+                                    um den detaillierten Forest Plot zu sehen.
+                                </Text>
+                            </Paper>
+                        )}
+                    </Tabs.Panel>
+                </Tabs>
+            </Paper>
 
             {/* Means Summary */}
             <Card withBorder padding="md">

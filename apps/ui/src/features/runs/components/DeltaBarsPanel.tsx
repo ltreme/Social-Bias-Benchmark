@@ -1,6 +1,7 @@
 import { Paper, Text, Title, Group, ThemeIcon, SimpleGrid, Tooltip } from '@mantine/core';
 import { IconArrowUp, IconArrowDown, IconMinus, IconInfoCircle } from '@tabler/icons-react';
 import { ChartPanel } from '../../../components/ChartPanel';
+import { translateCategory } from './GroupComparisonHeatmap';
 
 type DeltaRow = {
   category: string;
@@ -61,14 +62,20 @@ export function DeltaBarsPanel({ deltas, title, baseline }: { deltas?: Deltas; t
   // Sort by absolute delta value (largest first)
   const sortedRows = [...deltas.rows].sort((a, b) => Math.abs(b.delta ?? 0) - Math.abs(a.delta ?? 0));
   
+  // Translate category names
+  const translatedRows = sortedRows.map(row => ({
+    ...row,
+    displayCategory: translateCategory(row.category),
+  }));
+  
   // Create lollipop chart data
   const traces: Partial<Plotly.Data>[] = [
     // Stems (lines from 0 to point)
-    ...sortedRows.map((row) => ({
+    ...translatedRows.map((row) => ({
       type: 'scatter' as const,
       mode: 'lines' as const,
       x: [0, row.delta ?? 0],
-      y: [row.category, row.category],
+      y: [row.displayCategory, row.displayCategory],
       line: { color: getColorLight(row), width: 3 },
       showlegend: false,
       hoverinfo: 'skip' as const,
@@ -78,28 +85,28 @@ export function DeltaBarsPanel({ deltas, title, baseline }: { deltas?: Deltas; t
       type: 'scatter' as const,
       mode: 'markers' as const,
       name: 'Delta',
-      x: sortedRows.map((r) => r.delta ?? 0),
-      y: sortedRows.map((r) => r.category),
+      x: translatedRows.map((r) => r.delta ?? 0),
+      y: translatedRows.map((r) => r.displayCategory),
       marker: { 
         size: 12, 
-        color: sortedRows.map(r => getColor(r)),
+        color: translatedRows.map(r => getColor(r)),
         line: { color: '#fff', width: 2 },
       },
       error_x: {
         type: 'data' as const,
         symmetric: false,
-        array: sortedRows.map((r) => (r.ci_high != null && r.delta != null) ? Math.max(0, r.ci_high - r.delta) : 0),
-        arrayminus: sortedRows.map((r) => (r.ci_low != null && r.delta != null) ? Math.max(0, r.delta - r.ci_low) : 0),
+        array: translatedRows.map((r) => (r.ci_high != null && r.delta != null) ? Math.max(0, r.ci_high - r.delta) : 0),
+        arrayminus: translatedRows.map((r) => (r.ci_low != null && r.delta != null) ? Math.max(0, r.delta - r.ci_low) : 0),
         thickness: 2,
         width: 6,
-        color: sortedRows.map(r => getColor(r)),
+        color: translatedRows.map(r => getColor(r)),
       },
-      hovertemplate: sortedRows.map((r) => {
+      hovertemplate: translatedRows.map((r) => {
         const sig = isSignificant(r) ? '✓ signifikant' : '○ nicht signifikant';
         const ci = (r.ci_low != null && r.ci_high != null) 
           ? `[${r.ci_low.toFixed(3)}, ${r.ci_high.toFixed(3)}]` 
           : '';
-        return `<b>${r.category}</b><br>` +
+        return `<b>${r.displayCategory}</b><br>` +
           `Δ = ${(r.delta ?? 0).toFixed(3)} ${ci}<br>` +
           `p = ${(r.p_value ?? NaN).toFixed(4)}${r.q_value != null ? `, q = ${r.q_value.toFixed(4)}` : ''}<br>` +
           `n = ${r.n_cat ?? r.count ?? '–'}<br>` +
@@ -109,15 +116,15 @@ export function DeltaBarsPanel({ deltas, title, baseline }: { deltas?: Deltas; t
   ];
 
   // Find significant results for summary
-  const sigPositive = sortedRows.filter(r => isSignificant(r) && (r.delta ?? 0) > 0);
-  const sigNegative = sortedRows.filter(r => isSignificant(r) && (r.delta ?? 0) < 0);
-  const notSig = sortedRows.filter(r => !isSignificant(r));
+  const sigPositive = translatedRows.filter(r => isSignificant(r) && (r.delta ?? 0) > 0);
+  const sigNegative = translatedRows.filter(r => isSignificant(r) && (r.delta ?? 0) < 0);
+  const notSig = translatedRows.filter(r => !isSignificant(r));
 
   // Calculate chart height based on number of categories
-  const chartHeight = Math.max(300, sortedRows.length * 50 + 80);
+  const chartHeight = Math.max(300, translatedRows.length * 50 + 80);
 
   // Get x-axis range
-  const allValues = sortedRows.flatMap(r => [r.delta ?? 0, r.ci_low ?? 0, r.ci_high ?? 0]);
+  const allValues = translatedRows.flatMap(r => [r.delta ?? 0, r.ci_low ?? 0, r.ci_high ?? 0]);
   const maxAbs = Math.max(...allValues.map(v => Math.abs(v)), 0.1);
   const padding = maxAbs * 0.15;
 
