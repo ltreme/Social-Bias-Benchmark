@@ -1,7 +1,6 @@
-import { Card, Grid, Group, MultiSelect, Select, Stack, Text, Title, Button, Badge } from '@mantine/core';
-import { IconRefresh, IconCheck, IconClock, IconAlertCircle } from '@tabler/icons-react';
+import { Card, Grid, Group, MultiSelect, Select, Stack, Text, Title, Button, Badge, Paper, ThemeIcon, SimpleGrid, Tooltip, ActionIcon } from '@mantine/core';
+import { IconRefresh, IconCheck, IconClock, IconAlertCircle, IconChartBar, IconInfoCircle } from '@tabler/icons-react';
 import { AsyncContent } from '../../../components/AsyncContent';
-import { AttributeBaselineSelector } from './AttributeBaselineSelector';
 import { DeltaBarsPanel } from './DeltaBarsPanel';
 import { MultiForestPlotPanel } from './MultiForestPlotPanel';
 import { SignificanceTable } from './SignificanceTable';
@@ -9,13 +8,13 @@ import { MeansSummary } from './MeansSummary';
 import type { RunDeltas, AnalysisStatus } from '../api';
 
 const ATTRS = [
-    { value: 'gender', label: 'Geschlecht' },
-    { value: 'religion', label: 'Religion' },
-    { value: 'sexuality', label: 'Sexualität' },
-    { value: 'marriage_status', label: 'Familienstand' },
-    { value: 'education', label: 'Bildung' },
-    { value: 'origin_subregion', label: 'Herkunft-Subregion' },
-    { value: 'migration_status', label: 'Migrationshintergrund' },
+    { value: 'gender', label: 'Geschlecht', icon: '👤', description: 'Vergleich zwischen Geschlechtern' },
+    { value: 'religion', label: 'Religion', icon: '🕊️', description: 'Vergleich zwischen Religionsgruppen' },
+    { value: 'sexuality', label: 'Sexualität', icon: '🌈', description: 'Vergleich nach sexueller Orientierung' },
+    { value: 'marriage_status', label: 'Familienstand', icon: '💍', description: 'Vergleich nach Familienstand' },
+    { value: 'education', label: 'Bildung', icon: '🎓', description: 'Vergleich nach Bildungsniveau' },
+    { value: 'origin_subregion', label: 'Herkunft', icon: '🌍', description: 'Vergleich nach Herkunftsregion' },
+    { value: 'migration_status', label: 'Migration', icon: '✈️', description: 'Vergleich nach Migrationshintergrund' },
 ];
 
 type BiasTabProps = {
@@ -95,45 +94,169 @@ export function BiasTab({
     const isBiasRunning = biasStatus === 'running' || biasStatus === 'pending';
 
     return (
-        <Stack gap="md">
-            {/* Attribute & Filter Selection */}
-            <Card withBorder padding="md">
-                <Group align="end" mb="sm" wrap="wrap">
-                    <AttributeBaselineSelector
-                        attributes={ATTRS}
-                        attribute={attribute}
-                        onAttributeChange={(v) => {
-                            onAttributeChange(v);
-                            onBaselineChange(null);
-                            onTargetsChange([]);
-                        }}
-                        categories={availableCategories.map((c) => c.category)}
-                        baseline={baseline}
-                        defaultBaseline={defaultBaseline}
-                        onBaselineChange={onBaselineChange}
-                    />
-                    <Select
-                        label="Trait-Kategorie"
-                        data={[{ value: '__all', label: 'Alle Kategorien' }, ...traitCategoryOptions.map((c) => ({ value: c, label: c }))]}
-                        value={traitCategory}
-                        onChange={(val) => onTraitCategoryChange(val ?? '__all')}
-                        style={{ minWidth: 220 }}
-                    />
-                    <MultiSelect
-                        label="Forest: Kategorien"
-                        data={availableCategories.map(c => ({ value: c.category, label: c.category })).filter(c => c.value !== (baseline || defaultBaseline))}
-                        value={targets}
-                        onChange={(vals) => onTargetsChange(vals)}
-                        placeholder="Kategorien wählen"
-                        searchable
-                        style={{ minWidth: 280 }}
-                        maxDropdownHeight={240}
-                    />
+        <Stack gap="lg">
+            {/* Configuration Section - Redesigned */}
+            <Paper p="md" withBorder radius="md">
+                <Group gap="xs" mb="md">
+                    <ThemeIcon size="lg" radius="md" variant="light" color="blue">
+                        <IconChartBar size={20} />
+                    </ThemeIcon>
+                    <div>
+                        <Title order={4}>Bias-Analyse Konfiguration</Title>
+                        <Text size="sm" c="dimmed">Wähle Merkmal, Vergleichsgruppen und Filter</Text>
+                    </div>
                 </Group>
-                <Text size="sm" className="print-only" c="dimmed">
-                    Einstellungen: Merkmal {attrLabel}; Baseline {baseline || defaultBaseline || 'auto'}; Kategorien: {targets.join(', ') || '—'}
-                </Text>
-            </Card>
+
+                <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md">
+                    {/* Step 1: Merkmal */}
+                    <Paper p="md" bg="blue.0" radius="md">
+                        <Group gap="xs" mb="sm">
+                            <ThemeIcon size="sm" radius="xl" color="blue" variant="filled">
+                                <Text size="xs" fw={700}>1</Text>
+                            </ThemeIcon>
+                            <Text size="sm" fw={600}>Merkmal</Text>
+                            <Tooltip label="Das demografische Merkmal, nach dem die Bias-Analyse durchgeführt wird" withArrow>
+                                <ActionIcon variant="subtle" color="gray" size="xs">
+                                    <IconInfoCircle size={14} />
+                                </ActionIcon>
+                            </Tooltip>
+                        </Group>
+                        <Select
+                            data={ATTRS.map(a => ({ 
+                                value: a.value, 
+                                label: `${a.icon} ${a.label}` 
+                            }))}
+                            value={attribute}
+                            onChange={(v) => {
+                                onAttributeChange(v || 'gender');
+                                onBaselineChange(null);
+                                onTargetsChange([]);
+                            }}
+                            size="sm"
+                        />
+                        <Text size="xs" c="dimmed" mt="xs">
+                            {ATTRS.find(a => a.value === attribute)?.description}
+                        </Text>
+                    </Paper>
+
+                    {/* Step 2: Baseline */}
+                    <Paper p="md" bg="violet.0" radius="md">
+                        <Group gap="xs" mb="sm">
+                            <ThemeIcon size="sm" radius="xl" color="violet" variant="filled">
+                                <Text size="xs" fw={700}>2</Text>
+                            </ThemeIcon>
+                            <Text size="sm" fw={600}>Baseline-Gruppe</Text>
+                            <Tooltip label="Die Referenzgruppe, gegen die alle anderen Gruppen verglichen werden" withArrow>
+                                <ActionIcon variant="subtle" color="gray" size="xs">
+                                    <IconInfoCircle size={14} />
+                                </ActionIcon>
+                            </Tooltip>
+                        </Group>
+                        <Select
+                            data={availableCategories.map((c) => ({ 
+                                value: c.category, 
+                                label: `${c.category} (n=${c.count.toLocaleString('de-DE')})` 
+                            }))}
+                            value={baseline}
+                            onChange={onBaselineChange}
+                            clearable
+                            placeholder={defaultBaseline ? `Auto: ${defaultBaseline}` : 'Automatisch'}
+                            size="sm"
+                        />
+                        <Text size="xs" c="dimmed" mt="xs">
+                            {baseline ? `Δ = Gruppe − ${baseline}` : `Δ = Gruppe − ${defaultBaseline || 'Auto'}`}
+                        </Text>
+                    </Paper>
+
+                    {/* Step 3: Vergleichsgruppen */}
+                    <Paper p="md" bg="teal.0" radius="md">
+                        <Group gap="xs" mb="sm">
+                            <ThemeIcon size="sm" radius="xl" color="teal" variant="filled">
+                                <Text size="xs" fw={700}>3</Text>
+                            </ThemeIcon>
+                            <Text size="sm" fw={600}>Vergleichsgruppen</Text>
+                            <Tooltip label="Gruppen, die im Forest-Plot detailliert verglichen werden" withArrow>
+                                <ActionIcon variant="subtle" color="gray" size="xs">
+                                    <IconInfoCircle size={14} />
+                                </ActionIcon>
+                            </Tooltip>
+                        </Group>
+                        <MultiSelect
+                            data={availableCategories
+                                .filter(c => c.category !== (baseline || defaultBaseline))
+                                .map(c => ({ value: c.category, label: c.category }))}
+                            value={targets}
+                            onChange={onTargetsChange}
+                            placeholder="Kategorien wählen"
+                            searchable
+                            size="sm"
+                            maxDropdownHeight={200}
+                        />
+                        <Text size="xs" c="dimmed" mt="xs">
+                            {targets.length === 0 ? 'Für Forest-Plot auswählen' : `${targets.length} Gruppe(n) ausgewählt`}
+                        </Text>
+                    </Paper>
+
+                    {/* Step 4: Filter */}
+                    <Paper p="md" bg="orange.0" radius="md">
+                        <Group gap="xs" mb="sm">
+                            <ThemeIcon size="sm" radius="xl" color="orange" variant="filled">
+                                <Text size="xs" fw={700}>4</Text>
+                            </ThemeIcon>
+                            <Text size="sm" fw={600}>Trait-Filter</Text>
+                            <Tooltip label="Optional: Nur bestimmte Trait-Kategorien (z.B. sozial, kompetenz) analysieren" withArrow>
+                                <ActionIcon variant="subtle" color="gray" size="xs">
+                                    <IconInfoCircle size={14} />
+                                </ActionIcon>
+                            </Tooltip>
+                        </Group>
+                        <Select
+                            data={[
+                                { value: '__all', label: '🔍 Alle Kategorien' }, 
+                                ...traitCategoryOptions.map((c) => ({ value: c, label: c }))
+                            ]}
+                            value={traitCategory}
+                            onChange={(val) => onTraitCategoryChange(val ?? '__all')}
+                            size="sm"
+                        />
+                        <Text size="xs" c="dimmed" mt="xs">
+                            {traitCategory === '__all' ? 'Alle Traits einbezogen' : `Nur "${traitCategory}" Traits`}
+                        </Text>
+                    </Paper>
+                </SimpleGrid>
+
+                {/* Current Selection Summary */}
+                <Paper p="sm" bg="gray.0" radius="md" mt="md">
+                    <Group gap="xs" wrap="wrap">
+                        <Text size="xs" fw={600}>Aktuelle Auswahl:</Text>
+                        <Badge variant="light" color="blue" size="sm">{attrLabel}</Badge>
+                        {targets.length > 0 ? (
+                            <>
+                                <Text size="xs" c="dimmed">→</Text>
+                                <Badge variant="light" color="violet" size="sm">{baseline || defaultBaseline || 'Auto'}</Badge>
+                                <Text size="xs" c="dimmed">vs.</Text>
+                                {targets.map((t, i) => (
+                                    <Group key={t} gap={4}>
+                                        {i > 0 && <Text size="xs" c="dimmed">,</Text>}
+                                        <Badge variant="light" color="teal" size="sm">{t}</Badge>
+                                    </Group>
+                                ))}
+                            </>
+                        ) : (
+                            <>
+                                <Text size="xs" c="dimmed">| Baseline:</Text>
+                                <Badge variant="light" color="violet" size="sm">{baseline || defaultBaseline || 'Auto'}</Badge>
+                            </>
+                        )}
+                        {traitCategory !== '__all' && (
+                            <>
+                                <Text size="xs" c="dimmed">|</Text>
+                                <Badge variant="light" color="orange" size="sm">Filter: {traitCategory}</Badge>
+                            </>
+                        )}
+                    </Group>
+                </Paper>
+            </Paper>
 
             {/* Delta Bars & Forest Plot */}
             <Grid>
