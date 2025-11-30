@@ -213,6 +213,7 @@ class DatasetService:
                     "id": int(run.id),
                     "model_name": str(run.model_id.name),
                     "include_rationale": bool(run.include_rationale),
+                    "system_prompt": run.system_prompt if run.system_prompt else None,
                     "created_at": str(run.created_at),
                     "status": status,
                     "done": done,

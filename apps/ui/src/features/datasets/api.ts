@@ -15,6 +15,7 @@ export type Run = {
     id: number;
     model_name: string;
     include_rationale: boolean;
+    system_prompt?: string | null;
     created_at: string;
     status?: string;
     done?: number;

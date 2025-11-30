@@ -1,11 +1,11 @@
-import { ActionIcon, Group, Progress } from '@mantine/core';
+import { ActionIcon, Group, Popover, Progress, Text, Tooltip } from '@mantine/core';
 import { Link } from '@tanstack/react-router';
 import { DataTable } from '../../../components/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { Run } from '../api';
 import { useDeleteRun } from '../../runs/hooks';
 import { useQueryClient } from '@tanstack/react-query';
-import { IconExternalLink, IconTrash } from '@tabler/icons-react';
+import { IconExternalLink, IconMessage, IconMessageCog, IconTrash } from '@tabler/icons-react';
 
 type Props = {
   datasetId: number;
@@ -16,23 +16,37 @@ export function DatasetRunsTable({ datasetId, runs }: Props) {
   const delRun = useDeleteRun();
   const qc = useQueryClient();
 
-  const columns: ColumnDef<Run & { include_rationale: boolean; system_prompt?: string | null }>[] = [
+  const columns: ColumnDef<Run>[] = [
     { header: 'ID', accessorKey: 'id', cell: ({ row }) => <>#{row.original.id}</> },
-    { 
-      header: 'Model', 
-      accessorKey: 'model_name',
+    { header: 'Model', accessorKey: 'model_name' },
+    {
+      header: 'Optionen',
+      accessorKey: 'options',
       cell: ({ row }) => (
-        <>
-          {row.original.model_name}
-          {row.original.system_prompt ? (
-            <span title="Custom System Prompt verwendet" style={{ marginLeft: '0.5em', color: '#fd7e14', fontWeight: 'bold' }}>
-              ⚠️
-            </span>
-          ) : null}
-        </>
-      )
+        <Group gap={6} wrap="nowrap">
+          {row.original.include_rationale && (
+            <Tooltip label="Mit Begründungen" withArrow>
+              <IconMessage size={18} color="#228be6" />
+            </Tooltip>
+          )}
+          {row.original.system_prompt && (
+            <Popover width={400} position="bottom" withArrow shadow="md">
+              <Popover.Target>
+                <ActionIcon variant="transparent" size="sm" color="orange" style={{ cursor: 'pointer' }}>
+                  <IconMessageCog size={18} />
+                </ActionIcon>
+              </Popover.Target>
+              <Popover.Dropdown>
+                <Text size="xs" fw={600} mb={4}>Custom System Prompt:</Text>
+                <Text size="xs" style={{ whiteSpace: 'pre-wrap', maxHeight: 200, overflow: 'auto' }}>
+                  {row.original.system_prompt}
+                </Text>
+              </Popover.Dropdown>
+            </Popover>
+          )}
+        </Group>
+      ),
     },
-    { header: 'Rationale', accessorKey: 'include_rationale', cell: ({ row }) => (row.original.include_rationale ? 'Ja' : 'Nein') },
     { header: 'Erstellt', accessorKey: 'created_at', cell: ({ row }) => (row.original.created_at ? new Date(row.original.created_at).toLocaleString() : '') },
     {
       header: 'Status',
