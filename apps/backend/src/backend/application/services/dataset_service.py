@@ -50,6 +50,10 @@ class DatasetOut:
         appearances_n: int = 0,
         biographies_n: int = 0,
         enriched_percentage: float = 0.0,
+        runs_count: int = 0,
+        models_count: int = 0,
+        source_dataset_id: int | None = None,
+        source_dataset_name: str | None = None,
     ):
         """Initialize dataset output."""
         self.id = id
@@ -58,6 +62,10 @@ class DatasetOut:
         self.size = size
         self.created_at = created_at
         self.seed = seed
+        self.runs_count = runs_count
+        self.models_count = models_count
+        self.source_dataset_id = source_dataset_id
+        self.source_dataset_name = source_dataset_name
         self.config_json = config_json
         self.additional_attributes_n = additional_attributes_n
         self.name_n = name_n
@@ -80,6 +88,10 @@ class DatasetOut:
             "appearances_n": self.appearances_n,
             "biographies_n": self.biographies_n,
             "enriched_percentage": self.enriched_percentage,
+            "runs_count": self.runs_count,
+            "models_count": self.models_count,
+            "source_dataset_id": self.source_dataset_id,
+            "source_dataset_name": self.source_dataset_name,
         }
 
 
@@ -121,6 +133,15 @@ class DatasetService:
         for ds in datasets:
             size = self.dataset_repo.count_personas_in_dataset(ds.id)
             config = self.dataset_repo.parse_config_json(ds)
+            runs = self.dataset_repo.list_benchmark_runs_for_dataset(ds.id)
+            runs_count = len(runs)
+            models_count = len(set(r.model_id.id for r in runs))
+            # Get source dataset info if exists
+            source_id = None
+            source_name = None
+            if ds.source_dataset_id:
+                source_id = ds.source_dataset_id.id
+                source_name = ds.source_dataset_id.name
             result.append(
                 DatasetOut(
                     id=ds.id,
@@ -130,6 +151,10 @@ class DatasetService:
                     created_at=ds.created_at.isoformat() if ds.created_at else None,
                     seed=ds.seed,
                     config_json=config,
+                    runs_count=runs_count,
+                    models_count=models_count,
+                    source_dataset_id=source_id,
+                    source_dataset_name=source_name,
                 )
             )
 

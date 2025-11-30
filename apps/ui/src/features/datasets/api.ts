@@ -9,6 +9,10 @@ export type Dataset = {
     seed?: number;
     config_json?: Record<string, any>;
     enriched_percentage?: number;
+    runs_count?: number;
+    models_count?: number;
+    source_dataset_id?: number | null;
+    source_dataset_name?: string | null;
 };
 
 export type Run = {

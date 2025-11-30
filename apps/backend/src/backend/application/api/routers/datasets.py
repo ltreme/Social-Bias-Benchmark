@@ -44,6 +44,10 @@ class DatasetOut(BaseModel):
     appearances_n: Optional[int] = 0
     biographies_n: Optional[int] = 0
     enriched_percentage: Optional[float] = 0.0
+    runs_count: Optional[int] = 0
+    models_count: Optional[int] = 0
+    source_dataset_id: Optional[int] = None
+    source_dataset_name: Optional[str] = None
 
 
 class PersonaOut(BaseModel):

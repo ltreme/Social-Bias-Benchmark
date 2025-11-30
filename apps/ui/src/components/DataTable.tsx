@@ -28,7 +28,7 @@ export function DataTable<T extends RowData>({ data, columns, getRowId }: DataTa
               },
     });
     return (
-        <Table striped withTableBorder>
+        <Table striped withTableBorder highlightOnHover>
         <Table.Thead>
             {table.getHeaderGroups().map((hg) => (
             <Table.Tr key={hg.id}>
