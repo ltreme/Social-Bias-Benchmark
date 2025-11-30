@@ -146,8 +146,10 @@ export async function fetchRunAllMeans(runId: number) {
     return res.data;
 }
 
-export async function fetchRunAllDeltas(runId: number) {
-    const res = await api.get<{ ok: boolean; data: Record<string, RunDeltas> }>(`/runs/${runId}/deltas/all`);
+export async function fetchRunAllDeltas(runId: number, traitCategory?: string) {
+    // Use 'all' as default when no category specified
+    const category = traitCategory || 'all';
+    const res = await api.get<{ ok: boolean; data: Record<string, RunDeltas> }>(`/runs/${runId}/deltas/all/${category}`);
     return res.data;
 }
 

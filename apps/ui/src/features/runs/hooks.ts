@@ -102,11 +102,11 @@ export function useRunAllMeans(runId: number, opts?: { enabled?: boolean }) {
     });
 }
 
-export function useRunAllDeltas(runId: number, opts?: { enabled?: boolean }) {
+export function useRunAllDeltas(runId: number, opts?: { enabled?: boolean; traitCategory?: string }) {
     const enabled = Number.isFinite(runId) && (opts?.enabled ?? true);
     return useQuery({
-        queryKey: ['run-deltas-all', runId],
-        queryFn: () => import('./api').then(m => m.fetchRunAllDeltas(runId)),
+        queryKey: ['run-deltas-all', runId, opts?.traitCategory ?? '__all'],
+        queryFn: () => import('./api').then(m => m.fetchRunAllDeltas(runId, opts?.traitCategory)),
         enabled,
         staleTime: 60 * 60 * 1000,
     });

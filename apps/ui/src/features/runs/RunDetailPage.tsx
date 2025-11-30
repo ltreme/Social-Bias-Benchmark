@@ -157,6 +157,14 @@ export function RunDetailPage() {
   // Aggregated data
   const { data: allMeans, isLoading: loadingAllMeans, isError: errorAllMeans, error: allMeansError } = useRunAllMeans(idNum, { enabled: warmReady });
   const { data: allDeltas, isLoading: loadingAllDeltas, isError: errorAllDeltas, error: allDeltasError } = useRunAllDeltas(idNum, { enabled: warmReady });
+  
+  // Radar chart data for grid view - load data for each trait category
+  const radarCategory1 = traitCategoryOptions[0]; // e.g., "kompetenz"
+  const radarCategory2 = traitCategoryOptions[1]; // e.g., "sozial"
+  
+  const { data: radarDeltasAll, isLoading: loadingRadarAll } = useRunAllDeltas(idNum, { enabled: warmReady });
+  const { data: radarDeltasCat1, isLoading: loadingRadarCat1 } = useRunAllDeltas(idNum, { enabled: warmReady && !!radarCategory1, traitCategory: radarCategory1 });
+  const { data: radarDeltasCat2, isLoading: loadingRadarCat2 } = useRunAllDeltas(idNum, { enabled: warmReady && !!radarCategory2, traitCategory: radarCategory2 });
 
   const meansData = [
     { a: 'gender', q: { data: { rows: allMeans?.data?.gender || [] }, isLoading: loadingAllMeans, isError: errorAllMeans, error: allMeansError } },
@@ -177,6 +185,30 @@ export function RunDetailPage() {
     { a: 'marriage_status', q: { data: allDeltas?.data?.marriage_status, isLoading: loadingAllDeltas, isError: errorAllDeltas, error: allDeltasError } },
     { a: 'education', q: { data: allDeltas?.data?.education, isLoading: loadingAllDeltas, isError: errorAllDeltas, error: allDeltasError } },
   ];
+
+  // Helper to build deltasData array from raw API response
+  const buildDeltasData = (data: typeof radarDeltasAll, isLoading: boolean) => [
+    { a: 'gender', q: { data: data?.data?.gender, isLoading, isError: false } },
+    { a: 'origin_subregion', q: { data: data?.data?.origin_subregion, isLoading, isError: false } },
+    { a: 'religion', q: { data: data?.data?.religion, isLoading, isError: false } },
+    { a: 'migration_status', q: { data: data?.data?.migration_status, isLoading, isError: false } },
+    { a: 'sexuality', q: { data: data?.data?.sexuality, isLoading, isError: false } },
+    { a: 'marriage_status', q: { data: data?.data?.marriage_status, isLoading, isError: false } },
+    { a: 'education', q: { data: data?.data?.education, isLoading, isError: false } },
+  ];
+
+  // Radar chart category map for grid display
+  const radarCategoryDeltasMap: Record<string, typeof deltasData> = {
+    '__all': buildDeltasData(radarDeltasAll, loadingRadarAll),
+    ...(radarCategory1 ? { [radarCategory1]: buildDeltasData(radarDeltasCat1, loadingRadarCat1) } : {}),
+    ...(radarCategory2 ? { [radarCategory2]: buildDeltasData(radarDeltasCat2, loadingRadarCat2) } : {}),
+  };
+
+  const radarLoadingStates: Record<string, boolean> = {
+    '__all': loadingRadarAll,
+    ...(radarCategory1 ? { [radarCategory1]: loadingRadarCat1 } : {}),
+    ...(radarCategory2 ? { [radarCategory2]: loadingRadarCat2 } : {}),
+  };
 
   if (isActive) {
     const done = benchStatus.data?.done ?? 0;
@@ -530,6 +562,10 @@ export function RunDetailPage() {
               isLoadingMetrics={loadingMetrics}
               metricsError={metricsError}
               traitCategoryFilter={traitCategoryFilter}
+              runId={idNum}
+              radarTraitCategories={traitCategoryOptions}
+              radarCategoryDeltasMap={radarCategoryDeltasMap}
+              radarLoadingStates={radarLoadingStates}
             />
           </Tabs.Panel>
 

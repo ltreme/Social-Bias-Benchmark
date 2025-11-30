@@ -2,7 +2,17 @@ import { Card, Grid, Paper, Text, Title, Badge, Group, Stack, ThemeIcon, SimpleG
 import { IconChartBar, IconAlertTriangle, IconArrowsSort, IconTarget, IconInfoCircle } from '@tabler/icons-react';
 import { ChartPanel } from '../../../components/ChartPanel';
 import { AsyncContent } from '../../../components/AsyncContent';
-import type { QuickAnalysis, RunMetrics } from '../api';
+import { BiasRadarGrid } from './BiasRadarChart';
+import type { QuickAnalysis, RunMetrics, RunDeltas } from '../api';
+
+type DeltasQueryResult = {
+  data?: RunDeltas;
+  isLoading: boolean;
+  isError: boolean;
+  error?: any;
+};
+
+type DeltasData = Array<{ a: string; q: DeltasQueryResult }>;
 
 type OverviewTabProps = {
     quickAnalysis?: QuickAnalysis | null;
@@ -11,6 +21,14 @@ type OverviewTabProps = {
     isLoadingMetrics: boolean;
     metricsError?: any;
     traitCategoryFilter?: string;
+    /** Run ID for radar chart */
+    runId?: number;
+    /** Available trait categories for radar chart */
+    radarTraitCategories?: string[];
+    /** Map of category -> deltasData for radar grid */
+    radarCategoryDeltasMap?: Record<string, DeltasData>;
+    /** Loading states per category */
+    radarLoadingStates?: Record<string, boolean>;
 };
 
 function formatRating(value: number | null | undefined): string {
@@ -30,6 +48,10 @@ export function OverviewTab({
     isLoadingMetrics,
     metricsError,
     traitCategoryFilter,
+    runId,
+    radarTraitCategories,
+    radarCategoryDeltasMap,
+    radarLoadingStates,
 }: OverviewTabProps) {
     const orderSample = quickAnalysis?.order_consistency_sample;
 
@@ -219,6 +241,16 @@ export function OverviewTab({
                     ) : null}
                 </AsyncContent>
             </Card>
+
+            {/* Bias Radar Chart Grid */}
+            {runId && radarTraitCategories && radarTraitCategories.length > 0 && radarCategoryDeltasMap && (
+                <BiasRadarGrid 
+                    runId={runId}
+                    traitCategories={radarTraitCategories}
+                    categoryDeltasMap={radarCategoryDeltasMap}
+                    loadingStates={radarLoadingStates}
+                />
+            )}
 
             {/* Trait Categories Overview */}
             {metrics?.trait_categories?.summary?.length ? (
