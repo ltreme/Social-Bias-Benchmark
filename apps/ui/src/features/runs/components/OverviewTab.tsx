@@ -1,4 +1,5 @@
-import { Card, Grid, Text, Title, Badge, Group, Stack } from '@mantine/core';
+import { Card, Grid, Paper, Text, Title, Badge, Group, Stack, ThemeIcon, SimpleGrid, Tooltip, ActionIcon } from '@mantine/core';
+import { IconChartBar, IconAlertTriangle, IconArrowsSort, IconTarget, IconInfoCircle } from '@tabler/icons-react';
 import { ChartPanel } from '../../../components/ChartPanel';
 import { AsyncContent } from '../../../components/AsyncContent';
 import type { QuickAnalysis, RunMetrics } from '../api';
@@ -76,40 +77,122 @@ export function OverviewTab({
         <Stack gap="md">
             {/* Quick Analysis Summary */}
             <Card withBorder padding="md">
-                <Title order={4} mb="sm">Quick-Check</Title>
+                <Title order={4} mb="md">Quick-Check</Title>
                 <AsyncContent isLoading={isLoadingQuick} loadingLabel="Lade Quick-Analyse...">
                     {quickAnalysis ? (
-                        <Grid>
-                            <Grid.Col span={{ base: 6, md: 3 }}>
-                                <Stack gap={4}>
-                                    <Text size="sm" c="dimmed">Ergebnisse</Text>
-                                    <Text size="xl" fw={600}>{quickAnalysis.total_results.toLocaleString()}</Text>
-                                </Stack>
-                            </Grid.Col>
-                            <Grid.Col span={{ base: 6, md: 3 }}>
-                                <Stack gap={4}>
-                                    <Text size="sm" c="dimmed">Fehlerrate</Text>
-                                    <Group gap={4}>
-                                        <Text size="xl" fw={600}>{formatPercent(quickAnalysis.error_rate)}</Text>
-                                        {quickAnalysis.error_count > 0 && (
-                                            <Badge color="orange" size="sm">{quickAnalysis.error_count}</Badge>
-                                        )}
-                                    </Group>
-                                </Stack>
-                            </Grid.Col>
-                            <Grid.Col span={{ base: 6, md: 3 }}>
-                                <Stack gap={4}>
-                                    <Text size="sm" c="dimmed">Order RMA{orderSample?.is_sample ? ' (Sample)' : ''}</Text>
-                                    <Text size="xl" fw={600}>{formatRating(orderSample?.rma)}</Text>
-                                </Stack>
-                            </Grid.Col>
-                            <Grid.Col span={{ base: 6, md: 3 }}>
-                                <Stack gap={4}>
-                                    <Text size="sm" c="dimmed">Order MAE{orderSample?.is_sample ? ' (Sample)' : ''}</Text>
-                                    <Text size="xl" fw={600}>{formatRating(orderSample?.mae)}</Text>
-                                </Stack>
-                            </Grid.Col>
-                        </Grid>
+                        <SimpleGrid cols={{ base: 2, md: 4 }} spacing="md">
+                            {/* Ergebnisse */}
+                            <Paper p="md" bg="blue.0" radius="md">
+                                <Group justify="space-between" align="flex-start" mb="xs">
+                                    <ThemeIcon size={44} radius="md" variant="light" color="blue">
+                                        <IconChartBar size={24} />
+                                    </ThemeIcon>
+                                    <Tooltip 
+                                        label="Gesamtzahl der erfolgreich verarbeiteten Antworten des Modells"
+                                        multiline
+                                        w={220}
+                                        withArrow
+                                    >
+                                        <ActionIcon variant="subtle" color="gray" size="sm">
+                                            <IconInfoCircle size={16} />
+                                        </ActionIcon>
+                                    </Tooltip>
+                                </Group>
+                                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>Ergebnisse</Text>
+                                <Text size="xl" fw={700} c="blue.7">
+                                    {quickAnalysis.total_results.toLocaleString('de-DE')}
+                                </Text>
+                            </Paper>
+
+                            {/* Fehlerrate */}
+                            <Paper p="md" bg={quickAnalysis.error_count > 0 ? 'orange.0' : 'teal.0'} radius="md">
+                                <Group justify="space-between" align="flex-start" mb="xs">
+                                    <ThemeIcon 
+                                        size={44} 
+                                        radius="md" 
+                                        variant="light" 
+                                        color={quickAnalysis.error_count > 0 ? 'orange' : 'teal'}
+                                    >
+                                        <IconAlertTriangle size={24} />
+                                    </ThemeIcon>
+                                    <Tooltip 
+                                        label="Anteil der Anfragen, bei denen das Modell keine gültige Antwort liefern konnte (z.B. Parsing-Fehler, Timeout)"
+                                        multiline
+                                        w={250}
+                                        withArrow
+                                    >
+                                        <ActionIcon variant="subtle" color="gray" size="sm">
+                                            <IconInfoCircle size={16} />
+                                        </ActionIcon>
+                                    </Tooltip>
+                                </Group>
+                                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>Fehlerrate</Text>
+                                <Group gap={6} align="baseline">
+                                    <Text 
+                                        size="xl" 
+                                        fw={700} 
+                                        c={quickAnalysis.error_count > 0 ? 'orange.7' : 'teal.7'}
+                                    >
+                                        {formatPercent(quickAnalysis.error_rate)}
+                                    </Text>
+                                    {quickAnalysis.error_count > 0 && (
+                                        <Badge color="orange" size="sm" variant="filled">
+                                            {quickAnalysis.error_count}
+                                        </Badge>
+                                    )}
+                                </Group>
+                            </Paper>
+
+                            {/* Order RMA */}
+                            <Paper p="md" bg="violet.0" radius="md">
+                                <Group justify="space-between" align="flex-start" mb="xs">
+                                    <ThemeIcon size={44} radius="md" variant="light" color="violet">
+                                        <IconArrowsSort size={24} />
+                                    </ThemeIcon>
+                                    <Tooltip 
+                                        label="Rank-biserial Moving Average: Misst die Konsistenz der Rangordnung über Paarvergleiche. Werte nahe 1 bedeuten hohe Übereinstimmung."
+                                        multiline
+                                        w={280}
+                                        withArrow
+                                    >
+                                        <ActionIcon variant="subtle" color="gray" size="sm">
+                                            <IconInfoCircle size={16} />
+                                        </ActionIcon>
+                                    </Tooltip>
+                                </Group>
+                                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+                                    Order RMA{orderSample?.is_sample ? ' (Sample)' : ''}
+                                </Text>
+                                <Text size="xl" fw={700} c="violet.7">
+                                    {formatRating(orderSample?.rma)}
+                                </Text>
+                            </Paper>
+
+                            {/* Order MAE */}
+                            <Paper p="md" bg="grape.0" radius="md">
+                                <Group justify="space-between" align="flex-start" mb="xs">
+                                    <ThemeIcon size={44} radius="md" variant="light" color="grape">
+                                        <IconTarget size={24} />
+                                    </ThemeIcon>
+                                    <Tooltip 
+                                        label="Mean Absolute Error: Durchschnittliche Abweichung der Bewertungen bei wiederholten Anfragen. Niedrigere Werte = stabilere Antworten."
+                                        multiline
+                                        w={280}
+                                        withArrow
+                                    >
+                                        <ActionIcon variant="subtle" color="gray" size="sm">
+                                            <IconInfoCircle size={16} />
+                                        </ActionIcon>
+                                    </Tooltip>
+                                </Group>
+                                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+                                    Order MAE{orderSample?.is_sample ? ' (Sample)' : ''}
+                                </Text>
+                                <Text size="xl" fw={700} c="grape.7">
+                                    {formatRating(orderSample?.mae)}
+                                </Text>
+                            </Paper>
+                        </SimpleGrid>
                     ) : (
                         <Text c="dimmed">Keine Quick-Analyse verfügbar</Text>
                     )}
