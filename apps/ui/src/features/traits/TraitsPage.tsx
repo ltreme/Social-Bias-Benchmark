@@ -1,11 +1,12 @@
 import { useMemo, useRef, useState } from 'react';
-import { ActionIcon, Button, Card, Checkbox, Group, Menu, Modal, MultiSelect, Stack, Switch, Text, Title } from '@mantine/core';
+import { ActionIcon, Badge, Button, Card, Checkbox, Group, Menu, Modal, MultiSelect, Stack, Switch, Text, Title, Tooltip, useComputedColorScheme } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import type { ColumnDef } from '@tanstack/react-table';
 import { DataTable } from '../../components/DataTable';
 import { useTraits, useCreateTrait, useDeleteTrait, useUpdateTrait, useTraitCategories, useToggleTraitActive, useImportTraitsCsv, triggerTraitsExport, triggerFilteredTraitsExport } from './hooks';
 import { TraitModal } from './TraitModal';
 import type { TraitItem } from './api';
+import { IconList, IconPlus, IconDownload, IconUpload, IconFilter, IconCategory, IconMoodSmile, IconToggleLeft, IconDotsVertical, IconEdit, IconTrash, IconLink } from '@tabler/icons-react';
 
 export function TraitsPage() {
   const { data = [], isLoading } = useTraits();
@@ -21,9 +22,10 @@ export function TraitsPage() {
   const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
   const [valenceFilter, setValenceFilter] = useState<string[]>([]);
   const [activeFilter, setActiveFilter] = useState<string[]>([]);
-  const [sortOrder, setSortOrder] = useState<string[]>(['id']);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [useFiltersForExport, setUseFiltersForExport] = useState(false);
+  const colorScheme = useComputedColorScheme('light');
+  const isDark = colorScheme === 'dark';
 
   const categoryOptions = useMemo(() => categories, [categories]);
 
@@ -50,8 +52,9 @@ export function TraitsPage() {
     return compareTraitIds(a, b);
   };
 
-  const sortedData = useMemo(() => {
-    const filtered = data.filter((item: TraitItem) => {
+  // Filter data (sorting is now handled by the DataTable)
+  const filteredData = useMemo(() => {
+    return data.filter((item: TraitItem) => {
       if (categoryFilter.length && (!item.category || !categoryFilter.includes(item.category))) {
         return false;
       }
@@ -69,43 +72,41 @@ export function TraitsPage() {
       }
       return true;
     });
-    const order = sortOrder.length ? sortOrder : ['id'];
-    const compareByField = (field: string, a: TraitItem, b: TraitItem): number => {
-      switch (field) {
-        case 'category':
-          if ((a.category ?? '') !== (b.category ?? '')) {
-            return (a.category ?? '').localeCompare(b.category ?? '');
-          }
-          return 0;
-        case 'adjective':
-          if ((a.adjective ?? '') !== (b.adjective ?? '')) {
-            return (a.adjective ?? '').localeCompare(b.adjective ?? '');
-          }
-          return 0;
-        case 'valence':
-          if ((a.valence ?? 0) !== (b.valence ?? 0)) {
-            return (a.valence ?? 0) - (b.valence ?? 0);
-          }
-          return 0;
-        case 'id':
-        default:
-          return compareTraitIds(a.id, b.id);
-      }
-    };
-    return [...filtered].sort((a, b) => {
-      for (const field of order) {
-        const cmp = compareByField(field, a, b);
-        if (cmp !== 0) return cmp;
-      }
-      return compareTraitIds(a.id, b.id);
-    });
-  }, [data, categoryFilter, valenceFilter, activeFilter, sortOrder]);
+  }, [data, categoryFilter, valenceFilter, activeFilter]);
 
   const columns: ColumnDef<TraitItem>[] = [
-    { header: 'ID', accessorKey: 'id', sortingFn: traitIdSorting },
-    { header: 'Adjektiv', accessorKey: 'adjective' },
-    { header: 'Kategorie', accessorKey: 'category' },
-    { header: 'Valenz', accessorKey: 'valence' },
+    { 
+      header: 'ID', 
+      accessorKey: 'id', 
+      sortingFn: traitIdSorting,
+      cell: ({ row }: any) => (
+        <Badge variant="light" color="gray" size="sm">{row.original.id}</Badge>
+      )
+    },
+    { 
+      header: 'Adjektiv', 
+      accessorKey: 'adjective',
+      cell: ({ row }: any) => (
+        <Text fw={500}>{row.original.adjective}</Text>
+      )
+    },
+    { 
+      header: 'Kategorie', 
+      accessorKey: 'category',
+      cell: ({ row }: any) => (
+        <Badge variant="light" color="violet" size="sm">{row.original.category}</Badge>
+      )
+    },
+    { 
+      header: 'Valenz', 
+      accessorKey: 'valence',
+      cell: ({ row }: any) => {
+        const val = row.original.valence;
+        const color = val === 1 ? 'green' : val === -1 ? 'red' : 'gray';
+        const label = val === 1 ? '+1' : val === -1 ? '−1' : '0';
+        return <Badge variant="light" color={color} size="sm">{label}</Badge>;
+      }
+    },
     {
       header: 'Aktiv',
       accessorKey: 'is_active',
@@ -126,36 +127,97 @@ export function TraitsPage() {
           }}
           disabled={pendingToggleId === row.original.id}
           aria-label="Aktivstatus umschalten"
+          color="teal"
         />
       ),
     },
-    { header: 'Verknüpfte Ergebnisse', accessorKey: 'linked_results_n' },
-    { header: '', accessorKey: 'actions', cell: ({ row }: any) => (
-      <Menu withinPortal position="bottom-end">
-        <Menu.Target>
-          <ActionIcon variant="subtle">⋯</ActionIcon>
-        </Menu.Target>
-        <Menu.Dropdown>
-          <Menu.Label>Aktionen</Menu.Label>
-          <Menu.Item onClick={() => setModal({ mode: 'edit', row: row.original })}>Bearbeiten…</Menu.Item>
-          <Menu.Divider />
-          <Menu.Item color="red" disabled={row.original.linked_results_n > 0} onClick={async () => {
-            if (!confirm(`Trait ${row.original.id} wirklich löschen?`)) return;
-            try { await deleteM.mutateAsync(row.original.id); } catch { /* handled globally */ }
-          }}>Löschen…</Menu.Item>
-        </Menu.Dropdown>
-      </Menu>
-    ) },
+    { 
+      header: 'Verknüpfte Ergebnisse', 
+      accessorKey: 'linked_results_n',
+      cell: ({ row }: any) => {
+        const count = row.original.linked_results_n;
+        if (count === 0) {
+          return <Text size="sm" c="dimmed">0</Text>;
+        }
+        return (
+          <Group gap={4}>
+            <IconLink size={14} color={isDark ? '#909296' : '#868e96'} />
+            <Text size="sm" fw={500}>{count.toLocaleString('de-DE')}</Text>
+          </Group>
+        );
+      }
+    },
+    { 
+      header: '', 
+      accessorKey: 'actions', 
+      cell: ({ row }: any) => (
+        <Menu withinPortal position="bottom-end">
+          <Menu.Target>
+            <Tooltip label="Aktionen" withArrow>
+              <ActionIcon variant="subtle" color="gray">
+                <IconDotsVertical size={16} />
+              </ActionIcon>
+            </Tooltip>
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Label>Aktionen</Menu.Label>
+            <Menu.Item 
+              leftSection={<IconEdit size={14} />}
+              onClick={() => setModal({ mode: 'edit', row: row.original })}
+            >
+              Bearbeiten
+            </Menu.Item>
+            <Menu.Divider />
+            <Menu.Item 
+              color="red" 
+              leftSection={<IconTrash size={14} />}
+              disabled={row.original.linked_results_n > 0} 
+              onClick={async () => {
+                if (!confirm(`Trait ${row.original.id} wirklich löschen?`)) return;
+                try { await deleteM.mutateAsync(row.original.id); } catch { /* handled globally */ }
+              }}
+            >
+              Löschen
+            </Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
+      ) 
+    },
   ];
 
   return (
     <Card>
-      <Group justify="space-between" mb="md">
-        <Title order={2}>Traits</Title>
+      <Group justify="space-between" mb="lg">
+        <Group gap="sm">
+          <IconList size={28} color="#7950f2" />
+          <Title order={2}>Traits</Title>
+          <Badge variant="light" color="violet" size="lg">{data.length}</Badge>
+        </Group>
         <Group gap="xs">
-          <Button variant="light" onClick={() => setExportModalOpen(true)}>CSV exportieren</Button>
-          <Button variant="light" onClick={() => fileInputRef.current?.click()} loading={importCsvM.isPending}>CSV importieren</Button>
-          <Button onClick={() => setModal({ mode: 'create' })}>Trait hinzufügen</Button>
+          <Button 
+            variant="light" 
+            color="teal"
+            leftSection={<IconUpload size={16} />}
+            onClick={() => setExportModalOpen(true)}
+          >
+            CSV exportieren
+          </Button>
+          <Button 
+            variant="light" 
+            color="blue"
+            leftSection={<IconDownload size={16} />}
+            onClick={() => fileInputRef.current?.click()} 
+            loading={importCsvM.isPending}
+          >
+            CSV importieren
+          </Button>
+          <Button 
+            color="violet"
+            leftSection={<IconPlus size={16} />}
+            onClick={() => setModal({ mode: 'create' })}
+          >
+            Trait hinzufügen
+          </Button>
         </Group>
       </Group>
       <input
@@ -180,68 +242,88 @@ export function TraitsPage() {
           }
         }}
       />
-      <Group mb="md" gap="md" align="flex-end" wrap="wrap">
-        <MultiSelect
-          label="Kategorie filtern"
-          placeholder="Alle Kategorien"
-          data={categoryOptions.map((c: string) => ({ value: c, label: c }))}
-          value={categoryFilter}
-          onChange={setCategoryFilter}
-          searchable
-          clearable
-          w={260}
-        />
-        <MultiSelect
-          label="Valenz filtern"
-          placeholder="Alle"
-          data={[
-            { value: '1', label: 'Positiv (+1)' },
-            { value: '0', label: 'Neutral (0)' },
-            { value: '-1', label: 'Negativ (-1)' },
-          ]}
-          value={valenceFilter}
-          onChange={setValenceFilter}
-          clearable
-          w={240}
-        />
-        <MultiSelect
-          label="Status filtern"
-          placeholder="Alle"
-          data={[
-            { value: 'active', label: 'Aktiv' },
-            { value: 'inactive', label: 'Inaktiv' },
-          ]}
-          value={activeFilter}
-          onChange={setActiveFilter}
-          clearable
-          w={200}
-        />
-        <MultiSelect
-          label="Sortierreihenfolge"
-          placeholder="Standard (ID)"
-          data={[
-            { value: 'id', label: 'ID' },
-            { value: 'adjective', label: 'Adjektiv' },
-            { value: 'category', label: 'Kategorie' },
-            { value: 'valence', label: 'Valenz' },
-          ]}
-          value={sortOrder}
-          onChange={(vals: string[]) => setSortOrder(vals.length ? vals : ['id'])}
-          clearable
-          w={300}
-        />
-      </Group>
-      <Group mb="md" justify="space-between" align="center">
-        <Text size="sm" c="dimmed">
-          {sortedData.length} von {data.length} Trait{data.length !== 1 ? 's' : ''} 
-          {sortedData.length !== data.length && ' (gefiltert)'}
+      
+      {/* Filter Card */}
+      <Card 
+        withBorder 
+        mb="lg" 
+        padding="lg" 
+        style={{ 
+          background: isDark ? 'rgba(121, 80, 242, 0.08)' : 'rgba(121, 80, 242, 0.05)',
+          borderColor: isDark ? 'rgba(121, 80, 242, 0.3)' : 'rgba(121, 80, 242, 0.2)'
+        }}
+      >
+        <Group gap="xs" mb="md">
+          <IconFilter size={18} color="#7950f2" />
+          <Text fw={600} c="violet">Filter & Sortierung</Text>
+        </Group>
+        <Group gap="md" align="flex-end" wrap="wrap">
+          <MultiSelect
+            label="Kategorie"
+            placeholder="Alle Kategorien"
+            leftSection={<IconCategory size={14} />}
+            data={categoryOptions.map((c: string) => ({ value: c, label: c }))}
+            value={categoryFilter}
+            onChange={setCategoryFilter}
+            searchable
+            clearable
+            w={240}
+          />
+          <MultiSelect
+            label="Valenz"
+            placeholder="Alle"
+            leftSection={<IconMoodSmile size={14} />}
+            data={[
+              { value: '1', label: 'Positiv (+1)' },
+              { value: '0', label: 'Neutral (0)' },
+              { value: '-1', label: 'Negativ (−1)' },
+            ]}
+            value={valenceFilter}
+            onChange={setValenceFilter}
+            clearable
+            w={220}
+          />
+          <MultiSelect
+            label="Status"
+            placeholder="Alle"
+            leftSection={<IconToggleLeft size={14} />}
+            data={[
+              { value: 'active', label: 'Aktiv' },
+              { value: 'inactive', label: 'Inaktiv' },
+            ]}
+            value={activeFilter}
+            onChange={setActiveFilter}
+            clearable
+            w={200}
+          />
+        </Group>
+        <Text size="xs" c="dimmed" mt="sm">
+          💡 Klicke auf eine Spaltenüberschrift zum Sortieren
         </Text>
+      </Card>
+      
+      <Group mb="md" justify="space-between" align="center">
+        <Group gap="sm">
+          <Text size="sm" c="dimmed">
+            {filteredData.length} von {data.length} Trait{data.length !== 1 ? 's' : ''} 
+          </Text>
+          {filteredData.length !== data.length && (
+            <Badge variant="light" color="orange" size="sm">gefiltert</Badge>
+          )}
+        </Group>
       </Group>
-      {isLoading || catsLoading ? 'Laden…' : (
+      
+      {isLoading || catsLoading ? (
+        <Text c="dimmed" ta="center" py="xl">Traits werden geladen…</Text>
+      ) : data.length === 0 ? (
+        <Text c="dimmed" ta="center" py="xl">Keine Traits vorhanden. Importiere Traits via CSV oder lege neue an!</Text>
+      ) : (
         <DataTable
-          data={sortedData}
+          data={filteredData}
           columns={columns}
           getRowId={(row) => row.id}
+          enableSorting
+          initialSorting={[{ id: 'id', desc: false }]}
         />
       )}
 
@@ -285,8 +367,8 @@ export function TraitsPage() {
             <Button onClick={async () => {
               try {
                 if (useFiltersForExport) {
-                  // Export mit Filtern: sortedData IDs an Backend senden
-                  const traitIds = sortedData.map((trait: TraitItem) => trait.id);
+                  // Export mit Filtern: filteredData IDs an Backend senden
+                  const traitIds = filteredData.map((trait: TraitItem) => trait.id);
                   await triggerFilteredTraitsExport(traitIds);
                 } else {
                   // Standard-Export: alle Daten vom Server
@@ -297,7 +379,7 @@ export function TraitsPage() {
                   color: 'green', 
                   title: 'Export erstellt', 
                   message: useFiltersForExport 
-                    ? `${sortedData.length} gefilterte Traits wurden exportiert.`
+                    ? `${filteredData.length} gefilterte Traits wurden exportiert.`
                     : 'traits.csv wurde heruntergeladen.' 
                 });
               } catch (err) {
