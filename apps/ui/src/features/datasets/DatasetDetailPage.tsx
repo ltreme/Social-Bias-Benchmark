@@ -11,7 +11,7 @@ import { AttrGenModal } from './components/AttrGenModal';
 import { BenchmarkModal } from './components/BenchmarkModal';
 import { AttrgenRunsTable } from './components/AttrgenRunsTable';
 import { DatasetRunsTable } from './components/DatasetRunsTable';
-import { IconDatabase, IconUsers, IconPlayerPlay, IconSparkles, IconChartBar, IconCalendar, IconSettings, IconSitemap, IconTarget, IconArrowsShuffle, IconCpu, IconGenderBigender, IconWorld, IconSchool } from '@tabler/icons-react';
+import { IconDatabase, IconUsers, IconPlayerPlay, IconSparkles, IconChartBar, IconCalendar, IconSettings, IconSitemap, IconTarget, IconArrowsShuffle, IconCpu, IconGenderBigender, IconGenderMale, IconGenderFemale, IconWorld, IconSchool } from '@tabler/icons-react';
 
 // Helper to format date nicely
 function formatDate(dateStr?: string | null): string {
@@ -45,57 +45,112 @@ function ConfigDisplay({ config, isDark }: { config: Record<string, any>; isDark
     if (config.source_dataset_id !== undefined) {
         items.push({
             label: 'Quell-Dataset',
-            value: <Badge variant="light" color="blue">#{config.source_dataset_id}</Badge>,
-            icon: <IconDatabase size={14} />
+            value: (
+                <Badge 
+                    component={Link} 
+                    to={`/datasets/${config.source_dataset_id}`}
+                    variant="light" 
+                    color="blue" 
+                    style={{ cursor: 'pointer' }}
+                >
+                    #{config.source_dataset_id}
+                </Badge>
+            ),
+            icon: <IconDatabase size={16} color={isDark ? '#909296' : '#868e96'} />
         });
     }
     if (config.dataset_id !== undefined) {
         items.push({
             label: 'Basis-Dataset',
-            value: <Badge variant="light" color="blue">#{config.dataset_id}</Badge>,
-            icon: <IconDatabase size={14} />
+            value: (
+                <Badge 
+                    component={Link} 
+                    to={`/datasets/${config.dataset_id}`}
+                    variant="light" 
+                    color="blue" 
+                    style={{ cursor: 'pointer' }}
+                >
+                    #{config.dataset_id}
+                </Badge>
+            ),
+            icon: <IconDatabase size={16} color={isDark ? '#909296' : '#868e96'} />
         });
     }
     if (config.from_dataset !== undefined) {
         items.push({
             label: 'Von Dataset',
-            value: <Badge variant="light" color="blue">#{config.from_dataset}</Badge>,
-            icon: <IconDatabase size={14} />
+            value: (
+                <Badge 
+                    component={Link} 
+                    to={`/datasets/${config.from_dataset}`}
+                    variant="light" 
+                    color="blue" 
+                    style={{ cursor: 'pointer' }}
+                >
+                    #{config.from_dataset}
+                </Badge>
+            ),
+            icon: <IconDatabase size={16} color={isDark ? '#909296' : '#868e96'} />
         });
     }
     if (config.n_target !== undefined) {
         items.push({
             label: 'Zielgröße',
-            value: <Text fw={500}>{config.n_target.toLocaleString('de-DE')}</Text>,
-            icon: <IconTarget size={14} />
+            value: (
+                <Group gap={4}>
+                    <IconTarget size={16} color={isDark ? '#909296' : '#868e96'} />
+                    <Text fw={600} size="lg">{config.n_target.toLocaleString('de-DE')}</Text>
+                </Group>
+            ),
+            icon: null
         });
     }
     if (config.n !== undefined) {
         items.push({
             label: 'Stichprobengröße',
-            value: <Text fw={500}>{config.n.toLocaleString('de-DE')}</Text>,
-            icon: <IconUsers size={14} />
+            value: (
+                <Group gap={4}>
+                    <IconUsers size={16} color={isDark ? '#909296' : '#868e96'} />
+                    <Text fw={600} size="lg">{config.n.toLocaleString('de-DE')}</Text>
+                </Group>
+            ),
+            icon: null
         });
     }
     if (config.axes && Array.isArray(config.axes)) {
         items.push({
             label: 'Balancierungs-Achsen',
-            value: <Group gap={4}>{config.axes.map((a: string) => <Badge key={a} variant="light" color="teal" size="sm">{a}</Badge>)}</Group>,
-            icon: <IconSitemap size={14} />
+            value: (
+                <Group gap={4}>
+                    <IconSitemap size={16} color={isDark ? '#909296' : '#868e96'} />
+                    <Group gap={4} wrap="wrap">{config.axes.map((a: string) => <Badge key={a} variant="light" color="teal" size="sm">{a}</Badge>)}</Group>
+                </Group>
+            ),
+            icon: null
         });
     }
     if (config.method) {
         items.push({
             label: 'Methode',
-            value: <Badge variant="outline" color="gray">{config.method}</Badge>,
-            icon: <IconCpu size={14} />
+            value: (
+                <Group gap={4}>
+                    <IconCpu size={16} color={isDark ? '#909296' : '#868e96'} />
+                    <Badge variant="outline" color="gray">{config.method}</Badge>
+                </Group>
+            ),
+            icon: null
         });
     }
     if (config.strategy) {
         items.push({
             label: 'Strategie',
-            value: <Badge variant="outline" color="gray">{config.strategy}</Badge>,
-            icon: <IconArrowsShuffle size={14} />
+            value: (
+                <Group gap={4}>
+                    <IconArrowsShuffle size={16} color={isDark ? '#909296' : '#868e96'} />
+                    <Badge variant="outline" color="gray">{config.strategy}</Badge>
+                </Group>
+            ),
+            icon: null
         });
     }
 
@@ -104,17 +159,16 @@ function ConfigDisplay({ config, isDark }: { config: Record<string, any>; isDark
     }
 
     return (
-        <Group gap="lg" wrap="wrap">
+        <Grid gutter="xl">
             {items.map((item, i) => (
-                <div key={i}>
-                    <Group gap={4} mb={2}>
-                        <span style={{ color: isDark ? '#909296' : '#868e96' }}>{item.icon}</span>
-                        <Text size="xs" c="dimmed">{item.label}</Text>
-                    </Group>
-                    {item.value}
-                </div>
+                <Grid.Col key={i} span={{ base: 6, sm: 4, md: 2 }}>
+                    <div>
+                        <Text size="xs" c="dimmed" mb={4}>{item.label}</Text>
+                        {item.value}
+                    </div>
+                </Grid.Col>
             ))}
-        </Group>
+        </Grid>
     );
 }
 
@@ -174,13 +228,60 @@ export function DatasetDetailPage() {
     }, [benchStatus.data?.status]);
 
     const gender = data?.attributes?.gender ?? [];
-    const religion = data?.attributes?.religion ?? [];
+    const religionRaw = data?.attributes?.religion ?? [];
     const sexuality = data?.attributes?.sexuality ?? [];
-    const education = data?.attributes?.education ?? [];
+    const educationRaw = data?.attributes?.education ?? [];
     const marriage = data?.attributes?.marriage_status ?? [];
     const migrationRaw = data?.attributes?.migration_status ?? [];
     const originRegion = data?.attributes?.origin_region ?? [];
     const originCountry = data?.attributes?.origin_country ?? [];
+
+    // Translation maps
+    const religionLabels: Record<string, string> = {
+        'Christians': 'Christen',
+        'Muslims': 'Muslime',
+        'Jews': 'Juden',
+        'Buddhists': 'Buddhisten',
+        'Hindus': 'Hindus',
+        'Other_religions': 'Andere<br>Religionen',
+        'other_religions': 'Andere<br>Religionen',
+        'Religiously_unaffiliated': 'Konfessionslos',
+        'not_unaffiliated': 'Konfessionslos',
+    };
+
+    const educationLabels: Record<string, string> = {
+        // Original API labels -> Kurzform mit Zeilenumbrüchen für Plotly
+        'Fachschul- oder Hochschulreife': 'Fachschul-/<br>Hochschulreife',
+        'Fachhochschul- oder Hochschulreife': 'Fachhochschul-/<br>Hochschulreife',
+        'Haupt- (Volks-)schulabschluss': 'Haupt-/<br>Volksschule',
+        'Realschule oder gleichwertiger Abschluss': 'Realschule/<br>gleichwertig',
+        'Fach-/Hochschul- oder Hochschulreife': 'Abitur/<br>Fachabitur',
+        'Haupt- oder gleichwertiger Abschluss': 'Hauptschule/<br>gleichwertig',
+        'Real- oder gleichwertiger Abschluss': 'Realschule/<br>gleichwertig',
+        'Realschul- oder gleichwertiger Abschluss': 'Realschule/<br>gleichwertig',
+        'Abschluss der polytechnischen Oberschule': 'Polytechn.<br>Oberschule',
+        'Ohne allgemeinen Schulabschluss': 'Ohne<br>Abschluss',
+        'Noch in schulischer Ausbildung': 'In Ausbildung',
+        // Fallback labels
+        'Hochschulreife': 'Abitur',
+        'Realschulabschluss': 'Realschule',
+        'Berufsqualifizierender Abschluss': 'Berufsqualif.',
+        'Hauptschulabschluss': 'Hauptschule',
+        'ohne Oberschulabschluss': 'Ohne Abschluss',
+        'noch in Ausbildung': 'In Ausbildung',
+        'Unknown': 'Unbekannt',
+    };
+
+    // Transform labels
+    const religion = religionRaw.map(r => ({
+        ...r,
+        value: religionLabels[r.value] ?? r.value
+    }));
+
+    const education = educationRaw.map(e => ({
+        ...e,
+        value: educationLabels[e.value] ?? e.value
+    }));
 
     // Transform migration labels to be more readable
     const migration = migrationRaw.map(m => ({
@@ -213,17 +314,17 @@ export function DatasetDetailPage() {
     const genderTotal = gender.reduce((sum, g) => sum + g.count, 0);
     const genderPcts = gender.map(g => ({ ...g, pct: genderTotal > 0 ? (g.count / genderTotal * 100).toFixed(1) : '0' }));
 
-    // Age pyramid setup: male negative on X, female positive
+    // Age distribution: stacked horizontal bar chart showing all genders proportionally
     const ageBins = data?.age?.bins ?? [];
-    const male = (data?.age?.male ?? []).map((v) => -v);
+    const male = data?.age?.male ?? [];
     const female = data?.age?.female ?? [];
     const other = data?.age?.other ?? [];
     const traces: Partial<Plotly.Data>[] = [
-        { name: 'Male', type: 'bar', x: male, y: ageBins, orientation: 'h' },
-        { name: 'Female', type: 'bar', x: female, y: ageBins, orientation: 'h' },
+        { name: 'Männlich', type: 'bar', x: male, y: ageBins, orientation: 'h', marker: { color: '#228be6' } },
+        { name: 'Weiblich', type: 'bar', x: female, y: ageBins, orientation: 'h', marker: { color: '#fa5252' } },
     ];
     if (other.some((v) => v > 0)) {
-        traces.push({ name: 'Other', type: 'bar', x: other, y: ageBins, orientation: 'h' });
+        traces.push({ name: 'Divers', type: 'bar', x: other, y: ageBins, orientation: 'h', marker: { color: '#40c057' } });
     }
 
     // tables moved into components
@@ -272,62 +373,72 @@ export function DatasetDetailPage() {
                         borderColor: isDark ? 'rgba(34, 139, 230, 0.3)' : 'rgba(34, 139, 230, 0.2)'
                     }}
                 >
-                    <Group gap="xl" wrap="wrap">
+                    <Grid gutter="xl">
                         {/* Art */}
-                        <div>
-                            <Text size="xs" c="dimmed" mb={4}>Art</Text>
-                            {getKindBadge(dataset_info.kind)}
-                        </div>
+                        <Grid.Col span={{ base: 6, sm: 4, md: 2 }}>
+                            <div>
+                                <Text size="xs" c="dimmed" mb={4}>Art</Text>
+                                {getKindBadge(dataset_info.kind)}
+                            </div>
+                        </Grid.Col>
                         
                         {/* Größe */}
-                        <div>
-                            <Text size="xs" c="dimmed" mb={4}>Größe</Text>
-                            <Group gap={4}>
-                                <IconUsers size={16} color={isDark ? '#909296' : '#868e96'} />
-                                <Text fw={600} size="lg">{dataset_info.size?.toLocaleString('de-DE')}</Text>
-                            </Group>
-                        </div>
+                        <Grid.Col span={{ base: 6, sm: 4, md: 2 }}>
+                            <div>
+                                <Text size="xs" c="dimmed" mb={4}>Größe</Text>
+                                <Group gap={4}>
+                                    <IconUsers size={16} color={isDark ? '#909296' : '#868e96'} />
+                                    <Text fw={600} size="lg">{dataset_info.size?.toLocaleString('de-DE')}</Text>
+                                </Group>
+                            </div>
+                        </Grid.Col>
                         
                         {/* Erstellt */}
                         {dataset_info.created_at && (
-                            <div>
-                                <Text size="xs" c="dimmed" mb={4}>Erstellt</Text>
-                                <Group gap={4}>
-                                    <IconCalendar size={16} color={isDark ? '#909296' : '#868e96'} />
-                                    <Text fw={500}>{formatDate(dataset_info.created_at)}</Text>
-                                </Group>
-                            </div>
+                            <Grid.Col span={{ base: 6, sm: 4, md: 2 }}>
+                                <div>
+                                    <Text size="xs" c="dimmed" mb={4}>Erstellt</Text>
+                                    <Group gap={4}>
+                                        <IconCalendar size={16} color={isDark ? '#909296' : '#868e96'} />
+                                        <Text fw={500}>{formatDate(dataset_info.created_at)}</Text>
+                                    </Group>
+                                </div>
+                            </Grid.Col>
                         )}
                         
                         {/* Seed */}
                         {dataset_info.seed && (
-                            <div>
-                                <Text size="xs" c="dimmed" mb={4}>Seed</Text>
-                                <Badge variant="light" color="gray" size="lg">{dataset_info.seed}</Badge>
-                            </div>
+                            <Grid.Col span={{ base: 6, sm: 4, md: 2 }}>
+                                <div>
+                                    <Text size="xs" c="dimmed" mb={4}>Seed</Text>
+                                    <Badge variant="light" color="gray" size="lg">{dataset_info.seed}</Badge>
+                                </div>
+                            </Grid.Col>
                         )}
                         
                         {/* Personas Link */}
-                        <div>
-                            <Text size="xs" c="dimmed" mb={4}>Personas</Text>
-                            <Button 
-                                component={Link} 
-                                to={`/datasets/${datasetId}/personas`}
-                                variant="light"
-                                size="xs"
-                                leftSection={<IconUsers size={14} />}
-                            >
-                                Anzeigen
-                            </Button>
-                        </div>
-                    </Group>
+                        <Grid.Col span={{ base: 6, sm: 4, md: 2 }}>
+                            <div>
+                                <Text size="xs" c="dimmed" mb={4}>Personas</Text>
+                                <Button 
+                                    component={Link} 
+                                    to={`/datasets/${datasetId}/personas`}
+                                    variant="light"
+                                    size="xs"
+                                    leftSection={<IconUsers size={14} />}
+                                >
+                                    Anzeigen
+                                </Button>
+                            </div>
+                        </Grid.Col>
+                    </Grid>
                     
                     {/* Config - schöne Darstellung */}
                     {dataset_info.config_json && Object.keys(dataset_info.config_json).length > 0 && (
-                        <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}` }}>
-                            <Group gap={4} mb="sm">
-                                <IconSettings size={14} color={isDark ? '#909296' : '#868e96'} />
-                                <Text size="xs" c="dimmed">Konfiguration</Text>
+                        <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}` }}>
+                            <Group gap="xs" mb="md">
+                                <IconSettings size={16} color={isDark ? '#909296' : '#868e96'} />
+                                <Text size="sm" fw={500} c="dimmed">Konfiguration</Text>
                             </Group>
                             <ConfigDisplay config={dataset_info.config_json} isDark={isDark} />
                         </div>
@@ -513,32 +624,51 @@ export function DatasetDetailPage() {
                             <Title order={4}>Übersicht</Title>
                             <Badge variant="light" color="teal" size="sm">n={totalPersonas.toLocaleString('de-DE')}</Badge>
                         </Group>
-                        <Grid>
+                        <Grid justify="center">
                             <Grid.Col span={{ base: 6, sm: 4, md: 2 }}>
-                                <Card withBorder padding="sm" style={{ background: isDark ? 'rgba(34, 139, 230, 0.08)' : 'rgba(34, 139, 230, 0.05)', textAlign: 'center' }}>
-                                    <IconUsers size={24} color="#228be6" style={{ marginBottom: 4 }} />
-                                    <Text size="xl" fw={700}>{totalPersonas.toLocaleString('de-DE')}</Text>
-                                    <Text size="xs" c="dimmed">Personas</Text>
+                                <Card withBorder padding="sm" style={{ background: isDark ? 'rgba(34, 139, 230, 0.08)' : 'rgba(34, 139, 230, 0.05)' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+                                        <IconUsers size={24} color="#228be6" style={{ marginBottom: 4 }} />
+                                        <Text size="xl" fw={700}>{totalPersonas.toLocaleString('de-DE')}</Text>
+                                        <Text size="xs" c="dimmed">Personas</Text>
+                                    </div>
                                 </Card>
                             </Grid.Col>
                             {avgAge && (
                                 <Grid.Col span={{ base: 6, sm: 4, md: 2 }}>
-                                    <Card withBorder padding="sm" style={{ background: isDark ? 'rgba(250, 82, 82, 0.08)' : 'rgba(250, 82, 82, 0.05)', textAlign: 'center' }}>
-                                        <IconCalendar size={24} color="#fa5252" style={{ marginBottom: 4 }} />
-                                        <Text size="xl" fw={700}>{avgAge}</Text>
-                                        <Text size="xs" c="dimmed">Ø Alter</Text>
+                                    <Card withBorder padding="sm" style={{ background: isDark ? 'rgba(250, 82, 82, 0.08)' : 'rgba(250, 82, 82, 0.05)' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+                                            <IconCalendar size={24} color="#fa5252" style={{ marginBottom: 4 }} />
+                                            <Text size="xl" fw={700}>{avgAge}</Text>
+                                            <Text size="xs" c="dimmed">Ø Alter</Text>
+                                        </div>
                                     </Card>
                                 </Grid.Col>
                             )}
-                            {genderPcts.map((g, i) => (
-                                <Grid.Col key={g.value} span={{ base: 6, sm: 4, md: 2 }}>
-                                    <Card withBorder padding="sm" style={{ background: isDark ? 'rgba(64, 192, 87, 0.08)' : 'rgba(64, 192, 87, 0.05)', textAlign: 'center' }}>
-                                        <IconGenderBigender size={24} color={CHART_COLORS.gender[i] || '#40c057'} style={{ marginBottom: 4 }} />
-                                        <Text size="xl" fw={700}>{g.pct}%</Text>
-                                        <Text size="xs" c="dimmed">{g.value}</Text>
-                                    </Card>
-                                </Grid.Col>
-                            ))}
+                            {genderPcts.map((g, i) => {
+                                // Determine icon and label based on gender value
+                                const genderValue = g.value.toLowerCase();
+                                let GenderIcon = IconGenderBigender;
+                                let label = 'Anteil Divers';
+                                if (genderValue === 'male' || genderValue === 'männlich') {
+                                    GenderIcon = IconGenderMale;
+                                    label = 'Anteil Männer';
+                                } else if (genderValue === 'female' || genderValue === 'weiblich') {
+                                    GenderIcon = IconGenderFemale;
+                                    label = 'Anteil Frauen';
+                                }
+                                return (
+                                    <Grid.Col key={g.value} span={{ base: 6, sm: 4, md: 2 }}>
+                                        <Card withBorder padding="sm" style={{ background: isDark ? 'rgba(64, 192, 87, 0.08)' : 'rgba(64, 192, 87, 0.05)' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+                                                <GenderIcon size={24} color={CHART_COLORS.gender[i] || '#40c057'} style={{ marginBottom: 4 }} />
+                                                <Text size="xl" fw={700}>{g.pct}%</Text>
+                                                <Text size="xs" c="dimmed">{label}</Text>
+                                            </div>
+                                        </Card>
+                                    </Grid.Col>
+                                );
+                            })}
                         </Grid>
                     </Card>
 
@@ -578,13 +708,13 @@ export function DatasetDetailPage() {
                             {/* Rechte Spalte: Alterspyramide */}
                             <Grid.Col span={{ base: 12, lg: 7 }}>
                                 <ChartPanel 
-                                    title="Alterspyramide" 
+                                    title="Altersverteilung" 
                                     data={traces} 
                                     layout={{ 
-                                        barmode: 'relative', 
+                                        barmode: 'stack', 
                                         xaxis: { title: { text: 'Anzahl' }, tickformat: '', separatethousands: true }, 
                                         yaxis: { title: { text: 'Alter' } },
-                                        bargap: 0.05,
+                                        bargap: 0.1,
                                         legend: { orientation: 'h', y: 1.1 },
                                     }} 
                                     height={500}
@@ -634,7 +764,8 @@ export function DatasetDetailPage() {
                             <ChartPanel 
                                 title="Herkunftsländer (Top 15)" 
                                 data={toBar(originCountry.slice(0, 15), { horizontal: true, color: '#15aabf' })} 
-                                height={Math.max(280, originCountry.slice(0, 15).length * 26)}
+                                layout={{ margin: { l: 100 } }}
+                                height={Math.max(400, originCountry.slice(0, 15).length * 28)}
                             />
                         </div>
                     </Card>
@@ -650,14 +781,24 @@ export function DatasetDetailPage() {
                                 <ChartPanel 
                                     title="Bildungsabschluss" 
                                     data={toBar(education, { horizontal: true, color: '#12b886' })} 
-                                    height={Math.max(250, education.length * 35)}
+                                    layout={{ 
+                                        margin: { l: 180 },
+                                        yaxis: { dtick: 1 },
+                                        bargap: 0.3
+                                    }}
+                                    height={Math.max(320, education.length * 60)}
                                 />
                             </Grid.Col>
                             <Grid.Col span={{ base: 12, md: 6 }}>
                                 <ChartPanel 
                                     title="Religion" 
                                     data={toBar(religion, { horizontal: true, color: '#fab005' })} 
-                                    height={Math.max(250, religion.length * 35)}
+                                    layout={{ 
+                                        margin: { l: 160 },
+                                        yaxis: { dtick: 1 },
+                                        bargap: 0.3
+                                    }}
+                                    height={Math.max(320, religion.length * 60)}
                                 />
                             </Grid.Col>
                         </Grid>

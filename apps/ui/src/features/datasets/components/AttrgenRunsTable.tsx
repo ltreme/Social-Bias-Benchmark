@@ -1,4 +1,4 @@
-import { Group, ActionIcon, Badge, Progress } from '@mantine/core';
+import { Group, ActionIcon, Badge } from '@mantine/core';
 import { Link } from '@tanstack/react-router';
 import { DataTable } from '../../../components/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -39,12 +39,9 @@ export function AttrgenRunsTable({ datasetId, runs, onRequestBenchmark }: Props)
         
         // Running or other active states
         return (
-          <div style={{ minWidth: 140 }}>
-            <Badge leftSection={<IconLoader size={12} className="spin" />} variant="light" color="blue" mb={4}>
-              {r.done ?? 0}/{r.total ?? 0}
-            </Badge>
-            <Progress value={r.pct ?? 0} size="sm" color="blue" />
-          </div>
+          <Badge leftSection={<IconLoader size={12} className="spin" />} variant="light" color="blue">
+            {r.done ?? 0}/{r.total ?? 0}
+          </Badge>
         );
       },
     },
