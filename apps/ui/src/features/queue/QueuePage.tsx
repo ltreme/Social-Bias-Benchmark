@@ -1,5 +1,5 @@
-import { ActionIcon, Badge, Button, Card, Group, Menu, Progress, Stack, Text, Title, Tooltip } from '@mantine/core';
-import { IconPlayerPause, IconPlayerPlay, IconPlayerStop, IconTrash, IconX, IconRefresh, IconRefreshAlert, IconUsers, IconChartBar, IconDatabase } from '@tabler/icons-react';
+import { ActionIcon, Badge, Button, Card, Group, Menu, Progress, RingProgress, Stack, Text, Title, Tooltip, useComputedColorScheme } from '@mantine/core';
+import { IconPlayerPause, IconPlayerPlay, IconPlayerStop, IconTrash, IconX, IconRefresh, IconRefreshAlert, IconUsers, IconChartBar, IconDatabase, IconListCheck, IconClock, IconCheck, IconAlertTriangle, IconBan, IconHourglass, IconRocket } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import { useCancelTask, usePauseQueue, useQueueStats, useQueueTasks, useRemoveTask, useResumeQueue, useRetryTask, useStartQueue, useStopQueue } from './hooks';
 import type { QueueTask, TaskStatus } from './api';
@@ -72,6 +72,19 @@ function formatSmartDate(dateString: string): string {
   }
 }
 
+function getStatusIcon(status: TaskStatus) {
+  switch (status) {
+    case 'queued': return <IconHourglass size={14} />;
+    case 'waiting': return <IconClock size={14} />;
+    case 'running': return <IconRocket size={14} />;
+    case 'done': return <IconCheck size={14} />;
+    case 'failed': return <IconAlertTriangle size={14} />;
+    case 'cancelled': return <IconBan size={14} />;
+    case 'skipped': return <IconBan size={14} />;
+    default: return null;
+  }
+}
+
 function getTaskIcon(type: string) {
   switch (type) {
     case 'attrgen': return <IconUsers size={14} />;
@@ -96,31 +109,116 @@ function TaskCard({ task }: { task: QueueTask }) {
   const removeTask = useRemoveTask();
   const cancelTask = useCancelTask();
   const retryTask = useRetryTask();
+  const colorScheme = useComputedColorScheme('light');
+  const isDark = colorScheme === 'dark';
   
   const taskColor = getTaskColor(task.task_type);
+  const statusColor = getStatusColor(task.status);
   
   const canRemove = task.status === 'queued' || task.status === 'waiting';
   const canCancel = task.status === 'queued' || task.status === 'waiting' || task.status === 'running';
   const canRetry = task.status === 'failed' || task.status === 'cancelled';
   
+  // Background colors based on status
+  const getCardBackground = () => {
+    if (task.status === 'running') {
+      return isDark ? 'rgba(34, 197, 94, 0.08)' : 'rgba(34, 197, 94, 0.04)';
+    }
+    if (task.status === 'failed') {
+      return isDark ? 'rgba(239, 68, 68, 0.08)' : 'rgba(239, 68, 68, 0.04)';
+    }
+    return undefined;
+  };
+  
   return (
-    <Card withBorder padding="md" style={{ position: 'relative', borderLeft: `4px solid var(--mantine-color-${taskColor}-6)` }}>
-      <Group justify="space-between" mb="xs">
-        <Group gap="sm">
-          <Badge color={getStatusColor(task.status)} variant="filled">
+    <Card 
+      withBorder 
+      padding="md" 
+      style={{ 
+        position: 'relative', 
+        borderLeft: `4px solid var(--mantine-color-${statusColor}-6)`,
+        background: getCardBackground(),
+      }}
+    >
+      {/* Main row with grid layout */}
+      <Group justify="space-between" wrap="nowrap" gap="xl">
+        {/* Left section: Status + ID + Type */}
+        <Group gap="md" wrap="nowrap" style={{ minWidth: 200 }}>
+          <Badge 
+            color={statusColor} 
+            variant="filled" 
+            size="sm"
+            leftSection={getStatusIcon(task.status)}
+          >
             {getStatusLabel(task.status)}
           </Badge>
-          <Text size="sm" c="dimmed">#{task.id}</Text>
+          <Text size="sm" c="dimmed" fw={500}>#{task.id}</Text>
+          <Badge color={taskColor} variant="light" size="sm" leftSection={getTaskIcon(task.task_type)}>
+            {task.task_type.toUpperCase()}
+          </Badge>
         </Group>
         
-        <Group gap="xs">
+        {/* Center section: Task label/description - takes up remaining space */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Text size="sm" fw={600} truncate>
+            {task.label || `Task #${task.id}`}
+          </Text>
+          {task.depends_on && (
+            <Text size="xs" c="dimmed">
+              🔗 Abhängig von Task #{task.depends_on}
+            </Text>
+          )}
+        </div>
+        
+        {/* Right section: Result link (for completed tasks) */}
+        <div style={{ minWidth: 180, textAlign: 'center' }}>
+          {task.status === 'done' && task.result_run_id ? (
+            task.result_run_type === 'benchmark' ? (
+              <Link to="/runs/$runId" params={{ runId: String(task.result_run_id) }}>
+                <Badge variant="light" color="blue" size="sm" style={{ cursor: 'pointer' }}>
+                  → Run #{task.result_run_id}
+                </Badge>
+              </Link>
+            ) : (
+              <Badge variant="light" color="gray" size="sm">
+                {task.result_run_type?.toUpperCase()} #{task.result_run_id}
+              </Badge>
+            )
+          ) : task.error ? (
+            <Tooltip label={task.error} multiline w={300}>
+              <Badge variant="light" color="red" size="sm" style={{ cursor: 'help' }}>
+                Fehler
+              </Badge>
+            </Tooltip>
+          ) : null}
+        </div>
+        
+        {/* Time section */}
+        <Stack gap={2} style={{ minWidth: 140 }} align="flex-end">
+          {task.started_at && (
+            <Text size="xs" c="dimmed">
+              {formatSmartDate(task.started_at)}
+            </Text>
+          )}
+          {task.finished_at && (
+            <Group gap={4}>
+              <IconClock size={12} color={isDark ? '#909296' : '#868e96'} />
+              <Text size="xs" c="dimmed">
+                {formatDuration(task.started_at, task.finished_at)}
+              </Text>
+            </Group>
+          )}
+        </Stack>
+        
+        {/* Actions section */}
+        <Group gap="xs" wrap="nowrap" style={{ minWidth: 90 }} justify="flex-end">
           {canRetry && (
             <Menu withinPortal position="bottom-end">
               <Menu.Target>
                 <Tooltip label="Task wiederholen">
                   <ActionIcon
                     color="blue"
-                    variant="subtle"
+                    variant="light"
                     loading={retryTask.isPending}
                   >
                     <IconRefresh size={18} />
@@ -149,7 +247,7 @@ function TaskCard({ task }: { task: QueueTask }) {
             <Tooltip label="Task abbrechen">
               <ActionIcon
                 color="orange"
-                variant="subtle"
+                variant="light"
                 onClick={() => cancelTask.mutate(task.id)}
                 loading={cancelTask.isPending}
               >
@@ -161,7 +259,7 @@ function TaskCard({ task }: { task: QueueTask }) {
             <Tooltip label="Task entfernen">
               <ActionIcon
                 color="red"
-                variant="subtle"
+                variant="light"
                 onClick={() => removeTask.mutate(task.id)}
                 loading={removeTask.isPending}
               >
@@ -169,77 +267,33 @@ function TaskCard({ task }: { task: QueueTask }) {
               </ActionIcon>
             </Tooltip>
           )}
+          {/* Empty placeholder for completed tasks without actions */}
+          {!canRetry && !canCancel && !canRemove && (
+            <div style={{ width: 32 }} />
+          )}
         </Group>
       </Group>
       
-      <Stack gap="xs">
-        <Group gap="sm">
-          <Badge color={taskColor} variant="light" size="sm" leftSection={getTaskIcon(task.task_type)}>
-            {task.task_type}
-          </Badge>
-          <Text size="sm" fw={500}>{task.label || `Task #${task.id}`}</Text>
-        </Group>
-        
-        {task.depends_on && (
-          <Text size="xs" c="dimmed">
-            🔗 Abhängig von Task #{task.depends_on}
-          </Text>
-        )}
-        
-        {task.status === 'running' && task.progress && (
-          <Stack gap={4}>
-            <Group justify="space-between">
-              <Text size="xs" c="dimmed">
-                Fortschritt: {task.progress.done.toLocaleString()} / {task.progress.total.toLocaleString()}
-              </Text>
-              <Text size="xs" fw={500}>
-                {task.progress.percent}%
-              </Text>
-            </Group>
-            <Progress value={task.progress.percent} size="sm" animated />
-          </Stack>
-        )}
-        
-        {task.status === 'running' && !task.progress && (
-          <Progress value={100} size="sm" animated striped />
-        )}
-        
-        {task.error && (
-          <Text size="xs" c="red" style={{ fontFamily: 'monospace' }}>
-            {task.error.length > 100 ? task.error.substring(0, 100) + '...' : task.error}
-          </Text>
-        )}
-        
-        {task.status === 'done' && task.result_run_id && (
-          <Group gap="xs">
-            <Text size="xs" c="dimmed">Ergebnis:</Text>
-            {task.result_run_type === 'benchmark' ? (
-              <Link to="/runs/$runId" params={{ runId: String(task.result_run_id) }}>
-                <Text size="xs" c="blue" td="underline">
-                  Benchmark Run #{task.result_run_id}
+      {/* Progress bar for running tasks - full width below */}
+      {task.status === 'running' && (
+        <div style={{ marginTop: 12 }}>
+          {task.progress ? (
+            <Stack gap={4}>
+              <Group justify="space-between">
+                <Text size="xs" c="dimmed">
+                  {task.progress.done.toLocaleString()} / {task.progress.total.toLocaleString()}
                 </Text>
-              </Link>
-            ) : (
-              <Text size="xs">
-                {task.result_run_type?.toUpperCase()} Run #{task.result_run_id}
-              </Text>
-            )}
-          </Group>
-        )}
-        
-        <Group gap="md">
-          {task.started_at && (
-            <Text size="xs" c="dimmed">
-              Gestartet: {formatSmartDate(task.started_at)}
-            </Text>
+                <Text size="xs" fw={600} c="green">
+                  {task.progress.percent}%
+                </Text>
+              </Group>
+              <Progress value={task.progress.percent} size="sm" animated color="green" radius="xl" />
+            </Stack>
+          ) : (
+            <Progress value={100} size="sm" animated striped color="green" radius="xl" />
           )}
-          {task.finished_at && (
-            <Text size="xs" c="dimmed">
-              Dauer: {formatDuration(task.started_at, task.finished_at)}
-            </Text>
-          )}
-        </Group>
-      </Stack>
+        </div>
+      )}
     </Card>
   );
 }
@@ -247,6 +301,8 @@ function TaskCard({ task }: { task: QueueTask }) {
 export function QueuePage() {
   const { data: tasks = [], isLoading } = useQueueTasks(true, 50);
   const { data: stats } = useQueueStats();
+  const colorScheme = useComputedColorScheme('light');
+  const isDark = colorScheme === 'dark';
   
   const startQueue = useStartQueue();
   const pauseQueue = usePauseQueue();
@@ -256,11 +312,19 @@ export function QueuePage() {
   const activeTasks = tasks.filter(t => !['done', 'failed', 'cancelled', 'skipped'].includes(t.status));
   const completedTasks = tasks.filter(t => ['done', 'failed', 'cancelled', 'skipped'].includes(t.status));
   
+  // Calculate completion percentage
+  const completionPercent = stats && stats.total > 0 
+    ? Math.round((stats.done / stats.total) * 100) 
+    : 0;
+  
   return (
     <Stack gap="md">
       <Card>
-        <Group justify="space-between" mb="md">
-          <Title order={2}>Task Queue</Title>
+        <Group justify="space-between" mb="lg">
+          <Group gap="sm">
+            <IconListCheck size={28} color="#12b886" />
+            <Title order={2}>Task Queue</Title>
+          </Group>
           
           <Group gap="sm">
             {stats?.executor_running ? (
@@ -271,6 +335,7 @@ export function QueuePage() {
                     onClick={() => resumeQueue.mutate()}
                     loading={resumeQueue.isPending}
                     color="green"
+                    variant="filled"
                   >
                     Fortsetzen
                   </Button>
@@ -280,6 +345,7 @@ export function QueuePage() {
                     onClick={() => pauseQueue.mutate()}
                     loading={pauseQueue.isPending}
                     color="orange"
+                    variant="filled"
                   >
                     Pausieren
                   </Button>
@@ -300,6 +366,7 @@ export function QueuePage() {
                 onClick={() => startQueue.mutate()}
                 loading={startQueue.isPending}
                 color="green"
+                size="md"
               >
                 Queue starten
               </Button>
@@ -308,27 +375,85 @@ export function QueuePage() {
         </Group>
         
         {stats && (
-          <Group gap="md">
-            <Badge color="blue" variant="light">Queued: {stats.queued}</Badge>
-            <Badge color="yellow" variant="light">Waiting: {stats.waiting}</Badge>
-            <Badge color="green" variant="light">Running: {stats.running}</Badge>
-            <Badge color="teal" variant="light">Done: {stats.done}</Badge>
-            <Badge color="red" variant="light">Failed: {stats.failed}</Badge>
-            <Badge color="gray" variant="light">Cancelled: {stats.cancelled}</Badge>
-            <Badge color="gray" variant="light">Total: {stats.total}</Badge>
+          <Group gap="lg" align="flex-start">
+            {/* Stats Badges */}
+            <Group gap="sm" style={{ flex: 1 }}>
+              <Tooltip label="In der Warteschlange" withArrow>
+                <Badge color="blue" variant="light" size="lg" leftSection={<IconHourglass size={14} />}>
+                  {stats.queued}
+                </Badge>
+              </Tooltip>
+              <Tooltip label="Warten auf Abhängigkeiten" withArrow>
+                <Badge color="yellow" variant="light" size="lg" leftSection={<IconClock size={14} />}>
+                  {stats.waiting}
+                </Badge>
+              </Tooltip>
+              <Tooltip label="Wird ausgeführt" withArrow>
+                <Badge color="green" variant="light" size="lg" leftSection={<IconRocket size={14} />}>
+                  {stats.running}
+                </Badge>
+              </Tooltip>
+              <Tooltip label="Erfolgreich abgeschlossen" withArrow>
+                <Badge color="teal" variant="light" size="lg" leftSection={<IconCheck size={14} />}>
+                  {stats.done}
+                </Badge>
+              </Tooltip>
+              <Tooltip label="Fehlgeschlagen" withArrow>
+                <Badge color="red" variant="light" size="lg" leftSection={<IconAlertTriangle size={14} />}>
+                  {stats.failed}
+                </Badge>
+              </Tooltip>
+              <Tooltip label="Abgebrochen" withArrow>
+                <Badge color="gray" variant="light" size="lg" leftSection={<IconBan size={14} />}>
+                  {stats.cancelled}
+                </Badge>
+              </Tooltip>
+            </Group>
+            
+            {/* Completion Ring */}
+            {stats.total > 0 && (
+              <Group gap="xs" align="center">
+                <RingProgress
+                  size={60}
+                  thickness={6}
+                  roundCaps
+                  sections={[
+                    { value: (stats.done / stats.total) * 100, color: 'teal' },
+                    { value: (stats.failed / stats.total) * 100, color: 'red' },
+                    { value: (stats.running / stats.total) * 100, color: 'green' },
+                  ]}
+                  label={
+                    <Text ta="center" size="xs" fw={700}>
+                      {completionPercent}%
+                    </Text>
+                  }
+                />
+                <Stack gap={0}>
+                  <Text size="xs" c="dimmed">Gesamt</Text>
+                  <Text fw={600}>{stats.total}</Text>
+                </Stack>
+              </Group>
+            )}
           </Group>
         )}
       </Card>
       
       {isLoading ? (
-        <Card withBorder padding="lg">
-          <Text c="dimmed">Lade Tasks...</Text>
+        <Card withBorder padding="xl">
+          <Stack align="center" gap="md">
+            <IconListCheck size={48} color={isDark ? '#5c5f66' : '#adb5bd'} />
+            <Text c="dimmed">Tasks werden geladen...</Text>
+          </Stack>
         </Card>
       ) : (
         <>
           {activeTasks.length > 0 && (
             <div>
-              <Title order={3} mb="sm">Aktive Tasks</Title>
+              <Group gap="sm" mb="sm">
+                <IconRocket size={20} color="#22c55e" />
+                <Title order={3}>Aktive Tasks</Title>
+                <Badge color="green" variant="light" size="sm">{activeTasks.length}</Badge>
+              </Group>
               <Stack gap="sm">
                 {activeTasks.map(task => (
                   <TaskCard key={task.id} task={task} />
@@ -339,7 +464,11 @@ export function QueuePage() {
           
           {completedTasks.length > 0 && (
             <div>
-              <Title order={3} mb="sm">Abgeschlossene Tasks</Title>
+              <Group gap="sm" mb="sm">
+                <IconCheck size={20} color="#14b8a6" />
+                <Title order={3}>Abgeschlossene Tasks</Title>
+                <Badge color="gray" variant="light" size="sm">{completedTasks.length}</Badge>
+              </Group>
               <Stack gap="sm">
                 {completedTasks.map(task => (
                   <TaskCard key={task.id} task={task} />
@@ -349,10 +478,16 @@ export function QueuePage() {
           )}
           
           {tasks.length === 0 && (
-            <Card withBorder padding="lg">
-              <Text c="dimmed" ta="center">
-                Keine Tasks in der Queue. Füge Tasks über die Benchmark- oder AttrGen-Modals hinzu.
-              </Text>
+            <Card withBorder padding="xl">
+              <Stack align="center" gap="md">
+                <IconListCheck size={48} color={isDark ? '#5c5f66' : '#adb5bd'} />
+                <Text c="dimmed" ta="center">
+                  Keine Tasks in der Queue.
+                </Text>
+                <Text c="dimmed" ta="center" size="sm">
+                  Füge Tasks über die Benchmark- oder AttrGen-Modals hinzu.
+                </Text>
+              </Stack>
             </Card>
           )}
         </>
