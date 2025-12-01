@@ -1,8 +1,8 @@
-import { Group, ActionIcon, Progress } from '@mantine/core';
+import { Group, ActionIcon, Badge, Progress } from '@mantine/core';
 import { Link } from '@tanstack/react-router';
 import { DataTable } from '../../../components/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
-import { IconPlayerPlay, IconUsers, IconTrash } from '@tabler/icons-react';
+import { IconPlayerPlay, IconUsers, IconTrash, IconCheck, IconX, IconLoader, IconClock } from '@tabler/icons-react';
 import type { AttrgenRun } from '../api';
 import { useDeleteAttrgenRun } from '../hooks';
 
@@ -16,40 +16,43 @@ export function AttrgenRunsTable({ datasetId, runs, onRequestBenchmark }: Props)
   const delAttrRun = useDeleteAttrgenRun(datasetId);
 
   const columns: ColumnDef<AttrgenRun>[] = [
-    { header: 'ID', accessorKey: 'id', cell: ({ row }) => <>#{row.original.id}</> },
+    { header: 'ID', accessorKey: 'id', cell: ({ row }) => <>#{row.original.id}</>, size: 60 },
     { header: 'Model', accessorKey: 'model_name', cell: ({ row }) => row.original.model_name || '' },
     {
       header: 'Status',
       accessorKey: 'status',
+      size: 140,
       cell: ({ row }) => {
         const r = row.original;
-        const isDone = r.status === 'done' || ((r.done ?? 0) > 0 && (r.total ?? 0) > 0 && r.done === r.total);
+        const stateRaw = (r.status || '').toLowerCase();
+        const isDone = stateRaw === 'done' || ((r.done ?? 0) > 0 && (r.total ?? 0) > 0 && r.done === r.total);
+        
+        if (stateRaw === 'failed') {
+          return <Badge leftSection={<IconX size={12} />} variant="light" color="red" title={r.error || ''}>Fehlgeschlagen</Badge>;
+        }
+        if (isDone) {
+          return <Badge leftSection={<IconCheck size={12} />} variant="light" color="green">Fertig</Badge>;
+        }
+        if (stateRaw === 'queued') {
+          return <Badge leftSection={<IconClock size={12} />} variant="light" color="yellow">Wartend</Badge>;
+        }
+        
+        // Running or other active states
         return (
-          <div style={{ minWidth: 180 }}>
-            {r.status === 'failed' ? (
-              <span style={{ color: '#d32f2f' }} title={r.error || ''}>
-                Fehlgeschlagen
-              </span>
-            ) : isDone ? (
-              <span style={{ color: '#2ca25f' }}>Fertig</span>
-            ) : (
-              <>
-                <span>
-                  {r.status} {r.done ?? 0}/{r.total ?? 0}
-                </span>
-                <div style={{ width: 140 }}>
-                  <Progress value={r.pct ?? 0} mt="xs" />
-                </div>
-              </>
-            )}
+          <div style={{ minWidth: 140 }}>
+            <Badge leftSection={<IconLoader size={12} className="spin" />} variant="light" color="blue" mb={4}>
+              {r.done ?? 0}/{r.total ?? 0}
+            </Badge>
+            <Progress value={r.pct ?? 0} size="sm" color="blue" />
           </div>
         );
       },
     },
-    { header: 'Erstellt', accessorKey: 'created_at', cell: ({ row }) => (row.original.created_at ? new Date(row.original.created_at).toLocaleString() : '') },
+    { header: 'Erstellt', accessorKey: 'created_at', size: 160, cell: ({ row }) => (row.original.created_at ? new Date(row.original.created_at).toLocaleString() : '') },
     {
       header: 'Aktionen',
       accessorKey: 'actions',
+      size: 120,
       cell: ({ row }) => {
         const r = row.original;
         const isDone = r.status === 'done' || ((r.done ?? 0) > 0 && (r.total ?? 0) > 0 && r.done === r.total);

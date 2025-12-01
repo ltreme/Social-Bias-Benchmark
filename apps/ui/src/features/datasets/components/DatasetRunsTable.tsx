@@ -1,11 +1,11 @@
-import { ActionIcon, Group, Popover, Progress, Text, Tooltip } from '@mantine/core';
+import { ActionIcon, Badge, Group, Popover, Progress, Text, Tooltip } from '@mantine/core';
 import { Link } from '@tanstack/react-router';
 import { DataTable } from '../../../components/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { Run } from '../api';
 import { useDeleteRun } from '../../runs/hooks';
 import { useQueryClient } from '@tanstack/react-query';
-import { IconExternalLink, IconMessage, IconMessageCog, IconTrash } from '@tabler/icons-react';
+import { IconExternalLink, IconMessage, IconMessageCog, IconTrash, IconCheck, IconX, IconPlayerStop, IconLoader, IconClock } from '@tabler/icons-react';
 
 type Props = {
   datasetId: number;
@@ -17,11 +17,12 @@ export function DatasetRunsTable({ datasetId, runs }: Props) {
   const qc = useQueryClient();
 
   const columns: ColumnDef<Run>[] = [
-    { header: 'ID', accessorKey: 'id', cell: ({ row }) => <>#{row.original.id}</> },
+    { header: 'ID', accessorKey: 'id', size: 60, cell: ({ row }) => <>#{row.original.id}</> },
     { header: 'Model', accessorKey: 'model_name' },
     {
       header: 'Optionen',
       accessorKey: 'options',
+      size: 80,
       cell: ({ row }) => (
         <Group gap={6} wrap="nowrap">
           {row.original.include_rationale && (
@@ -47,37 +48,44 @@ export function DatasetRunsTable({ datasetId, runs }: Props) {
         </Group>
       ),
     },
-    { header: 'Erstellt', accessorKey: 'created_at', cell: ({ row }) => (row.original.created_at ? new Date(row.original.created_at).toLocaleString() : '') },
     {
       header: 'Status',
       accessorKey: 'status',
+      size: 140,
       cell: ({ row }) => {
         const r = row.original;
         const stateRaw = (r.status || 'done').toLowerCase();
         const isDone = ['done', 'failed', 'cancelled'].includes(stateRaw);
+        
+        if (stateRaw === 'done') {
+          return <Badge leftSection={<IconCheck size={12} />} variant="light" color="green">Fertig</Badge>;
+        }
+        if (stateRaw === 'failed') {
+          return <Badge leftSection={<IconX size={12} />} variant="light" color="red">Fehlgeschlagen</Badge>;
+        }
+        if (stateRaw === 'cancelled') {
+          return <Badge leftSection={<IconPlayerStop size={12} />} variant="light" color="gray">Abgebrochen</Badge>;
+        }
+        if (stateRaw === 'queued') {
+          return <Badge leftSection={<IconClock size={12} />} variant="light" color="yellow">Wartend</Badge>;
+        }
+        
+        // Running or other active states
         return (
-          <div style={{ minWidth: 160 }}>
-            {isDone ? (
-              <span style={{ color: stateRaw === 'failed' ? '#d32f2f' : '#2ca25f' }}>
-                {stateRaw === 'failed' ? 'Fehlgeschlagen' : stateRaw === 'cancelled' ? 'Abgebrochen' : 'Fertig'}
-              </span>
-            ) : (
-              <>
-                <span>
-                  {r.status || 'unknown'} {r.done ?? 0}/{r.total ?? 0}
-                </span>
-                <div style={{ width: 140 }}>
-                  <Progress value={r.pct ?? 0} mt="xs" />
-                </div>
-              </>
-            )}
+          <div style={{ minWidth: 140 }}>
+            <Badge leftSection={<IconLoader size={12} className="spin" />} variant="light" color="blue" mb={4}>
+              {r.done ?? 0}/{r.total ?? 0}
+            </Badge>
+            <Progress value={r.pct ?? 0} size="sm" color="blue" />
           </div>
         );
       },
     },
+    { header: 'Erstellt', accessorKey: 'created_at', size: 160, cell: ({ row }) => (row.original.created_at ? new Date(row.original.created_at).toLocaleString() : '') },
     {
       header: 'Aktionen',
       accessorKey: 'actions',
+      size: 80,
       cell: ({ row }) => (
         <Group gap="xs">
           {(() => {
