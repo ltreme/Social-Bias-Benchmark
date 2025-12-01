@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ActionIcon, Badge, Button, Card, Group, Menu, TextInput, Title, Tooltip } from '@mantine/core';
+import { ActionIcon, Badge, Button, Card, Group, Menu, Text, TextInput, Title, Tooltip } from '@mantine/core';
 import { useComputedColorScheme } from '@mantine/core';
 import { useNavigate } from '@tanstack/react-router';
 import { useDatasets, useDeleteDataset, useDeleteStatus } from './hooks';
@@ -7,7 +7,7 @@ import { DataTable } from '../../components/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { Dataset } from './api';
 import { DatasetBuilderModal } from './DatasetBuilderModal';
-import { IconCornerDownRight, IconDatabase, IconDotsVertical, IconExternalLink, IconPlus, IconPlayerPlay, IconSearch, IconSitemap, IconUsers } from '@tabler/icons-react';
+import { IconCornerDownRight, IconDatabase, IconDotsVertical, IconExternalLink, IconPlus, IconPlayerPlay, IconSearch, IconSitemap, IconUsers, IconTable } from '@tabler/icons-react';
 
 // Extended type with depth for hierarchical display
 type DatasetWithDepth = Dataset & { _depth: number };
@@ -193,8 +193,12 @@ export function DatasetsPage() {
     return (
         <>
         <Card>
-        <Group justify="space-between" mb="md">
-          <Title order={2}>Datasets</Title>
+        <Group justify="space-between" mb="lg">
+          <Group gap="sm">
+            <IconDatabase size={28} color="#228be6" />
+            <Title order={2}>Datasets</Title>
+            <Badge variant="light" color="blue" size="lg">{data.length}</Badge>
+          </Group>
           <Group gap="sm">
             <TextInput
                 placeholder="Suchen…"
@@ -205,7 +209,13 @@ export function DatasetsPage() {
             <Button leftSection={<IconPlus size={16} />} onClick={() => setBuilderOpen(true)}>Neuer Pool</Button>
           </Group>
         </Group>
-        {isLoading ? 'Laden…' : <DataTable data={hierarchicalData} columns={columns} />}
+        {isLoading ? (
+            <Text c="dimmed" ta="center" py="xl">Datasets werden geladen…</Text>
+        ) : data.length === 0 ? (
+            <Text c="dimmed" ta="center" py="xl">Keine Datasets vorhanden. Erstelle einen neuen Pool!</Text>
+        ) : (
+            <DataTable data={hierarchicalData} columns={columns} enableSorting />
+        )}
         <DatasetBuilderModal
           opened={builderOpen}
           onClose={() => setBuilderOpen(false)}
