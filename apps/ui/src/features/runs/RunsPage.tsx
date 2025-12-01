@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
-import { ActionIcon, Badge, Card, Group, MultiSelect, Select, TextInput, Title, Tooltip, useComputedColorScheme } from '@mantine/core';
+import { ActionIcon, Badge, Card, Group, MultiSelect, Select, Text, TextInput, Title, Tooltip, useComputedColorScheme } from '@mantine/core';
 import { useNavigate } from '@tanstack/react-router';
 import { DataTable } from '../../components/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useRuns } from './hooks';
 import type { Run } from './api';
-import { IconExternalLink, IconMessage, IconMessageCog, IconSearch } from '@tabler/icons-react';
+import { IconExternalLink, IconMessage, IconMessageCog, IconSearch, IconPlayerPlay, IconFilter, IconCpu, IconDatabase, IconMessageCircle, IconSettings } from '@tabler/icons-react';
 
 // Helper to format date nicely
 function formatDate(dateStr?: string | null): string {
@@ -150,67 +150,105 @@ export function RunsPage() {
 
     return (
         <Card>
-            <Group justify="space-between" mb="md">
+            <Group justify="space-between" mb="lg">
                 <Group gap="sm">
+                    <IconPlayerPlay size={28} color="#228be6" />
                     <Title order={2}>Benchmark Runs</Title>
-                    {hasActiveFilters && (
-                        <Badge variant="light" color="blue">{filteredRuns.length} von {runs.length}</Badge>
-                    )}
+                    <Badge variant="light" color="blue" size="lg">{runs.length}</Badge>
                 </Group>
                 <TextInput
                     placeholder="Modell suchen…"
                     leftSection={<IconSearch size={16} />}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    style={{ width: 220 }}
+                    style={{ width: 250 }}
                 />
             </Group>
 
-            {/* Filter Row */}
-            <Group mb="md" gap="sm">
-                <MultiSelect
-                    placeholder="Modelle"
-                    data={availableModels}
-                    value={selectedModels}
-                    onChange={setSelectedModels}
-                    clearable
-                    searchable
-                    style={{ minWidth: 200 }}
-                />
-                <MultiSelect
-                    placeholder="Datasets"
-                    data={availableDatasets.map(d => ({ value: String(d.id), label: d.name }))}
-                    value={selectedDatasets}
-                    onChange={setSelectedDatasets}
-                    clearable
-                    searchable
-                    style={{ minWidth: 160 }}
-                />
-                <Select
-                    placeholder="Begründungen"
-                    data={[
-                        { value: 'yes', label: 'Mit Begründungen' },
-                        { value: 'no', label: 'Ohne Begründungen' },
-                    ]}
-                    value={rationaleFilter}
-                    onChange={setRationaleFilter}
-                    clearable
-                    style={{ minWidth: 160 }}
-                />
-                <Select
-                    placeholder="System Prompt"
-                    data={[
-                        { value: 'yes', label: 'Custom Prompt' },
-                        { value: 'no', label: 'Standard Prompt' },
-                    ]}
-                    value={systemPromptFilter}
-                    onChange={setSystemPromptFilter}
-                    clearable
-                    style={{ minWidth: 160 }}
-                />
+            {/* Filter Card */}
+            <Card 
+                withBorder 
+                mb="lg" 
+                padding="lg" 
+                style={{ 
+                    background: isDark ? 'rgba(34, 139, 230, 0.08)' : 'rgba(34, 139, 230, 0.05)',
+                    borderColor: isDark ? 'rgba(34, 139, 230, 0.3)' : 'rgba(34, 139, 230, 0.2)'
+                }}
+            >
+                <Group gap="xs" mb="md">
+                    <IconFilter size={18} color="#228be6" />
+                    <Text fw={600} c="blue">Filter</Text>
+                </Group>
+                <Group gap="md" align="flex-end" wrap="wrap">
+                    <MultiSelect
+                        label="Modelle"
+                        placeholder="Alle Modelle"
+                        leftSection={<IconCpu size={14} />}
+                        data={availableModels}
+                        value={selectedModels}
+                        onChange={setSelectedModels}
+                        clearable
+                        searchable
+                        w={280}
+                    />
+                    <MultiSelect
+                        label="Datasets"
+                        placeholder="Alle Datasets"
+                        leftSection={<IconDatabase size={14} />}
+                        data={availableDatasets.map(d => ({ value: String(d.id), label: d.name }))}
+                        value={selectedDatasets}
+                        onChange={setSelectedDatasets}
+                        clearable
+                        searchable
+                        w={220}
+                    />
+                    <Select
+                        label="Begründungen"
+                        placeholder="Alle"
+                        leftSection={<IconMessageCircle size={14} />}
+                        data={[
+                            { value: 'yes', label: 'Mit Begründungen' },
+                            { value: 'no', label: 'Ohne Begründungen' },
+                        ]}
+                        value={rationaleFilter}
+                        onChange={setRationaleFilter}
+                        clearable
+                        w={200}
+                    />
+                    <Select
+                        label="System Prompt"
+                        placeholder="Alle"
+                        leftSection={<IconSettings size={14} />}
+                        data={[
+                            { value: 'yes', label: 'Custom Prompt' },
+                            { value: 'no', label: 'Standard Prompt' },
+                        ]}
+                        value={systemPromptFilter}
+                        onChange={setSystemPromptFilter}
+                        clearable
+                        w={200}
+                    />
+                </Group>
+            </Card>
+
+            <Group mb="md" justify="space-between" align="center">
+                <Group gap="sm">
+                    <Text size="sm" c="dimmed">
+                        {filteredRuns.length} von {runs.length} Run{runs.length !== 1 ? 's' : ''}
+                    </Text>
+                    {hasActiveFilters && (
+                        <Badge variant="light" color="orange" size="sm">gefiltert</Badge>
+                    )}
+                </Group>
             </Group>
 
-            {isLoading ? 'Laden…' : <DataTable data={filteredRuns} columns={columns} />}
+            {isLoading ? (
+                <Text c="dimmed" ta="center" py="xl">Runs werden geladen…</Text>
+            ) : runs.length === 0 ? (
+                <Text c="dimmed" ta="center" py="xl">Keine Benchmark Runs vorhanden.</Text>
+            ) : (
+                <DataTable data={filteredRuns} columns={columns} enableSorting />
+            )}
         </Card>
     );
 }

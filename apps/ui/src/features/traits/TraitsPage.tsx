@@ -255,7 +255,7 @@ export function TraitsPage() {
       >
         <Group gap="xs" mb="md">
           <IconFilter size={18} color="#7950f2" />
-          <Text fw={600} c="violet">Filter & Sortierung</Text>
+          <Text fw={600} c="violet">Filter</Text>
         </Group>
         <Group gap="md" align="flex-end" wrap="wrap">
           <MultiSelect
