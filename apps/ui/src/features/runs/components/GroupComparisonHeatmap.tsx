@@ -1,5 +1,6 @@
 import { Paper, Text, Title, Group, ThemeIcon, Tooltip, ActionIcon, Badge, Progress, Stack } from '@mantine/core';
 import { IconGridDots, IconInfoCircle, IconArrowUp, IconArrowDown } from '@tabler/icons-react';
+import { useThemeColors } from '../../../lib/useThemeColors';
 
 // Category translations for better readability
 const CATEGORY_TRANSLATIONS: Record<string, string> = {
@@ -92,6 +93,8 @@ function getDeltaColor(delta: number, significant: boolean): string {
  * with progress bars and clear indicators
  */
 export function GroupComparisonCards({ rows, attributeLabel, baseline }: ComparisonCardProps) {
+  const { bgSubtle, bgGraySubtle } = useThemeColors();
+
   if (!rows || rows.length === 0) {
     return (
       <Paper p="md" withBorder radius="md">
@@ -171,7 +174,7 @@ export function GroupComparisonCards({ rows, attributeLabel, baseline }: Compari
           const translatedCategory = translateCategory(row.category);
 
           return (
-            <Paper key={row.category} p="sm" bg={significant ? `${color}.0` : 'gray.0'} radius="md">
+            <Paper key={row.category} p="sm" bg={significant ? bgSubtle(color) : bgGraySubtle} radius="md">
               <Group justify="space-between" mb={4}>
                 <Group gap="xs">
                   <Text fw={500} size="sm">{translatedCategory}</Text>

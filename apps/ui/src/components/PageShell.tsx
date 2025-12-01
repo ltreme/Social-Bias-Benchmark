@@ -1,6 +1,7 @@
 import { AppShell, Group, Tabs } from '@mantine/core';
 import { Outlet, Link, useRouterState, useNavigate } from '@tanstack/react-router';
 import { IconDatabase, IconList, IconCpu, IconListCheck, IconPlayerPlay } from '@tabler/icons-react';
+import { ThemeToggle } from './ThemeToggle';
 
 export function PageShell() {
     const state = useRouterState();
@@ -62,6 +63,7 @@ export function PageShell() {
                             </Tabs.Tab>
                         </Tabs.List>
                     </Tabs>
+                    <ThemeToggle />
                 </Group>
             </AppShell.Header>
             <AppShell.Main>

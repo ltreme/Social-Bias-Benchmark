@@ -3,6 +3,7 @@ import { IconChartBar, IconAlertTriangle, IconArrowsSort, IconTarget, IconInfoCi
 import { ChartPanel } from '../../../components/ChartPanel';
 import { AsyncContent } from '../../../components/AsyncContent';
 import { BiasRadarGrid } from './BiasRadarChart';
+import { useThemedColor } from '../../../lib/useThemeColors';
 import type { QuickAnalysis, RunMetrics, RunDeltas } from '../api';
 
 type DeltasQueryResult = {
@@ -53,6 +54,7 @@ export function OverviewTab({
     radarCategoryDeltasMap,
     radarLoadingStates,
 }: OverviewTabProps) {
+    const getColor = useThemedColor();
     const orderSample = quickAnalysis?.order_consistency_sample;
 
     // Histogram bars from metrics
@@ -104,7 +106,7 @@ export function OverviewTab({
                     {quickAnalysis ? (
                         <SimpleGrid cols={{ base: 2, md: 4 }} spacing="md">
                             {/* Ergebnisse */}
-                            <Paper p="md" bg="blue.0" radius="md">
+                            <Paper p="md" bg={getColor('blue').bg} radius="md">
                                 <Group justify="space-between" align="flex-start" mb="xs">
                                     <ThemeIcon size={44} radius="md" variant="light" color="blue">
                                         <IconChartBar size={24} />
@@ -120,14 +122,14 @@ export function OverviewTab({
                                         </ActionIcon>
                                     </Tooltip>
                                 </Group>
-                                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>Ergebnisse</Text>
-                                <Text size="xl" fw={700} c="blue.7">
+                                <Text size="xs" c={getColor('blue').label} tt="uppercase" fw={600}>Ergebnisse</Text>
+                                <Text size="xl" fw={700} c={getColor('blue').text}>
                                     {quickAnalysis.total_results.toLocaleString('de-DE')}
                                 </Text>
                             </Paper>
 
                             {/* Fehlerrate */}
-                            <Paper p="md" bg={quickAnalysis.error_count > 0 ? 'orange.0' : 'teal.0'} radius="md">
+                            <Paper p="md" bg={quickAnalysis.error_count > 0 ? getColor('orange').bg : getColor('teal').bg} radius="md">
                                 <Group justify="space-between" align="flex-start" mb="xs">
                                     <ThemeIcon 
                                         size={44} 
@@ -148,12 +150,12 @@ export function OverviewTab({
                                         </ActionIcon>
                                     </Tooltip>
                                 </Group>
-                                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>Fehlerrate</Text>
+                                <Text size="xs" c={quickAnalysis.error_count > 0 ? getColor('orange').label : getColor('teal').label} tt="uppercase" fw={600}>Fehlerrate</Text>
                                 <Group gap={6} align="baseline">
                                     <Text 
                                         size="xl" 
                                         fw={700} 
-                                        c={quickAnalysis.error_count > 0 ? 'orange.7' : 'teal.7'}
+                                        c={quickAnalysis.error_count > 0 ? getColor('orange').text : getColor('teal').text}
                                     >
                                         {formatPercent(quickAnalysis.error_rate)}
                                     </Text>
@@ -166,7 +168,7 @@ export function OverviewTab({
                             </Paper>
 
                             {/* Order RMA */}
-                            <Paper p="md" bg="violet.0" radius="md">
+                            <Paper p="md" bg={getColor('violet').bg} radius="md">
                                 <Group justify="space-between" align="flex-start" mb="xs">
                                     <ThemeIcon size={44} radius="md" variant="light" color="violet">
                                         <IconArrowsSort size={24} />
@@ -182,16 +184,16 @@ export function OverviewTab({
                                         </ActionIcon>
                                     </Tooltip>
                                 </Group>
-                                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+                                <Text size="xs" c={getColor('violet').label} tt="uppercase" fw={600}>
                                     Order RMA{orderSample?.is_sample ? ' (Sample)' : ''}
                                 </Text>
-                                <Text size="xl" fw={700} c="violet.7">
+                                <Text size="xl" fw={700} c={getColor('violet').text}>
                                     {formatRating(orderSample?.rma)}
                                 </Text>
                             </Paper>
 
                             {/* Order MAE */}
-                            <Paper p="md" bg="grape.0" radius="md">
+                            <Paper p="md" bg={getColor('violet').bg} radius="md">
                                 <Group justify="space-between" align="flex-start" mb="xs">
                                     <ThemeIcon size={44} radius="md" variant="light" color="grape">
                                         <IconTarget size={24} />
@@ -207,10 +209,10 @@ export function OverviewTab({
                                         </ActionIcon>
                                     </Tooltip>
                                 </Group>
-                                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+                                <Text size="xs" c={getColor('violet').label} tt="uppercase" fw={600}>
                                     Order MAE{orderSample?.is_sample ? ' (Sample)' : ''}
                                 </Text>
-                                <Text size="xl" fw={700} c="grape.7">
+                                <Text size="xl" fw={700} c={getColor('violet').text}>
                                     {formatRating(orderSample?.mae)}
                                 </Text>
                             </Paper>

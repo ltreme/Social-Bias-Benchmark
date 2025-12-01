@@ -2,6 +2,7 @@ import { Paper, Text, Title, Group, ThemeIcon, SimpleGrid, Tooltip } from '@mant
 import { IconArrowUp, IconArrowDown, IconMinus, IconInfoCircle } from '@tabler/icons-react';
 import { ChartPanel } from '../../../components/ChartPanel';
 import { translateCategory } from './GroupComparisonHeatmap';
+import { useThemedColor } from '../../../lib/useThemeColors';
 
 type DeltaRow = {
   category: string;
@@ -30,7 +31,7 @@ function isSignificant(row: DeltaRow): boolean {
   return false;
 }
 
-function getColor(row: DeltaRow): string {
+function getPlotColor(row: DeltaRow): string {
   const sig = isSignificant(row);
   const delta = row.delta ?? 0;
   
@@ -40,7 +41,7 @@ function getColor(row: DeltaRow): string {
   return '#868e96';
 }
 
-function getColorLight(row: DeltaRow): string {
+function getPlotColorLight(row: DeltaRow): string {
   const sig = isSignificant(row);
   const delta = row.delta ?? 0;
   
@@ -51,6 +52,8 @@ function getColorLight(row: DeltaRow): string {
 }
 
 export function DeltaBarsPanel({ deltas, title, baseline }: { deltas?: Deltas; title: string; baseline?: string }) {
+  const getThemeColor = useThemedColor();
+
   if (!deltas || !deltas.rows || deltas.rows.length === 0) {
     return (
       <Paper p="md" withBorder radius="md" style={{ height: '100%' }}>
@@ -76,7 +79,7 @@ export function DeltaBarsPanel({ deltas, title, baseline }: { deltas?: Deltas; t
       mode: 'lines' as const,
       x: [0, row.delta ?? 0],
       y: [row.displayCategory, row.displayCategory],
-      line: { color: getColorLight(row), width: 3 },
+      line: { color: getPlotColorLight(row), width: 3 },
       showlegend: false,
       hoverinfo: 'skip' as const,
     })),
@@ -89,7 +92,7 @@ export function DeltaBarsPanel({ deltas, title, baseline }: { deltas?: Deltas; t
       y: translatedRows.map((r) => r.displayCategory),
       marker: { 
         size: 12, 
-        color: translatedRows.map(r => getColor(r)),
+        color: translatedRows.map(r => getPlotColor(r)),
         line: { color: '#fff', width: 2 },
       },
       error_x: {
@@ -99,7 +102,7 @@ export function DeltaBarsPanel({ deltas, title, baseline }: { deltas?: Deltas; t
         arrayminus: translatedRows.map((r) => (r.ci_low != null && r.delta != null) ? Math.max(0, r.delta - r.ci_low) : 0),
         thickness: 2,
         width: 6,
-        color: translatedRows.map(r => getColor(r)),
+        color: translatedRows.map(r => getPlotColor(r)),
       },
       hovertemplate: translatedRows.map((r) => {
         const sig = isSignificant(r) ? '✓ signifikant' : '○ nicht signifikant';
@@ -149,22 +152,22 @@ export function DeltaBarsPanel({ deltas, title, baseline }: { deltas?: Deltas; t
 
       {/* Summary Cards */}
       <SimpleGrid cols={3} spacing="xs" mb="md">
-        <Paper p="xs" bg="green.0" radius="sm">
+        <Paper p="xs" bg={getThemeColor('green').bg} radius="sm">
           <Group gap={4}>
-            <IconArrowUp size={14} color="#2f9e44" />
-            <Text size="xs" fw={600} c="green.7">{sigPositive.length} höher</Text>
+            <IconArrowUp size={14} color={getThemeColor('green').icon} />
+            <Text size="xs" fw={600} c={getThemeColor('green').text}>{sigPositive.length} höher</Text>
           </Group>
         </Paper>
-        <Paper p="xs" bg="red.0" radius="sm">
+        <Paper p="xs" bg={getThemeColor('red').bg} radius="sm">
           <Group gap={4}>
-            <IconArrowDown size={14} color="#e03131" />
-            <Text size="xs" fw={600} c="red.7">{sigNegative.length} niedriger</Text>
+            <IconArrowDown size={14} color={getThemeColor('red').icon} />
+            <Text size="xs" fw={600} c={getThemeColor('red').text}>{sigNegative.length} niedriger</Text>
           </Group>
         </Paper>
-        <Paper p="xs" bg="gray.1" radius="sm">
+        <Paper p="xs" bg={getThemeColor('gray').bg} radius="sm">
           <Group gap={4}>
-            <IconMinus size={14} color="#868e96" />
-            <Text size="xs" fw={600} c="gray.6">{notSig.length} n.s.</Text>
+            <IconMinus size={14} color={getThemeColor('gray').icon} />
+            <Text size="xs" fw={600} c={getThemeColor('gray').text}>{notSig.length} n.s.</Text>
           </Group>
         </Paper>
       </SimpleGrid>

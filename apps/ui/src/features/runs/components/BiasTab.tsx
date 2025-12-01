@@ -6,6 +6,7 @@ import { ImprovedForestPlot } from './ImprovedForestPlot';
 import { GroupComparisonCards, translateCategory } from './GroupComparisonHeatmap';
 import { SignificanceTable } from './SignificanceTable';
 import { MeansSummary } from './MeansSummary';
+import { useThemedColor } from '../../../lib/useThemeColors';
 import type { RunDeltas, AnalysisStatus } from '../api';
 
 const ATTRS = [
@@ -83,6 +84,7 @@ export function BiasTab({
     onRequestBiasAnalysis,
     isRequestingAnalysis,
 }: BiasTabProps) {
+    const getColor = useThemedColor();
     const loadingForest = forestsQueries.length > 0 ? forestsQueries.some((q) => q.isLoading) : false;
     const errorForest = forestsQueries.length > 0 ? forestsQueries.some((q) => q.isError) : false;
     const forestError = forestsQueries.find((q) => q.isError)?.error;
@@ -110,7 +112,7 @@ export function BiasTab({
 
                 <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md">
                     {/* Step 1: Merkmal */}
-                    <Paper p="md" bg="blue.0" radius="md">
+                    <Paper p="md" bg={getColor('blue').bg} radius="md">
                         <Group gap="xs" mb="sm">
                             <ThemeIcon size="sm" radius="xl" color="blue" variant="filled">
                                 <Text size="xs" fw={700}>1</Text>
@@ -141,7 +143,7 @@ export function BiasTab({
                     </Paper>
 
                     {/* Step 2: Baseline */}
-                    <Paper p="md" bg="violet.0" radius="md">
+                    <Paper p="md" bg={getColor('violet').bg} radius="md">
                         <Group gap="xs" mb="sm">
                             <ThemeIcon size="sm" radius="xl" color="violet" variant="filled">
                                 <Text size="xs" fw={700}>2</Text>
@@ -170,7 +172,7 @@ export function BiasTab({
                     </Paper>
 
                     {/* Step 3: Vergleichsgruppen */}
-                    <Paper p="md" bg="teal.0" radius="md">
+                    <Paper p="md" bg={getColor('teal').bg} radius="md">
                         <Group gap="xs" mb="sm">
                             <ThemeIcon size="sm" radius="xl" color="teal" variant="filled">
                                 <Text size="xs" fw={700}>3</Text>
@@ -199,7 +201,7 @@ export function BiasTab({
                     </Paper>
 
                     {/* Step 4: Filter */}
-                    <Paper p="md" bg="orange.0" radius="md">
+                    <Paper p="md" bg={getColor('orange').bg} radius="md">
                         <Group gap="xs" mb="sm">
                             <ThemeIcon size="sm" radius="xl" color="orange" variant="filled">
                                 <Text size="xs" fw={700}>4</Text>
@@ -227,7 +229,7 @@ export function BiasTab({
                 </SimpleGrid>
 
                 {/* Current Selection Summary */}
-                <Paper p="sm" bg="gray.0" radius="md" mt="md">
+                <Paper p="sm" bg={getColor('gray').bg} radius="md" mt="md">
                     <Group gap="xs" wrap="wrap">
                         <Text size="xs" fw={600}>Aktuelle Auswahl:</Text>
                         <Badge variant="light" color="blue" size="sm">{attrLabel}</Badge>
@@ -309,7 +311,7 @@ export function BiasTab({
                                 />
                             </AsyncContent>
                         ) : (
-                            <Paper p="xl" bg="gray.0" radius="md" ta="center">
+                            <Paper p="xl" bg={getColor('gray').bg} radius="md" ta="center">
                                 <ThemeIcon size="xl" radius="xl" variant="light" color="gray" mb="md">
                                     <IconChartDots3 size={24} />
                                 </ThemeIcon>

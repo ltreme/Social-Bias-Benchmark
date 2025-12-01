@@ -1,6 +1,7 @@
 import { Divider, Text, Title, Paper, Group, Stack, ThemeIcon, SimpleGrid, Tooltip, ActionIcon, Progress, Badge } from '@mantine/core';
 import { IconArrowsSort, IconScale, IconChartLine, IconRepeat, IconInfoCircle, IconTarget, IconChartBar } from '@tabler/icons-react';
 import { gradeCliffs, gradeCorr, gradeObe, gradeRmaExact, gradeWithin1 } from './Grades';
+import { useThemedColor } from '../../../lib/useThemeColors';
 
 type OrderMetricsCardProps = {
   data: any | undefined;
@@ -53,6 +54,8 @@ function MetricCard({
 }
 
 export function OrderMetricsCard({ data }: OrderMetricsCardProps) {
+  const getColor = useThemedColor();
+  
   if (!data || !data.n_pairs || data.n_pairs <= 0) return null;
   
   const rmaValue = data.rma?.exact_rate ?? 0;
@@ -165,7 +168,7 @@ export function OrderMetricsCard({ data }: OrderMetricsCardProps) {
               </Text>
               <SimpleGrid cols={{ base: 2, sm: 3, md: 4 }} spacing="sm" mb="md">
                 {data.by_trait_category.map((cat: any) => (
-                  <Paper key={cat.trait_category} p="sm" bg="gray.0" radius="md">
+                  <Paper key={cat.trait_category} p="sm" bg={getColor('gray').bg} radius="md">
                     <Text size="sm" fw={600}>{cat.trait_category}</Text>
                     <Group gap="xs" mt={4}>
                       <Badge size="xs" variant="light" color="gray">n={cat.n_pairs}</Badge>
@@ -195,7 +198,7 @@ export function OrderMetricsCard({ data }: OrderMetricsCardProps) {
               </Text>
               <SimpleGrid cols={{ base: 2, sm: 3, md: 4 }} spacing="xs">
                 {data.by_case.map((r: any) => (
-                  <Paper key={r.case_id} p="xs" bg="gray.0" radius="sm">
+                  <Paper key={r.case_id} p="xs" bg={getColor('gray').bg} radius="sm">
                     <Group justify="space-between" wrap="nowrap">
                       <Text size="xs" truncate style={{ maxWidth: 120 }}>{r.adjective || r.case_id}{r.case_id ? ` (${r.case_id})` : ''}</Text>
                       <Group gap={4}>

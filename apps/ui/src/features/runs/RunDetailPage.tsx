@@ -2,6 +2,7 @@ import { Alert, Badge, Button, Group, Paper, Popover, SimpleGrid, Spoiler, Stack
 import { IconDownload, IconDatabase, IconCpu, IconMessage, IconMessageCog, IconChartBar, IconClipboardCheck, IconAlertTriangle, IconPlayerPlay, IconCheck, IconX } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from '@tanstack/react-router';
+import { useThemedColor } from '../../lib/useThemeColors';
 import { 
   useRunMetrics, 
   useRun, 
@@ -69,6 +70,7 @@ function formatDuration(ms?: number | null) {
 export function RunDetailPage() {
   const { runId } = useParams({ from: '/runs/$runId' });
   const idNum = Number(runId);
+  const getColor = useThemedColor();
   const { data: run, isLoading: isLoadingRun } = useRun(idNum);
   const warmup = useRunWarmup(idNum);
   const warmStatus = warmup.status.data;
@@ -222,10 +224,10 @@ export function RunDetailPage() {
           <Title order={2}>Benchmark #{runId} läuft…</Title>
         </Group>
         <Text mb="md" c="dimmed">Bitte warten, bis der Benchmark abgeschlossen ist.</Text>
-        <Paper p="md" bg="blue.0" radius="md" mb="md" style={{ maxWidth: 400 }}>
+        <Paper p="md" bg={getColor('blue').bg} radius="md" mb="md" style={{ maxWidth: 400 }}>
           <Group justify="space-between" mb="xs">
             <Text size="sm" fw={500}>Fortschritt</Text>
-            <Text size="sm" c="blue.7">{done}/{total}</Text>
+            <Text size="sm" c={getColor('blue').text}>{done}/{total}</Text>
           </Group>
           <Progress value={benchStatus.data?.pct ?? 0} size="lg" radius="xl" />
         </Paper>
@@ -448,7 +450,7 @@ export function RunDetailPage() {
               </Text>
               <SimpleGrid cols={{ base: 2, sm: 3, md: 4 }} spacing="sm">
                 {metrics.trait_categories.summary.map((cat) => (
-                  <Paper key={cat.category} p="sm" bg="gray.0" radius="md">
+                  <Paper key={cat.category} p="sm" bg={getColor('gray').bg} radius="md">
                     <Text size="sm" fw={600} mb={4}>{cat.category}</Text>
                     <Group gap="xs">
                       <Text size="xs" c="dimmed">n={cat.count.toLocaleString('de-DE')}</Text>

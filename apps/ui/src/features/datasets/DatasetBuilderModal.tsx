@@ -2,6 +2,7 @@ import { Badge, Button, Card, Divider, Group, Modal, NumberInput, Progress, Segm
 import { useEffect, useMemo, useState } from 'react';
 import { useBuildBalanced, useBuildCounterfactuals, useCreatePool, useSampleReality, usePoolStatus } from './hooks';
 import { IconDatabase, IconScale, IconArrowsExchange, IconUsers } from '@tabler/icons-react';
+import { useThemedColor } from '../../lib/useThemeColors';
 
 type Props = {
   opened: boolean;
@@ -39,6 +40,7 @@ const modeDescriptions: Record<string, { icon: React.ReactNode; title: string; d
 };
 
 export function DatasetBuilderModal({ opened, onClose, defaultMode = 'pool', datasetId, onCreated }: Props) {
+  const getColor = useThemedColor();
   const [mode, setMode] = useState<Props['defaultMode']>(defaultMode);
 
   const [name, setName] = useState<string>('');
@@ -154,7 +156,7 @@ export function DatasetBuilderModal({ opened, onClose, defaultMode = 'pool', dat
           </Card>
           
           {pool.data?.status === 'failed' && (
-            <Card withBorder p="md" bg="red.0">
+            <Card withBorder p="md" bg={getColor('red').bg}>
               <Text c="red" fw={500}>Fehler: {String(pool.data?.error || 'Unbekannter Fehler')}</Text>
             </Card>
           )}
@@ -173,7 +175,7 @@ export function DatasetBuilderModal({ opened, onClose, defaultMode = 'pool', dat
         
         {/* Mode Description Card */}
         {mode && (
-          <Card withBorder p="md" bg={`${modeDescriptions[mode].color}.0`}>
+          <Card withBorder p="md" bg={getColor(modeDescriptions[mode].color as any).bg}>
             <Group gap="sm">
               <ThemeIcon size="lg" radius="md" color={modeDescriptions[mode].color} variant="light">
                 {modeDescriptions[mode].icon}
@@ -273,7 +275,7 @@ export function DatasetBuilderModal({ opened, onClose, defaultMode = 'pool', dat
 
         {/* Source Dataset Info */}
         {datasetId && mode !== 'pool' && (
-          <Card withBorder p="sm" bg="gray.0">
+          <Card withBorder p="sm" bg={getColor('gray').bg}>
             <Group gap="xs">
               <Badge variant="light" color="gray">Quelle</Badge>
               <Text size="sm">Dataset #{datasetId}</Text>

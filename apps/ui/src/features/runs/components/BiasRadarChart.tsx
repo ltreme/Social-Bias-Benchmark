@@ -1,8 +1,23 @@
-import { Paper, Text, Title, Group, ThemeIcon, Tooltip, ActionIcon, Badge, Stack, Table, Collapse, Button, Alert, SegmentedControl, Box, SimpleGrid, Skeleton } from '@mantine/core';
+import { Paper, Text, Title, Group, ThemeIcon, Tooltip, ActionIcon, Badge, Stack, Table, Collapse, Button, Alert, SegmentedControl, Box, SimpleGrid, Skeleton, useComputedColorScheme } from '@mantine/core';
 import { IconRadar2, IconInfoCircle, IconChevronDown, IconChevronUp, IconAlertCircle, IconFilter } from '@tabler/icons-react';
 import { useState } from 'react';
 import { ChartPanel } from '../../../components/ChartPanel';
 import { translateCategory } from './GroupComparisonHeatmap';
+import { useThemedColor } from '../../../lib/useThemeColors';
+
+// Dark/Light mode chart colors
+const chartColors = {
+  light: {
+    gridcolor: '#e9ecef',
+    bgcolor: 'rgba(255,255,255,0)',
+    tickcolor: '#495057',
+  },
+  dark: {
+    gridcolor: 'rgba(255,255,255,0.15)',
+    bgcolor: 'rgba(0,0,0,0)',
+    tickcolor: '#c1c2c5',
+  },
+};
 
 // Attribute labels
 const ATTR_LABELS: Record<string, string> = {
@@ -159,6 +174,10 @@ function calculateAttributeScores(deltasData: BiasRadarProps['deltasData']): Att
 }
 
 export function BiasRadarChart({ deltasData, traitCategories, selectedTraitCategory, onTraitCategoryChange }: BiasRadarProps) {
+  const getColor = useThemedColor();
+  const colorScheme = useComputedColorScheme('light');
+  const isDark = colorScheme === 'dark';
+  const colors = isDark ? chartColors.dark : chartColors.light;
   const [showMethodology, setShowMethodology] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   
@@ -305,7 +324,7 @@ export function BiasRadarChart({ deltasData, traitCategories, selectedTraitCateg
               color: radarValues.map(v => 
                 v > 60 ? '#e03131' : v > 40 ? '#fab005' : v > 20 ? '#228be6' : '#40c057'
               ),
-              line: { color: '#fff', width: 2 },
+              line: { color: isDark ? '#25262b' : '#fff', width: 2 },
             },
             name: 'Bias-Score',
             hovertemplate: '<b>%{theta}</b><br>Score: %{r:.1f}/100<extra></extra>',
@@ -319,13 +338,14 @@ export function BiasRadarChart({ deltasData, traitCategories, selectedTraitCateg
               range: [0, 100],
               tickvals: [0, 25, 50, 75, 100],
               ticktext: ['0', '25', '50', '75', '100'],
-              gridcolor: '#e9ecef',
+              gridcolor: colors.gridcolor,
+              tickfont: { color: colors.tickcolor },
             },
             angularaxis: {
-              tickfont: { size: 11 },
-              gridcolor: '#e9ecef',
+              tickfont: { size: 11, color: colors.tickcolor },
+              gridcolor: colors.gridcolor,
             },
-            bgcolor: '#fff',
+            bgcolor: colors.bgcolor,
           },
           margin: { l: 60, r: 60, t: 30, b: 30 },
           showlegend: false,
@@ -396,7 +416,7 @@ export function BiasRadarChart({ deltasData, traitCategories, selectedTraitCateg
                 </Text>
               </Paper>
               
-              <Paper p="sm" bg="blue.0" withBorder>
+              <Paper p="sm" bg={getColor('blue').bg} withBorder>
                 <Text size="sm" fw={600}>Gesamtformel:</Text>
                 <Text size="xs" ff="monospace">
                   Score = 50% × (Max|Δ| / Max|Δ|_gesamt) + 30% × (Avg|Δ| / Avg|Δ|_gesamt) + 20% × Signifikanz-Rate
@@ -493,6 +513,10 @@ type MiniRadarProps = {
 };
 
 function MiniRadarChart({ deltasData, title, isLoading }: MiniRadarProps) {
+  const colorScheme = useComputedColorScheme('light');
+  const isDark = colorScheme === 'dark';
+  const colors = isDark ? chartColors.dark : chartColors.light;
+  
   const hasErrors = deltasData.some(d => d.q.isError);
   const hasAnyData = deltasData.some(d => d.q.data?.rows?.length);
   
@@ -572,7 +596,7 @@ function MiniRadarChart({ deltasData, title, isLoading }: MiniRadarProps) {
               color: radarValues.map(v => 
                 v > 60 ? '#e03131' : v > 40 ? '#fab005' : v > 20 ? '#228be6' : '#40c057'
               ),
-              line: { color: '#fff', width: 1.5 },
+              line: { color: isDark ? '#25262b' : '#fff', width: 1.5 },
             },
             hovertemplate: '<b>%{theta}</b><br>Score: %{r:.1f}<extra></extra>',
           } as unknown as Partial<Plotly.Data>,
@@ -585,14 +609,14 @@ function MiniRadarChart({ deltasData, title, isLoading }: MiniRadarProps) {
               range: [0, 100],
               tickvals: [0, 50, 100],
               ticktext: ['0', '50', '100'],
-              tickfont: { size: 10 },
-              gridcolor: '#e9ecef',
+              tickfont: { size: 10, color: colors.tickcolor },
+              gridcolor: colors.gridcolor,
             },
             angularaxis: {
-              tickfont: { size: 10 },
-              gridcolor: '#e9ecef',
+              tickfont: { size: 10, color: colors.tickcolor },
+              gridcolor: colors.gridcolor,
             },
-            bgcolor: '#fff',
+            bgcolor: colors.bgcolor,
           },
           margin: { l: 50, r: 50, t: 20, b: 40 },
           showlegend: false,
@@ -618,6 +642,7 @@ type BiasRadarGridProps = {
 };
 
 export function BiasRadarGrid({ runId, traitCategories, categoryDeltasMap, loadingStates }: BiasRadarGridProps) {
+  const getColor = useThemedColor();
   const [showMethodology, setShowMethodology] = useState(false);
   
   // Categories to show (all + individual categories)
@@ -699,7 +724,7 @@ export function BiasRadarGrid({ runId, traitCategories, categoryDeltasMap, loadi
         </Button>
         
         <Collapse in={showMethodology}>
-          <Paper p="md" bg="gray.0" radius="md">
+          <Paper p="md" bg={getColor('gray').bg} radius="md">
             <Title order={5} mb="sm">Berechnungsmethodik</Title>
             <Text size="sm" mb="sm">
               Der <b>Bias-Score</b> kombiniert drei Metriken pro demografischem Merkmal:
