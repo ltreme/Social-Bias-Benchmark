@@ -791,8 +791,10 @@ class BenchmarkService:
                 results[attr] = []
         return {"ok": True, "data": results}
 
-    def get_all_deltas(self, run_id: int) -> Dict[str, Any]:
-        """Get deltas for all standard attributes."""
+    def get_all_deltas(
+        self, run_id: int, trait_category: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Get deltas for all standard attributes, optionally filtered by trait category."""
         attributes = [
             "gender",
             "origin_subregion",
@@ -804,8 +806,8 @@ class BenchmarkService:
         ]
         results = {}
         for attr in attributes:
-            # Re-use existing cached method
-            res = self.get_deltas(run_id, attr)
+            # Re-use existing cached method with optional trait_category filter
+            res = self.get_deltas(run_id, attr, trait_category=trait_category)
             if res.get("ok"):
                 # We only need the rows, not the full payload
                 results[attr] = res

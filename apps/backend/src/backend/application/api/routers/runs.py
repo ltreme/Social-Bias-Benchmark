@@ -150,10 +150,20 @@ def run_means_all(run_id: int) -> Dict[str, Any]:
     return _get_service().get_all_means(run_id)
 
 
-@router.get("/runs/{run_id}/deltas/all")
-def run_deltas_all(run_id: int) -> Dict[str, Any]:
-    """Get delta analysis for all standard attributes."""
-    return _get_service().get_all_deltas(run_id)
+@router.get("/runs/{run_id}/deltas/all/{trait_category}")
+def run_deltas_all(
+    run_id: int,
+    trait_category: str,
+) -> Dict[str, Any]:
+    """Get delta analysis for all standard attributes.
+
+    Args:
+        run_id: The benchmark run ID
+        trait_category: Filter by trait category (e.g. 'kompetenz', 'sozial') or 'all' for no filter
+    """
+    # Convert 'all' to None for the service
+    category_filter = None if trait_category == "all" else trait_category
+    return _get_service().get_all_deltas(run_id, trait_category=category_filter)
 
 
 @router.get("/runs/{run_id}/forest")
