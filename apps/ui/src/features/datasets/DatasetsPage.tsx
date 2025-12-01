@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ActionIcon, Badge, Button, Card, Group, Menu, TextInput, Title, Tooltip } from '@mantine/core';
+import { useComputedColorScheme } from '@mantine/core';
 import { useNavigate } from '@tanstack/react-router';
 import { useDatasets, useDeleteDataset, useDeleteStatus } from './hooks';
 import { DataTable } from '../../components/DataTable';
@@ -88,12 +89,14 @@ export function DatasetsPage() {
     const delDs = useDeleteDataset();
     const [delJobId, setDelJobId] = useState<number | undefined>(undefined);
     const delStatus = useDeleteStatus(delJobId);
+    const colorScheme = useComputedColorScheme('light');
+    const isDark = colorScheme === 'dark';
 
     // Build hierarchical data
     const hierarchicalData = useMemo(() => buildHierarchy(data), [data]);
 
     const columns: ColumnDef<DatasetWithDepth>[] = [
-        { header: 'ID', accessorKey: 'id', cell: ({ row }) => <span style={{ color: '#868e96' }}>#{row.original.id}</span> },
+        { header: 'ID', accessorKey: 'id', cell: ({ row }) => <span style={{ color: isDark ? '#909296' : '#868e96' }}>#{row.original.id}</span> },
         { 
             header: 'Name', 
             accessorKey: 'name', 
@@ -139,15 +142,15 @@ export function DatasetsPage() {
             header: 'Erstellt', 
             accessorKey: 'created_at', 
             cell: ({ row }) => (
-                <span style={{ color: '#495057' }}>{formatDate(row.original.created_at)}</span>
+                <span style={{ color: isDark ? '#909296' : '#495057' }}>{formatDate(row.original.created_at)}</span>
             )
         },
         { 
             header: 'Seed', 
             accessorKey: 'seed', 
             cell: ({ row }) => row.original.seed 
-                ? <code style={{ fontSize: '0.85em', background: '#f1f3f5', padding: '2px 6px', borderRadius: 4 }}>{row.original.seed}</code>
-                : <span style={{ color: '#adb5bd' }}>–</span>
+                ? <code style={{ fontSize: '0.85em', background: isDark ? 'rgba(255,255,255,0.1)' : '#f1f3f5', color: isDark ? '#c1c2c5' : 'inherit', padding: '2px 6px', borderRadius: 4 }}>{row.original.seed}</code>
+                : <span style={{ color: isDark ? '#5c5f66' : '#adb5bd' }}>–</span>
         },
         { 
             header: '', 

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ActionIcon, Badge, Card, Group, MultiSelect, Select, TextInput, Title, Tooltip } from '@mantine/core';
+import { ActionIcon, Badge, Card, Group, MultiSelect, Select, TextInput, Title, Tooltip, useComputedColorScheme } from '@mantine/core';
 import { useNavigate } from '@tanstack/react-router';
 import { DataTable } from '../../components/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -24,6 +24,8 @@ function formatCompactNumber(n: number): string {
 export function RunsPage() {
     const navigate = useNavigate();
     const { data: runs = [], isLoading } = useRuns();
+    const colorScheme = useComputedColorScheme('light');
+    const isDark = colorScheme === 'dark';
     
     // Filter states
     const [searchQuery, setSearchQuery] = useState('');
@@ -75,7 +77,7 @@ export function RunsPage() {
         { 
             header: 'ID', 
             accessorKey: 'id', 
-            cell: ({ row }) => <span style={{ color: '#868e96' }}>#{row.original.id}</span> 
+            cell: ({ row }) => <span style={{ color: isDark ? '#909296' : '#868e96' }}>#{row.original.id}</span> 
         },
         { 
             header: 'Modell', 
@@ -89,7 +91,7 @@ export function RunsPage() {
             accessorKey: 'dataset_id',
             cell: ({ row }) => row.original.dataset_id 
                 ? <Badge variant="light" color="blue">#{row.original.dataset_id}</Badge>
-                : <span style={{ color: '#adb5bd' }}>–</span>
+                : <span style={{ color: isDark ? '#5c5f66' : '#adb5bd' }}>–</span>
         },
         {
             header: 'Optionen',
@@ -107,7 +109,7 @@ export function RunsPage() {
                         </Tooltip>
                     )}
                     {!row.original.include_rationale && !row.original.system_prompt && (
-                        <span style={{ color: '#adb5bd' }}>–</span>
+                        <span style={{ color: isDark ? '#5c5f66' : '#adb5bd' }}>–</span>
                     )}
                 </Group>
             ),
@@ -125,7 +127,7 @@ export function RunsPage() {
             header: 'Erstellt', 
             accessorKey: 'created_at', 
             cell: ({ row }) => (
-                <span style={{ color: '#495057' }}>{formatDate(row.original.created_at)}</span>
+                <span style={{ color: isDark ? '#c1c2c5' : '#495057' }}>{formatDate(row.original.created_at)}</span>
             )
         },
         { 
