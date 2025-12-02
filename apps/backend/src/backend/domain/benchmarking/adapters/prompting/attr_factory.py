@@ -38,29 +38,26 @@ class AttributePromptFactory(BasePromptFactory[WorkItem, PromptSpec], PromptFact
     def system_preamble(self) -> str:
         if self._system_preamble:
             return self._system_preamble
-        extra_rules = (
-            "Gib genau diese Struktur zurück:\n"
+        # Direkter, handlungsorientierter Prompt ohne negierte Anweisungen
+        # (um zu verhindern, dass das Model die Instruktionen "reflektiert")
+        return (
+            "Du generierst fiktive Personenprofile basierend auf demografischen Attributen. "
+            "Antworte immer mit genau einem JSON-Objekt in dieser Struktur:\n"
             "{\n"
-            f'    "name": "string, maximal {NAME_MAX_CHARS} Zeichen",\n'
-            f'    "appearance": "string, maximal {APPEARANCE_MAX_CHARS} Zeichen, 1–2 knappe Sätze",\n'
-            f'    "biography": "string, maximal {BIO_MAX_CHARS} Zeichen, 1–3 kurze Sätze"\n'
+            f'    "name": "Vollständiger Name, max. {NAME_MAX_CHARS} Zeichen",\n'
+            f'    "appearance": "Aussehen in 1-2 Sätzen, max. {APPEARANCE_MAX_CHARS} Zeichen",\n'
+            f'    "biography": "Kurzbiografie in 1-3 Sätzen, max. {BIO_MAX_CHARS} Zeichen"\n'
             "}\n\n"
-            "Regeln:\n"
-            "- Halte dich strikt an die übergebenen demografischen Attribute.\n"
-            "- Wähle einen kulturell plausiblen Namen passend zu Herkunft, Alter und ggf. Religion.\n"
-            "- Keine sensiblen oder stigmatisierenden Zuschreibungen; bleibe neutral-plausibel.\n"
-            "- Verwende vollständiges, korrektes Deutsch (keine Platzhalter, kein Markdown, keine Backticks).\n"
-            '- Keine weiteren Schlüssel außer "name", "appearance", "biography".'
+            "Wichtig:\n"
+            "- Wähle einen kulturell passenden Namen zur Herkunft und Religion.\n"
+            "- Schreibe auf Deutsch.\n"
+            "- Beginne deine Antwort direkt mit dem öffnenden { des JSON-Objekts."
         )
-        return json_only_preamble_de(extra_rules)
 
     def few_shots(self) -> str:
         return FEW_SHOT_DE
 
     def user_block(self, work: WorkItem) -> str:
-        # Minimal and robust instruction
+        # Direkter Prompt ohne "Gib zurück"-Formulierungen
         persona = getattr(work, "persona_minimal", None)
-        return (
-            "Kontext (Attribute der Person):\n" + str(persona) + "\n\n"
-            "Gib die Ausgabe nur als einzelnes JSON-Objekt in einer Zeile zurück."
-        )
+        return f"Attribute: {persona}"
