@@ -90,7 +90,7 @@ export async function fetchRunDeltas(runId: number, params: { attribute: string;
 export type RunForest = {
     ok: boolean;
     n: number;
-    rows: Array<{ case_id: string; label?: string; category: string; trait_category?: string; baseline: string; n_base: number; n_cat: number; delta: number; se: number | null; ci_low: number | null; ci_high: number | null }>;
+    rows: Array<{ case_id: string; label?: string; category: string; trait_category?: string; baseline: string; n_base: number; n_cat: number; delta: number; se: number | null; ci_low: number | null; ci_high: number | null; valence?: number | null }>;
     overall: { mean: number | null; ci_low: number | null; ci_high: number | null };
 };
 

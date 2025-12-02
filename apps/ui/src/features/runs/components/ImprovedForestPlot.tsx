@@ -12,6 +12,7 @@ type ForestRow = {
   ci_high?: number | null;
   se?: number | null;
   p_value?: number | null;
+  valence?: number | null;  // -1 = negative trait, 0 = neutral, 1 = positive
 };
 
 export type ForestDataset = {
@@ -59,12 +60,20 @@ export function ImprovedForestPlot({
   const processedData = useMemo(() => {
     if (!primary?.rows) return { datasets: [], labels: [] };
     
+    // Get valence indicator for label
+    const getValenceIndicator = (valence?: number | null) => {
+      if (valence === -1) return '⊖';  // Negative trait
+      if (valence === 1) return '⊕';   // Positive trait
+      return '○';                       // Neutral/unknown
+    };
+    
     // Get all row indices and their significance/effect size
     const rowInfo = primary.rows.map((row, idx) => ({
       idx,
       delta: Math.abs(row.delta ?? 0),
       significant: isSignificant(row),
       label: `${row.label || row.case_id}`,
+      valence: row.valence,
     }));
     
     let filteredIndices: number[];
@@ -94,10 +103,11 @@ export function ImprovedForestPlot({
       rows: filteredIndices.map(idx => ds.rows[idx]).filter(Boolean),
     }));
     
+    // Labels with valence indicator
     const labels = filteredIndices
       .map(idx => primary.rows[idx])
       .filter(Boolean)
-      .map(r => r.label || String(r.case_id));
+      .map(r => `${getValenceIndicator(r.valence)} ${r.label || String(r.case_id)}`);
     
     return { datasets: filteredDatasets, labels };
   }, [datasets, primary, filterMode]);
@@ -318,6 +328,14 @@ export function ImprovedForestPlot({
       {/* Legend */}
       <Group gap="lg" mt="md" justify="center" wrap="wrap">
         <Group gap="xs">
+          <Text size="xs" fw={600}>⊕</Text>
+          <Text size="xs" c="dimmed">positiver Trait</Text>
+        </Group>
+        <Group gap="xs">
+          <Text size="xs" fw={600}>⊖</Text>
+          <Text size="xs" c="dimmed">negativer Trait</Text>
+        </Group>
+        <Group gap="xs">
           <div style={{ 
             width: 12, height: 12, 
             backgroundColor: '#2f9e44', 
@@ -325,7 +343,7 @@ export function ImprovedForestPlot({
             border: '1px solid #fff',
             boxShadow: '0 0 0 1px #2f9e44',
           }} />
-          <Text size="xs" c="dimmed">Signifikant positiv</Text>
+          <Text size="xs" c="dimmed">Signifikant höher</Text>
         </Group>
         <Group gap="xs">
           <div style={{ 
@@ -335,7 +353,7 @@ export function ImprovedForestPlot({
             border: '1px solid #fff',
             boxShadow: '0 0 0 1px #e03131',
           }} />
-          <Text size="xs" c="dimmed">Signifikant negativ</Text>
+          <Text size="xs" c="dimmed">Signifikant niedriger</Text>
         </Group>
         <Group gap="xs">
           <div style={{ 

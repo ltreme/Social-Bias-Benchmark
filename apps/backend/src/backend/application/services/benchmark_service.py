@@ -925,21 +925,27 @@ class BenchmarkService:
             return payload
 
         work = df.copy()
+        # Use pre-valence rating for forest plot: we want to show actual perception
+        # differences, not valence-normalized ones. E.g., "more suspicious" should
+        # show as positive delta for "misstrauisch", not negative.
+        rating_col = (
+            "rating_pre_valence" if "rating_pre_valence" in work.columns else "rating"
+        )
         work[attribute] = work[attribute].fillna("Unknown").astype(str)
         if baseline is None:
-            s = work.groupby(attribute)["rating"].size().sort_values(ascending=False)
+            s = work.groupby(attribute)[rating_col].size().sort_values(ascending=False)
             baseline = str(s.index[0]) if not s.empty else "Unknown"
         if target is None:
             s2 = (
                 work.loc[work[attribute] != baseline]
-                .groupby(attribute)["rating"]
+                .groupby(attribute)[rating_col]
                 .size()
                 .sort_values(ascending=False)
             )
             target = str(s2.index[0]) if not s2.empty else None
 
         agg = (
-            work.groupby(["case_id", "trait_category", attribute])["rating"]
+            work.groupby(["case_id", "trait_category", attribute])[rating_col]
             .agg(count="count", mean="mean", std="std")
             .reset_index()
         )
@@ -1024,8 +1030,12 @@ class BenchmarkService:
         labels_map: Dict[str, str] = {
             str(c.id): str(c.adjective) for c in Trait.select()
         }
+        valence_map: Dict[str, int | None] = {
+            str(c.id): c.valence for c in Trait.select()
+        }
         for r in rows_list:
             r["label"] = labels_map.get(r["case_id"], r["case_id"])
+            r["valence"] = valence_map.get(r["case_id"])
 
         if rows_list:
             arr = pd.DataFrame(rows_list)
