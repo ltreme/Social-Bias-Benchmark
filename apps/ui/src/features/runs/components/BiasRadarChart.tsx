@@ -1,9 +1,9 @@
-import { Paper, Text, Title, Group, ThemeIcon, Tooltip, ActionIcon, Badge, Stack, Table, Collapse, Button, Alert, SegmentedControl, Box, SimpleGrid, Skeleton, useComputedColorScheme } from '@mantine/core';
+import { Paper, Text, Title, Group, ThemeIcon, Tooltip, ActionIcon, Badge, Stack, Table, Collapse, Button, Alert, Box, SimpleGrid, Skeleton, useComputedColorScheme, SegmentedControl } from '@mantine/core';
 import { IconRadar2, IconInfoCircle, IconChevronDown, IconChevronUp, IconAlertCircle, IconFilter } from '@tabler/icons-react';
 import { useState } from 'react';
 import { ChartPanel } from '../../../components/ChartPanel';
 import { translateCategory } from './GroupComparisonHeatmap';
-import { useThemedColor } from '../../../lib/useThemeColors';
+import { InlineMath, BlockMath } from 'react-katex';
 
 // Dark/Light mode chart colors
 const chartColors = {
@@ -18,6 +18,67 @@ const chartColors = {
     tickcolor: '#c1c2c5',
   },
 };
+
+// ============================================================================
+// Normalization Constants for Cliff's Delta
+// ============================================================================
+//
+// Cliff's Delta is a non-parametric effect size measure, standardized to [-1, +1].
+// Benefits for benchmarking:
+// - Standardized scale makes scores comparable across runs
+// - Non-parametric: no distribution assumptions
+// - Robust to outliers
+// - Established interpretation guidelines
+//
+// BIAS-SPECIFIC THRESHOLDS (stricter than Vargha & Delaney):
+// In fairness/bias contexts, even "small" effects matter due to:
+// - Cumulative impact across many decisions
+// - High-stakes applications (HR, justice, healthcare)
+// - Ethical requirements for algorithmic fairness
+// ============================================================================
+
+// Cliff's Delta: Scale up since effect sizes are typically small in bias research
+// Factor of 4.0 for better visualization of small but meaningful effects
+const CLIFFS_SCALE_FACTOR = 4.0;
+
+// Color thresholds (stricter for bias research context)
+// These reflect that even small biases can be practically significant
+const COLOR_THRESHOLDS = {
+  minimal: 10,    // 0-10: Minimal/negligible bias
+  low: 25,        // 10-25: Low but detectable - worth monitoring
+  moderate: 45,   // 25-45: Moderate - requires investigation  
+  high: 100,      // 45+: High - significant concern
+};
+
+// Bias-specific Cliff's Delta thresholds (stricter than Vargha & Delaney 2000)
+// |d| < 0.05: Minimal (truly negligible)
+// |d| < 0.15: Gering (small but potentially relevant)
+// |d| < 0.30: Moderat (clearly relevant for fairness)
+// |d| >= 0.30: Stark (significant fairness concern)
+
+// Color palette for bias levels
+const BIAS_COLORS = {
+  minimal: '#40c057',   // Green
+  low: '#228be6',       // Blue  
+  moderate: '#fab005',  // Yellow/Orange
+  high: '#e03131',      // Red
+};
+
+// Helper function to get color based on score
+function getBiasColor(score: number): string {
+  if (score <= COLOR_THRESHOLDS.minimal) return BIAS_COLORS.minimal;
+  if (score <= COLOR_THRESHOLDS.low) return BIAS_COLORS.low;
+  if (score <= COLOR_THRESHOLDS.moderate) return BIAS_COLORS.moderate;
+  return BIAS_COLORS.high;
+}
+
+// Helper function to get Mantine color name based on score
+function getBiasColorName(score: number): 'green' | 'blue' | 'yellow' | 'red' {
+  if (score <= COLOR_THRESHOLDS.minimal) return 'green';
+  if (score <= COLOR_THRESHOLDS.low) return 'blue';
+  if (score <= COLOR_THRESHOLDS.moderate) return 'yellow';
+  return 'red';
+}
 
 // Attribute labels
 const ATTR_LABELS: Record<string, string> = {
@@ -65,11 +126,10 @@ type BiasRadarProps = {
 type AttributeScore = {
   attribute: string;
   label: string;
-  maxAbsDelta: number;
-  avgAbsDelta: number;
+  maxAbsCliffsD: number;
+  avgAbsCliffsD: number;
   significantCount: number;
   totalCategories: number;
-  significantRate: number;
   biasScore: number;
   maxDeltaCategory: string;
   baseline: string;
@@ -77,33 +137,36 @@ type AttributeScore = {
 };
 
 /**
- * Calculate bias metrics for each attribute
+ * Calculate bias metrics for each attribute using Cliff's Delta
  * 
- * METHODOLOGY (transparent documentation):
+ * METHODOLOGY:
+ * ═══════════════════════════════════════════════════════════════════════════
+ * CLIFF'S DELTA BASED SCORING
+ * ═══════════════════════════════════════════════════════════════════════════
  * 
- * For each demographic attribute, we calculate:
+ * Uses Cliff's Delta effect size which is already standardized to [-1, +1].
+ * This is statistically robust, non-parametric, and ideal for benchmarking.
  * 
- * 1. Max |Δ| (Maximum Absolute Delta):
- *    - The largest absolute difference between any category and the baseline
- *    - Formula: max(|Δᵢ|) for all categories i
- *    - Interpretation: "How large is the biggest bias found?"
+ * Formula:
+ *   Score = 100 × (0.6 × min(Max|d| × scale, 1) + 0.4 × min(Avg|d| × scale, 1))
  * 
- * 2. Avg |Δ| (Average Absolute Delta):
- *    - Mean of all absolute delta values
- *    - Formula: Σ|Δᵢ| / n
- *    - Interpretation: "What is the typical bias magnitude?"
+ * Where:
+ *   - d is Cliff's Delta (normalized to [-1, +1])
+ *   - scale = 4.0 (amplifies small but meaningful effects)
+ *   - 60% weight on maximum effect (worst-case focus)
+ *   - 40% weight on average effect (overall picture)
  * 
- * 3. Significance Rate:
- *    - Proportion of categories with statistically significant differences (p < 0.05)
- *    - Formula: count(pᵢ < 0.05) / total_categories
- *    - Interpretation: "How often do we find systematic bias?"
+ * Bias-specific interpretation (stricter than Vargha & Delaney 2000):
+ *   - |d| < 0.05: Minimal
+ *   - |d| < 0.15: Gering (Low)
+ *   - |d| < 0.30: Moderat (Moderate)
+ *   - |d| ≥ 0.30: Stark (High)
  * 
- * 4. Bias Score (Combined Metric for Radar):
- *    - Weighted combination: 50% Max|Δ| + 30% Avg|Δ| + 20% SignificanceRate
- *    - Scaled to 0-100 for visualization
- *    - Formula: 50 * (maxDelta/maxOverall) + 30 * (avgDelta/maxAvgOverall) + 20 * sigRate
+ * ═══════════════════════════════════════════════════════════════════════════
  */
-function calculateAttributeScores(deltasData: BiasRadarProps['deltasData']): AttributeScore[] {
+function calculateAttributeScores(
+  deltasData: BiasRadarProps['deltasData']
+): AttributeScore[] {
   const scores: AttributeScore[] = [];
   
   for (const { a, q } of deltasData) {
@@ -111,11 +174,10 @@ function calculateAttributeScores(deltasData: BiasRadarProps['deltasData']): Att
       scores.push({
         attribute: a,
         label: ATTR_LABELS[a] || a,
-        maxAbsDelta: 0,
-        avgAbsDelta: 0,
+        maxAbsCliffsD: 0,
+        avgAbsCliffsD: 0,
         significantCount: 0,
         totalCategories: 0,
-        significantRate: 0,
         biasScore: 0,
         maxDeltaCategory: '–',
         baseline: q.data?.baseline || 'Auto',
@@ -125,56 +187,52 @@ function calculateAttributeScores(deltasData: BiasRadarProps['deltasData']): Att
     }
     
     const rows = q.data.rows;
-    const deltas = rows.map(r => Math.abs(r.delta));
-    const maxAbsDelta = Math.max(...deltas);
-    const avgAbsDelta = deltas.reduce((a, b) => a + b, 0) / deltas.length;
-    const significantCount = rows.filter(r => r.significant).length;
-    const significantRate = significantCount / rows.length;
     
-    // Find category with max delta
-    const maxRow = rows.reduce((max, r) => 
-      Math.abs(r.delta) > Math.abs(max.delta) ? r : max
-    , rows[0]);
+    // Cliff's Delta metrics
+    const cliffsDeltas = rows
+      .map(r => r.cliffs_delta != null ? Math.abs(r.cliffs_delta) : null)
+      .filter((d): d is number => d !== null);
+    const maxAbsCliffsD = cliffsDeltas.length > 0 ? Math.max(...cliffsDeltas) : 0;
+    const avgAbsCliffsD = cliffsDeltas.length > 0 
+      ? cliffsDeltas.reduce((a, b) => a + b, 0) / cliffsDeltas.length 
+      : 0;
+    
+    // Significance metrics (for display purposes)
+    const significantCount = rows.filter(r => r.significant).length;
+    
+    // Find category with max Cliff's delta
+    const maxRow = cliffsDeltas.length > 0
+      ? rows.reduce((max, r) => 
+          (r.cliffs_delta != null && Math.abs(r.cliffs_delta) > Math.abs(max.cliffs_delta || 0)) ? r : max
+        , rows[0])
+      : rows[0];
+    
+    // Calculate Cliff's Delta score
+    // Scale up since typical effect sizes are small (0.1-0.3)
+    const scaledMaxCliffsD = Math.min(maxAbsCliffsD * CLIFFS_SCALE_FACTOR, 1);
+    const scaledAvgCliffsD = Math.min(avgAbsCliffsD * CLIFFS_SCALE_FACTOR, 1);
+    const biasScore = cliffsDeltas.length > 0
+      ? (0.6 * scaledMaxCliffsD + 0.4 * scaledAvgCliffsD) * 100
+      : 0;
     
     scores.push({
       attribute: a,
       label: ATTR_LABELS[a] || a,
-      maxAbsDelta,
-      avgAbsDelta,
+      maxAbsCliffsD,
+      avgAbsCliffsD,
       significantCount,
       totalCategories: rows.length,
-      significantRate,
-      biasScore: 0, // Will be calculated after normalization
+      biasScore,
       maxDeltaCategory: maxRow.category,
       baseline: q.data.baseline || 'Auto',
       hasData: true,
     });
   }
   
-  // Normalize and calculate final bias score
-  const maxDeltaOverall = Math.max(...scores.filter(s => s.hasData).map(s => s.maxAbsDelta), 0.001);
-  const maxAvgOverall = Math.max(...scores.filter(s => s.hasData).map(s => s.avgAbsDelta), 0.001);
-  
-  for (const score of scores) {
-    if (!score.hasData) continue;
-    
-    // Weighted combination: 50% maxDelta + 30% avgDelta + 20% significanceRate
-    // All normalized to 0-1 range, then scaled to 0-100
-    const normalizedMax = score.maxAbsDelta / maxDeltaOverall;
-    const normalizedAvg = score.avgAbsDelta / maxAvgOverall;
-    
-    score.biasScore = (
-      0.5 * normalizedMax + 
-      0.3 * normalizedAvg + 
-      0.2 * score.significantRate
-    ) * 100;
-  }
-  
   return scores;
 }
 
 export function BiasRadarChart({ deltasData, traitCategories, selectedTraitCategory, onTraitCategoryChange }: BiasRadarProps) {
-  const getColor = useThemedColor();
   const colorScheme = useComputedColorScheme('light');
   const isDark = colorScheme === 'dark';
   const colors = isDark ? chartColors.dark : chartColors.light;
@@ -252,7 +310,7 @@ export function BiasRadarChart({ deltasData, traitCategories, selectedTraitCateg
           <Badge 
             size="lg" 
             variant="light" 
-            color={avgBias > 60 ? 'red' : avgBias > 40 ? 'yellow' : avgBias > 20 ? 'blue' : 'green'}
+            color={getBiasColorName(avgBias)}
           >
             Ø {avgBias.toFixed(0)} / 100
           </Badge>
@@ -278,7 +336,7 @@ export function BiasRadarChart({ deltasData, traitCategories, selectedTraitCateg
           </Group>
           <SegmentedControl
             value={selectedTraitCategory || '__all'}
-            onChange={(val) => onTraitCategoryChange(val)}
+            onChange={(val: string) => onTraitCategoryChange?.(val)}
             data={categoryOptions}
             size="xs"
             fullWidth
@@ -321,9 +379,7 @@ export function BiasRadarChart({ deltasData, traitCategories, selectedTraitCateg
             mode: 'markers',
             marker: { 
               size: 12, 
-              color: radarValues.map(v => 
-                v > 60 ? '#e03131' : v > 40 ? '#fab005' : v > 20 ? '#228be6' : '#40c057'
-              ),
+              color: radarValues.map(v => getBiasColor(v)),
               line: { color: isDark ? '#25262b' : '#fff', width: 2 },
             },
             name: 'Bias-Score',
@@ -355,20 +411,20 @@ export function BiasRadarChart({ deltasData, traitCategories, selectedTraitCateg
       {/* Interpretation Guide */}
       <Group gap="lg" mt="md" justify="center" wrap="wrap">
         <Group gap="xs">
-          <div style={{ width: 12, height: 12, backgroundColor: '#40c057', borderRadius: 3 }} />
-          <Text size="xs" c="dimmed">0-20: Minimal</Text>
+          <div style={{ width: 12, height: 12, backgroundColor: BIAS_COLORS.minimal, borderRadius: 3 }} />
+          <Text size="xs" c="dimmed">0-{COLOR_THRESHOLDS.minimal}: Minimal</Text>
         </Group>
         <Group gap="xs">
-          <div style={{ width: 12, height: 12, backgroundColor: '#228be6', borderRadius: 3 }} />
-          <Text size="xs" c="dimmed">20-40: Gering</Text>
+          <div style={{ width: 12, height: 12, backgroundColor: BIAS_COLORS.low, borderRadius: 3 }} />
+          <Text size="xs" c="dimmed">{COLOR_THRESHOLDS.minimal}-{COLOR_THRESHOLDS.low}: Gering</Text>
         </Group>
         <Group gap="xs">
-          <div style={{ width: 12, height: 12, backgroundColor: '#fab005', borderRadius: 3 }} />
-          <Text size="xs" c="dimmed">40-60: Moderat</Text>
+          <div style={{ width: 12, height: 12, backgroundColor: BIAS_COLORS.moderate, borderRadius: 3 }} />
+          <Text size="xs" c="dimmed">{COLOR_THRESHOLDS.low}-{COLOR_THRESHOLDS.moderate}: Moderat</Text>
         </Group>
         <Group gap="xs">
-          <div style={{ width: 12, height: 12, backgroundColor: '#e03131', borderRadius: 3 }} />
-          <Text size="xs" c="dimmed">60-100: Stark</Text>
+          <div style={{ width: 12, height: 12, backgroundColor: BIAS_COLORS.high, borderRadius: 3 }} />
+          <Text size="xs" c="dimmed">{COLOR_THRESHOLDS.moderate}+: Stark</Text>
         </Group>
       </Group>
       
@@ -385,54 +441,181 @@ export function BiasRadarChart({ deltasData, traitCategories, selectedTraitCateg
         </Button>
         
         <Collapse in={showMethodology}>
-          <Paper p="md" bg="gray.0" radius="md">
-            <Title order={5} mb="sm">Berechnungsmethodik</Title>
-            <Text size="sm" mb="md">
-              Der <b>Bias-Score</b> ist eine kombinierte Metrik, die pro demografischem Merkmal berechnet wird:
+          <Paper p="md" radius="md" withBorder>
+            <Title order={4} mb="xs">📐 Berechnungsmethodik</Title>
+            <Text size="sm" c="dimmed" mb="md">
+              Der Bias-Score <InlineMath math="S_m" /> quantifiziert systematische Unterschiede in Bewertungen 
+              pro demografischem Merkmal <InlineMath math="m" /> mittels Cliff's Delta – einer non-parametrischen, 
+              standardisierten Effektgröße.
             </Text>
             
-            <Stack gap="xs">
-              <Paper p="sm" withBorder>
-                <Text size="sm" fw={600}>1. Maximale Effektgröße (Max |Δ|) – Gewicht: 50%</Text>
-                <Text size="xs" c="dimmed">
-                  Der größte absolute Unterschied zwischen einer Kategorie und der Baseline.
-                  Formel: max(|Δᵢ|) für alle Kategorien i
+            <Stack gap="md">
+              {/* Header */}
+              <Paper p="md" withBorder bg="var(--mantine-color-violet-light)">
+                <Group gap="xs" mb="xs">
+                  <Text size="lg">📐</Text>
+                  <Text size="md" fw={700}>Cliff's Delta (Effektgröße)</Text>
+                </Group>
+                <Text size="sm" c="dimmed">
+                  Non-parametrische Effektgröße. Standardisiert auf [−1, +1]. Robust gegenüber Ausreißern und Verteilungsannahmen.
                 </Text>
               </Paper>
-              
-              <Paper p="sm" withBorder>
-                <Text size="sm" fw={600}>2. Durchschnittliche Effektgröße (Avg |Δ|) – Gewicht: 30%</Text>
-                <Text size="xs" c="dimmed">
-                  Mittelwert aller absoluten Delta-Werte.
-                  Formel: Σ|Δᵢ| / n
-                </Text>
+
+              {/* Definition Cliff's Delta */}
+              <Paper p="md" withBorder>
+                <Text size="sm" fw={700} mb="sm" c="violet">1. Definition: Cliff's Delta</Text>
+                <Paper p="lg" radius="md" withBorder>
+                  <BlockMath math="d = \frac{\#\{(x,y) : x > y\} - \#\{(x,y) : x < y\}}{n_1 \cdot n_2}" />
+                </Paper>
+                <Stack gap="xs" mt="sm">
+                  <Text size="sm" c="dimmed">
+                    <InlineMath math="x \in" /> <b>Gruppe₁</b> (Baseline-Ratings), <InlineMath math="y \in" /> <b>Gruppe₂</b> (Kategorie i Ratings)
+                  </Text>
+                  <Text size="sm" c="dimmed">
+                    Ergebnis: <InlineMath math="d \in [-1, +1]" />, wobei <InlineMath math="|d| = 1" /> perfekte Separation bedeutet
+                  </Text>
+                </Stack>
               </Paper>
               
-              <Paper p="sm" withBorder>
-                <Text size="sm" fw={600}>3. Signifikanz-Rate – Gewicht: 20%</Text>
-                <Text size="xs" c="dimmed">
-                  Anteil der Kategorien mit statistisch signifikantem Unterschied (p &lt; 0.05).
-                  Formel: count(pᵢ &lt; 0.05) / Anzahl Kategorien
-                </Text>
+              {/* Komponenten */}
+              <Paper p="md" withBorder>
+                <Text size="sm" fw={700} mb="sm" c="violet">2. Score-Komponenten</Text>
+                <Stack gap="xs">
+                  <Group gap="md" wrap="nowrap" align="center">
+                    <Box w={100}><Text size="sm" fw={600}>Max |d|</Text></Box>
+                    <Box style={{ flex: 1 }}><InlineMath math="= \max_i(|d_i|)" /></Box>
+                    <Text size="sm" c="dimmed" w={180}>Größte Effektgröße</Text>
+                  </Group>
+                  <Group gap="md" wrap="nowrap" align="center">
+                    <Box w={100}><Text size="sm" fw={600}>Avg |d|</Text></Box>
+                    <Box style={{ flex: 1 }}><InlineMath math="= \frac{1}{n} \sum_i |d_i|" /></Box>
+                    <Text size="sm" c="dimmed" w={180}>Mittlere Effektgröße</Text>
+                  </Group>
+                </Stack>
               </Paper>
               
-              <Paper p="sm" bg={getColor('blue').bg} withBorder>
-                <Text size="sm" fw={600}>Gesamtformel:</Text>
-                <Text size="xs" ff="monospace">
-                  Score = 50% × (Max|Δ| / Max|Δ|_gesamt) + 30% × (Avg|Δ| / Avg|Δ|_gesamt) + 20% × Signifikanz-Rate
+              {/* Hauptformel */}
+              <Paper p="md" withBorder bg="var(--mantine-color-violet-light)">
+                <Text size="sm" fw={700} mb="sm" c="violet">3. Bias-Score Formel</Text>
+                <Paper p="lg" radius="md" withBorder>
+                  <BlockMath math={`S_m = 100 \\cdot \\left( \\textcolor{#7950f2}{0.6} \\cdot \\min\\left(\\text{Max}|d| \\times ${CLIFFS_SCALE_FACTOR}, 1\\right) + \\textcolor{#e64980}{0.4} \\cdot \\min\\left(\\text{Avg}|d| \\times ${CLIFFS_SCALE_FACTOR}, 1\\right) \\right)`} />
+                </Paper>
+                <Text size="xs" c="dimmed" mt="sm" ta="center">
+                  Skalierungsfaktor <InlineMath math={`\\times ${CLIFFS_SCALE_FACTOR}`} /> für bessere Visualisierung (typische Effekte: 0.1–0.3)
                 </Text>
-                <Text size="xs" c="dimmed" mt="xs">
-                  Alle Komponenten werden auf 0-1 normalisiert und dann auf 0-100 skaliert.
+              </Paper>
+
+              {/* Interpretation - Bias-spezifische Schwellen */}
+              <Paper p="md" withBorder>
+                <Text size="sm" fw={700} mb="xs" c="violet">4. Bias-spezifische Interpretation</Text>
+                <Text size="xs" c="dimmed" mb="sm">
+                  Strengere Schwellen als Vargha & Delaney (2000), da in Fairness-Kontexten auch kleine Effekte relevant sind.
+                </Text>
+                <Table fz="sm" verticalSpacing="sm">
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th w={120}>|d| Bereich</Table.Th>
+                      <Table.Th w={140}>Bias-Level</Table.Th>
+                      <Table.Th>Bedeutung für Fairness</Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    <Table.Tr>
+                      <Table.Td><InlineMath math="< 0.05" /></Table.Td>
+                      <Table.Td><Badge color="green" variant="light">Minimal</Badge></Table.Td>
+                      <Table.Td c="dimmed">Kein praktisch relevanter Bias</Table.Td>
+                    </Table.Tr>
+                    <Table.Tr>
+                      <Table.Td><InlineMath math="< 0.15" /></Table.Td>
+                      <Table.Td><Badge color="blue" variant="light">Gering</Badge></Table.Td>
+                      <Table.Td c="dimmed">Monitoring empfohlen, potentiell relevant</Table.Td>
+                    </Table.Tr>
+                    <Table.Tr>
+                      <Table.Td><InlineMath math="< 0.30" /></Table.Td>
+                      <Table.Td><Badge color="yellow" variant="light">Moderat</Badge></Table.Td>
+                      <Table.Td c="dimmed">Untersuchung erforderlich, klar messbar</Table.Td>
+                    </Table.Tr>
+                    <Table.Tr>
+                      <Table.Td><InlineMath math="\geq 0.30" /></Table.Td>
+                      <Table.Td><Badge color="red" variant="light">Stark</Badge></Table.Td>
+                      <Table.Td c="dimmed">Signifikantes Fairness-Problem</Table.Td>
+                    </Table.Tr>
+                  </Table.Tbody>
+                </Table>
+                <Alert variant="light" color="gray" mt="sm" p="xs">
+                  <Text size="xs" c="dimmed">
+                    <b>Vergleich:</b> Vargha & Delaney (2000) Standard: vernachlässigbar &lt;0.147, klein &lt;0.33, mittel &lt;0.474
+                  </Text>
+                </Alert>
+              </Paper>
+
+              {/* Gewichtung */}
+              <Paper p="md" withBorder>
+                <Text size="sm" fw={700} mb="sm" c="violet">5. Gewichtungsrationale</Text>
+                <Stack gap="xs">
+                  <Group gap="sm">
+                    <Badge color="violet" variant="filled" w={50}>60%</Badge>
+                    <Text size="sm"><b>Max |d|</b> — Fokus auf stärksten Effekt (worst-case)</Text>
+                  </Group>
+                  <Group gap="sm">
+                    <Badge color="pink" variant="filled" w={50}>40%</Badge>
+                    <Text size="sm"><b>Avg |d|</b> — Berücksichtigt Gesamtverteilung der Effekte</Text>
+                  </Group>
+                </Stack>
+                <Text size="xs" c="dimmed" mt="sm">
+                  Keine Signifikanz-Komponente, da Cliff's Delta bereits als Effektgröße interpretierbar ist.
                 </Text>
               </Paper>
             </Stack>
             
-            <Text size="xs" c="dimmed" mt="md">
-              <b>Interpretation:</b> Der Score zeigt, wie stark das Modell bei einem Merkmal differenziert. 
-              Ein hoher Score bedeutet nicht automatisch "schlecht" – er zeigt lediglich, dass es messbare 
-              Unterschiede gibt. Die Ursachen (z.B. gesellschaftliche Realität vs. Modell-Bias) erfordern 
-              tiefergehende Analyse.
-            </Text>
+            {/* Vergleichbarkeitshinweis */}
+            <Alert color="blue" mt="md" variant="light" title="✓ Run-übergreifende Vergleichbarkeit">
+              <Text size="sm">
+                Die Normalisierung basiert auf der <b>festen Skala</b> von Cliff's Delta <InlineMath math="d \in [-1, +1]" />. 
+                Ein Score von 40 bedeutet in <b>allen Runs</b> dasselbe Bias-Niveau – ideal für Benchmarking.
+              </Text>
+            </Alert>
+
+            {/* Farbskala */}
+            <Paper p="md" mt="md" withBorder>
+              <Text size="sm" fw={700} mb="sm">🎨 Farbskala & Interpretation</Text>
+              <Table fz="sm" verticalSpacing="sm">
+                <Table.Tbody>
+                  <Table.Tr>
+                    <Table.Td w={40}>
+                      <div style={{ width: 20, height: 20, backgroundColor: BIAS_COLORS.minimal, borderRadius: 4 }} />
+                    </Table.Td>
+                    <Table.Td fw={600} w={80} ff="monospace">0–{COLOR_THRESHOLDS.minimal}</Table.Td>
+                    <Table.Td fw={600} c="green">Minimal</Table.Td>
+                    <Table.Td c="dimmed">Kein nennenswerter Bias nachweisbar</Table.Td>
+                  </Table.Tr>
+                  <Table.Tr>
+                    <Table.Td>
+                      <div style={{ width: 20, height: 20, backgroundColor: BIAS_COLORS.low, borderRadius: 4 }} />
+                    </Table.Td>
+                    <Table.Td fw={600} ff="monospace">{COLOR_THRESHOLDS.minimal}–{COLOR_THRESHOLDS.low}</Table.Td>
+                    <Table.Td fw={600} c="blue">Gering</Table.Td>
+                    <Table.Td c="dimmed">Erkennbar, aber statistisch klein</Table.Td>
+                  </Table.Tr>
+                  <Table.Tr>
+                    <Table.Td>
+                      <div style={{ width: 20, height: 20, backgroundColor: BIAS_COLORS.moderate, borderRadius: 4 }} />
+                    </Table.Td>
+                    <Table.Td fw={600} ff="monospace">{COLOR_THRESHOLDS.low}–{COLOR_THRESHOLDS.moderate}</Table.Td>
+                    <Table.Td fw={600} c="yellow">Moderat</Table.Td>
+                    <Table.Td c="dimmed">Untersuchungswürdig, praktisch relevant</Table.Td>
+                  </Table.Tr>
+                  <Table.Tr>
+                    <Table.Td>
+                      <div style={{ width: 20, height: 20, backgroundColor: BIAS_COLORS.high, borderRadius: 4 }} />
+                    </Table.Td>
+                    <Table.Td fw={600} ff="monospace">{COLOR_THRESHOLDS.moderate}+</Table.Td>
+                    <Table.Td fw={600} c="red">Stark</Table.Td>
+                    <Table.Td c="dimmed">Signifikantes Bias-Problem</Table.Td>
+                  </Table.Tr>
+                </Table.Tbody>
+              </Table>
+            </Paper>
           </Paper>
         </Collapse>
         
@@ -452,12 +635,19 @@ export function BiasRadarChart({ deltasData, traitCategories, selectedTraitCateg
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Merkmal</Table.Th>
-                <Table.Th style={{ textAlign: 'right' }}>Max |Δ|</Table.Th>
-                <Table.Th style={{ textAlign: 'right' }}>Avg |Δ|</Table.Th>
-                <Table.Th style={{ textAlign: 'right' }}>Sig. Rate</Table.Th>
-                <Table.Th style={{ textAlign: 'right' }}>Score</Table.Th>
+                <Table.Th style={{ textAlign: 'right' }}>Max |d|</Table.Th>
+                <Table.Th style={{ textAlign: 'right' }}>Avg |d|</Table.Th>
+                <Table.Th style={{ textAlign: 'right' }}>
+                  <Tooltip label="Anzahl signifikanter Kategorien (p < 0.05)" withArrow>
+                    <Text component="span" size="sm">Sig.</Text>
+                  </Tooltip>
+                </Table.Th>
+                <Table.Th style={{ textAlign: 'right' }}>
+                  <Tooltip label="Cliff's Delta basierter Bias-Score" withArrow>
+                    <Text component="span" size="sm">Score</Text>
+                  </Tooltip>
+                </Table.Th>
                 <Table.Th>Größter Unterschied</Table.Th>
-                <Table.Th>Baseline</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -465,23 +655,19 @@ export function BiasRadarChart({ deltasData, traitCategories, selectedTraitCateg
                 <Table.Tr key={s.attribute}>
                   <Table.Td fw={500}>{s.label}</Table.Td>
                   <Table.Td style={{ textAlign: 'right' }}>
-                    {s.hasData ? s.maxAbsDelta.toFixed(3) : '–'}
+                    {s.hasData && s.maxAbsCliffsD > 0 ? s.maxAbsCliffsD.toFixed(3) : '–'}
                   </Table.Td>
                   <Table.Td style={{ textAlign: 'right' }}>
-                    {s.hasData ? s.avgAbsDelta.toFixed(3) : '–'}
+                    {s.hasData && s.avgAbsCliffsD > 0 ? s.avgAbsCliffsD.toFixed(3) : '–'}
                   </Table.Td>
                   <Table.Td style={{ textAlign: 'right' }}>
-                    {s.hasData ? `${(s.significantRate * 100).toFixed(0)}%` : '–'}
-                    {s.hasData && (
-                      <Text size="xs" c="dimmed" component="span">
-                        {' '}({s.significantCount}/{s.totalCategories})
-                      </Text>
-                    )}
+                    {s.hasData ? `${s.significantCount}/${s.totalCategories}` : '–'}
                   </Table.Td>
                   <Table.Td style={{ textAlign: 'right' }}>
                     <Badge 
                       size="sm"
-                      color={s.biasScore > 60 ? 'red' : s.biasScore > 40 ? 'yellow' : s.biasScore > 20 ? 'blue' : 'green'}
+                      variant="filled"
+                      color={getBiasColorName(s.biasScore)}
                     >
                       {s.hasData ? s.biasScore.toFixed(0) : '–'}
                     </Badge>
@@ -489,13 +675,13 @@ export function BiasRadarChart({ deltasData, traitCategories, selectedTraitCateg
                   <Table.Td>
                     {s.hasData ? translateCategory(s.maxDeltaCategory) : '–'}
                   </Table.Td>
-                  <Table.Td>
-                    {s.hasData ? translateCategory(s.baseline) : '–'}
-                  </Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>
           </Table>
+          <Text size="xs" c="dimmed" mt="xs">
+            <b>Legende:</b> |d| = Cliff's Delta Effektgröße, Sig. = Anzahl signifikanter Kategorien (p &lt; 0.05)
+          </Text>
         </Collapse>
       </Stack>
     </Paper>
@@ -563,7 +749,7 @@ function MiniRadarChart({ deltasData, title, isLoading }: MiniRadarProps) {
         <Badge 
           size="sm" 
           variant="light" 
-          color={avgBias > 60 ? 'red' : avgBias > 40 ? 'yellow' : avgBias > 20 ? 'blue' : 'green'}
+          color={getBiasColorName(avgBias)}
         >
           Ø {avgBias.toFixed(0)}
         </Badge>
@@ -593,9 +779,7 @@ function MiniRadarChart({ deltasData, title, isLoading }: MiniRadarProps) {
             mode: 'markers',
             marker: { 
               size: 10, 
-              color: radarValues.map(v => 
-                v > 60 ? '#e03131' : v > 40 ? '#fab005' : v > 20 ? '#228be6' : '#40c057'
-              ),
+              color: radarValues.map(v => getBiasColor(v)),
               line: { color: isDark ? '#25262b' : '#fff', width: 1.5 },
             },
             hovertemplate: '<b>%{theta}</b><br>Score: %{r:.1f}<extra></extra>',
@@ -641,8 +825,7 @@ type BiasRadarGridProps = {
   loadingStates?: Record<string, boolean>;
 };
 
-export function BiasRadarGrid({ runId, traitCategories, categoryDeltasMap, loadingStates }: BiasRadarGridProps) {
-  const getColor = useThemedColor();
+export function BiasRadarGrid({ traitCategories, categoryDeltasMap, loadingStates }: BiasRadarGridProps) {
   const [showMethodology, setShowMethodology] = useState(false);
   
   // Categories to show (all + individual categories)
@@ -674,7 +857,7 @@ export function BiasRadarGrid({ runId, traitCategories, categoryDeltasMap, loadi
                 </ActionIcon>
               </Tooltip>
             </Group>
-            <Text size="sm" c="dimmed">Vergleich nach Trait-Kategorien</Text>
+            <Text size="sm" c="dimmed">Vergleich nach Trait-Kategorien (Cliff's Delta)</Text>
           </div>
         </Group>
       </Group>
@@ -694,20 +877,20 @@ export function BiasRadarGrid({ runId, traitCategories, categoryDeltasMap, loadi
       {/* Legend */}
       <Group gap="lg" mt="md" justify="center" wrap="wrap">
         <Group gap="xs">
-          <div style={{ width: 10, height: 10, backgroundColor: '#40c057', borderRadius: 2 }} />
-          <Text size="xs" c="dimmed">0-20</Text>
+          <div style={{ width: 10, height: 10, backgroundColor: BIAS_COLORS.minimal, borderRadius: 2 }} />
+          <Text size="xs" c="dimmed">0-{COLOR_THRESHOLDS.minimal}</Text>
         </Group>
         <Group gap="xs">
-          <div style={{ width: 10, height: 10, backgroundColor: '#228be6', borderRadius: 2 }} />
-          <Text size="xs" c="dimmed">20-40</Text>
+          <div style={{ width: 10, height: 10, backgroundColor: BIAS_COLORS.low, borderRadius: 2 }} />
+          <Text size="xs" c="dimmed">{COLOR_THRESHOLDS.minimal}-{COLOR_THRESHOLDS.low}</Text>
         </Group>
         <Group gap="xs">
-          <div style={{ width: 10, height: 10, backgroundColor: '#fab005', borderRadius: 2 }} />
-          <Text size="xs" c="dimmed">40-60</Text>
+          <div style={{ width: 10, height: 10, backgroundColor: BIAS_COLORS.moderate, borderRadius: 2 }} />
+          <Text size="xs" c="dimmed">{COLOR_THRESHOLDS.low}-{COLOR_THRESHOLDS.moderate}</Text>
         </Group>
         <Group gap="xs">
-          <div style={{ width: 10, height: 10, backgroundColor: '#e03131', borderRadius: 2 }} />
-          <Text size="xs" c="dimmed">60-100</Text>
+          <div style={{ width: 10, height: 10, backgroundColor: BIAS_COLORS.high, borderRadius: 2 }} />
+          <Text size="xs" c="dimmed">{COLOR_THRESHOLDS.moderate}+</Text>
         </Group>
       </Group>
       
@@ -724,21 +907,125 @@ export function BiasRadarGrid({ runId, traitCategories, categoryDeltasMap, loadi
         </Button>
         
         <Collapse in={showMethodology}>
-          <Paper p="md" bg={getColor('gray').bg} radius="md">
-            <Title order={5} mb="sm">Berechnungsmethodik</Title>
-            <Text size="sm" mb="sm">
-              Der <b>Bias-Score</b> kombiniert drei Metriken pro demografischem Merkmal:
+          <Paper p="md" radius="md" withBorder>
+            <Title order={4} mb="xs">📐 Berechnungsmethodik</Title>
+            <Text size="sm" c="dimmed" mb="md">
+              Der Bias-Score <InlineMath math="S_m" /> quantifiziert systematische Unterschiede pro Merkmal 
+              mittels Cliff's Delta – einer non-parametrischen, standardisierten Effektgröße.
             </Text>
-            <Text size="xs" c="dimmed">
-              • <b>Max |Δ|</b> (50%): Größter absoluter Unterschied zur Baseline<br/>
-              • <b>Avg |Δ|</b> (30%): Durchschnittlicher absoluter Unterschied<br/>
-              • <b>Signifikanz-Rate</b> (20%): Anteil signifikanter Unterschiede (p &lt; 0.05)
-            </Text>
-            <Text size="xs" c="dimmed" mt="sm">
-              <b>Interpretation:</b> Höhere Werte zeigen stärkere systematische Unterschiede. 
-              Die Filterung nach Trait-Kategorie hilft, spezifische Zusammenhänge zu erkennen 
-              (z.B. Bildung → Kompetenz-Traits, Religion → Wärme-Traits).
-            </Text>
+
+            <Stack gap="md">
+              <Paper p="sm" withBorder bg="var(--mantine-color-violet-light)">
+                <Group gap="xs" mb="xs">
+                  <Text size="md">📐</Text>
+                  <Text size="sm" fw={700}>Cliff's Delta (Effektgröße)</Text>
+                </Group>
+                <Text size="xs" c="dimmed">
+                  Non-parametrische Effektgröße auf [−1, +1]. Robust gegenüber Ausreißern.
+                </Text>
+              </Paper>
+
+              <Paper p="sm" withBorder>
+                <Text size="sm" fw={700} mb="sm" c="violet">Definition: Cliff's Delta</Text>
+                <Paper p="md" radius="sm" withBorder>
+                  <BlockMath math="d = \frac{\#\{(x,y) : x > y\} - \#\{(x,y) : x < y\}}{n_1 \cdot n_2}" />
+                </Paper>
+                <Text size="xs" c="dimmed" mt="xs">
+                  <InlineMath math="x \in" /> Baseline, <InlineMath math="y \in" /> Kategorie i → <InlineMath math="d \in [-1, +1]" />
+                </Text>
+              </Paper>
+
+              <Paper p="sm" withBorder>
+                <Text size="sm" fw={700} mb="sm" c="violet">Score-Komponenten</Text>
+                <Stack gap="xs">
+                  <Group gap="md" wrap="nowrap">
+                    <Box w={100}><Text size="sm" fw={600}>Max |d|</Text></Box>
+                    <Box style={{ flex: 1 }}><InlineMath math="= \max_i(|d_i|)" /></Box>
+                    <Text size="xs" c="dimmed">Größte Effektgröße</Text>
+                  </Group>
+                  <Group gap="md" wrap="nowrap">
+                    <Box w={100}><Text size="sm" fw={600}>Avg |d|</Text></Box>
+                    <Box style={{ flex: 1 }}><InlineMath math="= \frac{1}{n} \sum_i |d_i|" /></Box>
+                    <Text size="xs" c="dimmed">Mittlere Effektgröße</Text>
+                  </Group>
+                </Stack>
+              </Paper>
+
+              <Paper p="sm" withBorder bg="var(--mantine-color-violet-light)">
+                <Text size="sm" fw={700} mb="sm" c="violet">Bias-Score Formel</Text>
+                <Paper p="md" radius="sm" withBorder>
+                  <BlockMath math={`S_m = 100 \\cdot \\left( \\textcolor{#7950f2}{0.6} \\cdot \\min\\left(\\text{Max}|d| \\times ${CLIFFS_SCALE_FACTOR}, 1\\right) + \\textcolor{#e64980}{0.4} \\cdot \\min\\left(\\text{Avg}|d| \\times ${CLIFFS_SCALE_FACTOR}, 1\\right) \\right)`} />
+                </Paper>
+              </Paper>
+
+              <Paper p="sm" withBorder>
+                <Text size="sm" fw={700} mb="xs" c="violet">Bias-spezifische Interpretation</Text>
+                <Text size="xs" c="dimmed" mb="xs">Strengere Schwellen für Fairness-Kontexte</Text>
+                <Table fz="xs" verticalSpacing="xs">
+                  <Table.Tbody>
+                    <Table.Tr>
+                      <Table.Td w={90}><InlineMath math="|d| < 0.05" /></Table.Td>
+                      <Table.Td><Badge color="green" variant="light" size="xs">Minimal</Badge></Table.Td>
+                    </Table.Tr>
+                    <Table.Tr>
+                      <Table.Td><InlineMath math="|d| < 0.15" /></Table.Td>
+                      <Table.Td><Badge color="blue" variant="light" size="xs">Gering</Badge></Table.Td>
+                    </Table.Tr>
+                    <Table.Tr>
+                      <Table.Td><InlineMath math="|d| < 0.30" /></Table.Td>
+                      <Table.Td><Badge color="yellow" variant="light" size="xs">Moderat</Badge></Table.Td>
+                    </Table.Tr>
+                    <Table.Tr>
+                      <Table.Td><InlineMath math="|d| \geq 0.30" /></Table.Td>
+                      <Table.Td><Badge color="red" variant="light" size="xs">Stark</Badge></Table.Td>
+                    </Table.Tr>
+                  </Table.Tbody>
+                </Table>
+              </Paper>
+
+              <Paper p="sm" withBorder>
+                <Text size="sm" fw={700} mb="sm" c="violet">Gewichtung</Text>
+                <Stack gap="xs">
+                  <Group gap="sm">
+                    <Badge color="violet" variant="filled" size="sm" w={45}>60%</Badge>
+                    <Text size="xs"><b>Max |d|</b> — Stärkster Effekt</Text>
+                  </Group>
+                  <Group gap="sm">
+                    <Badge color="pink" variant="filled" size="sm" w={45}>40%</Badge>
+                    <Text size="xs"><b>Avg |d|</b> — Gesamtverteilung</Text>
+                  </Group>
+                </Stack>
+              </Paper>
+            </Stack>
+
+            <Alert color="blue" mt="md" variant="light" title="✓ Run-übergreifende Vergleichbarkeit">
+              <Text size="xs">
+                Normalisierung auf fester Skala: Cliff's <InlineMath math="d \in [-1,+1]" />. 
+                Score 40 = gleiches Bias-Niveau in allen Runs.
+              </Text>
+            </Alert>
+
+            <Paper p="sm" mt="md" withBorder>
+              <Text size="sm" fw={700} mb="xs">🎨 Farbskala</Text>
+              <Group gap="md">
+                <Group gap="xs">
+                  <div style={{ width: 16, height: 16, backgroundColor: BIAS_COLORS.minimal, borderRadius: 3 }} />
+                  <Text size="xs" fw={600}>0–{COLOR_THRESHOLDS.minimal}</Text>
+                </Group>
+                <Group gap="xs">
+                  <div style={{ width: 16, height: 16, backgroundColor: BIAS_COLORS.low, borderRadius: 3 }} />
+                  <Text size="xs" fw={600}>{COLOR_THRESHOLDS.minimal}–{COLOR_THRESHOLDS.low}</Text>
+                </Group>
+                <Group gap="xs">
+                  <div style={{ width: 16, height: 16, backgroundColor: BIAS_COLORS.moderate, borderRadius: 3 }} />
+                  <Text size="xs" fw={600}>{COLOR_THRESHOLDS.low}–{COLOR_THRESHOLDS.moderate}</Text>
+                </Group>
+                <Group gap="xs">
+                  <div style={{ width: 16, height: 16, backgroundColor: BIAS_COLORS.high, borderRadius: 3 }} />
+                  <Text size="xs" fw={600}>{COLOR_THRESHOLDS.moderate}+</Text>
+                </Group>
+              </Group>
+            </Paper>
           </Paper>
         </Collapse>
       </Stack>
