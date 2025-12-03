@@ -34,8 +34,12 @@ def filter_by_trait_category(
 def compute_rating_histogram(df: pd.DataFrame) -> Dict[str, Any]:
     """Compute histogram of ratings.
 
+    Uses raw ratings (before valence alignment) to show the actual
+    distribution of model responses. This is important because
+    valence-aligned ratings would distort the histogram.
+
     Args:
-        df: DataFrame with 'rating' column
+        df: DataFrame with 'rating' column (and optionally 'rating_pre_valence')
 
     Returns:
         Dict with bins, shares, and counts
@@ -43,7 +47,11 @@ def compute_rating_histogram(df: pd.DataFrame) -> Dict[str, Any]:
     if df.empty or "rating" not in df.columns:
         return {"bins": [], "shares": [], "counts": []}
 
-    s = df["rating"].dropna().astype(int)
+    # Use raw ratings before valence alignment if available
+    rating_col = (
+        "rating_pre_valence" if "rating_pre_valence" in df.columns else "rating"
+    )
+    s = df[rating_col].dropna().astype(int)
     if s.empty:
         return {"bins": [], "shares": [], "counts": []}
 
@@ -61,14 +69,23 @@ def compute_rating_histogram(df: pd.DataFrame) -> Dict[str, Any]:
 def compute_trait_category_histograms(df: pd.DataFrame) -> List[Dict[str, Any]]:
     """Compute histograms grouped by trait category.
 
+    Uses raw ratings (before valence alignment) to show the actual
+    distribution of model responses per trait category.
+
     Args:
         df: DataFrame with 'rating' and 'trait_category' columns
+            (and optionally 'rating_pre_valence')
 
     Returns:
         List of dicts with category histograms
     """
     if df.empty:
         return []
+
+    # Use raw ratings before valence alignment if available
+    rating_col = (
+        "rating_pre_valence" if "rating_pre_valence" in df.columns else "rating"
+    )
 
     cat_work = df.copy()
     if "trait_category" in cat_work.columns:
@@ -81,14 +98,14 @@ def compute_trait_category_histograms(df: pd.DataFrame) -> List[Dict[str, Any]]:
         )
     cat_work["trait_category"] = tc_series
 
-    s = df["rating"].dropna().astype(int)
+    s = df[rating_col].dropna().astype(int)
     if s.empty:
         return []
     cats = list(range(int(s.min()), int(s.max()) + 1))
 
     cat_hists: List[Dict[str, Any]] = []
     for cat, sub in cat_work.groupby("trait_category"):
-        seq = pd.to_numeric(sub["rating"], errors="coerce").dropna().astype(int)
+        seq = pd.to_numeric(sub[rating_col], errors="coerce").dropna().astype(int)
         cat_counts = seq.value_counts().reindex(cats, fill_value=0).sort_index()
         total_cat = cat_counts.sum()
         cat_shares = (

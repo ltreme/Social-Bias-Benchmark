@@ -31,7 +31,9 @@ from backend.infrastructure.benchmark import (
 from backend.infrastructure.storage import benchmark_cache
 from backend.infrastructure.storage.models import Trait
 
-METRICS_CACHE_VERSION = 3  # Bump when changing metrics structure (added age_group)
+METRICS_CACHE_VERSION = (
+    4  # Bump when changing metrics structure (histograms now use raw ratings)
+)
 ORDER_CACHE_VERSION = 3  # Bump when changing order metrics structure
 
 
