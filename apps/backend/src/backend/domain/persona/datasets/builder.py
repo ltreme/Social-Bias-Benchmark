@@ -16,26 +16,42 @@ from backend.infrastructure.storage.models import (
 )
 
 # ----- helpers: derived axes -----
-AGE_BINS: List[Tuple[int, Optional[int]]] = [
-    (0, 17),
-    (18, 24),
-    (25, 34),
-    (35, 49),
-    (50, 64),
-    (65, None),
+# Age bins based on developmental stages:
+# - Adolescence: 10-19
+# - Emerging Adulthood: 20-29
+# - Early Adulthood: 30-44
+# - Middle Adulthood: 45-64
+# - Older Adulthood: 65+
+AGE_BINS: List[Tuple[int, Optional[int], str]] = [
+    (0, 9, "0-9"),
+    (10, 19, "10-19"),
+    (20, 29, "20-29"),
+    (30, 44, "30-44"),
+    (45, 64, "45-64"),
+    (65, None, "65+"),
 ]
 
 
 def age_bin_for(age: Optional[int]) -> str:
+    """Convert age to age bin label.
+
+    Uses developmental stage-based bins:
+    - 0-9: Childhood
+    - 10-19: Adolescence
+    - 20-29: Emerging Adulthood
+    - 30-44: Early Adulthood
+    - 45-64: Middle Adulthood
+    - 65+: Older Adulthood
+    """
     if age is None:
         return "unknown"
-    for low, high in AGE_BINS:
+    for low, high, label in AGE_BINS:
         if high is None:
             if age >= low:
-                return f"{low}+"
+                return label
         else:
             if low <= age <= high:
-                return f"{low}-{high}"
+                return label
     return "unknown"
 
 
@@ -244,32 +260,47 @@ def _is_valid_combo(age: Optional[int], marriage_status: Optional[str]) -> bool:
 
 
 def _pick_far_age(age: Optional[int], rng: random.Random) -> Tuple[int, str]:
-    # choose a target age from a bin at least 2 bins away if possible
+    """Choose a target age from a bin at least 2 bins away if possible.
+
+    Uses developmental stage-based bins:
+    - 0-9: Childhood
+    - 10-19: Adolescence
+    - 20-29: Emerging Adulthood
+    - 30-44: Early Adulthood
+    - 45-64: Middle Adulthood
+    - 65+: Older Adulthood
+    """
+    # All bin labels with representative ages
+    bin_info = [
+        (5, "0-9"),  # Childhood
+        (15, "10-19"),  # Adolescence
+        (25, "20-29"),  # Emerging Adulthood
+        (37, "30-44"),  # Early Adulthood
+        (55, "45-64"),  # Middle Adulthood
+        (72, "65+"),  # Older Adulthood
+    ]
+
     if age is None:
         # fallback: pick any adult bin
-        candidates = [(25, "25-34"), (40, "35-49"), (55, "50-64"), (70, "65+")]
-        return rng.choice(candidates)
+        adult_candidates = bin_info[2:]  # Start from Emerging Adulthood
+        return rng.choice(adult_candidates)
+
     current_bin = age_bin_for(age)
-    bin_labels = [
-        age_bin_for(b if b is not None else 200)
-        for (b, _) in [(0, 17), (18, 24), (25, 34), (35, 49), (50, 64), (65, 200)]
-    ]
+
     # Map label to index
-    label_to_idx = {
-        lab: i
-        for i, lab in enumerate(["0-17", "18-24", "25-34", "35-49", "50-64", "65+"])
-    }
-    idx = label_to_idx.get(current_bin, 2)
+    label_to_idx = {label: i for i, (_, label) in enumerate(bin_info)}
+    idx = label_to_idx.get(current_bin, 2)  # Default to Emerging Adulthood
+
+    # Find candidates at least 2 bins away
     candidates_idx: List[int] = []
-    for i in range(len(label_to_idx)):
+    for i in range(len(bin_info)):
         if abs(i - idx) >= 2:
             candidates_idx.append(i)
     if not candidates_idx:
-        candidates_idx = [i for i in range(len(label_to_idx)) if i != idx]
+        candidates_idx = [i for i in range(len(bin_info)) if i != idx]
+
     target_idx = rng.choice(candidates_idx)
-    # choose representative ages for bins
-    rep_age = {0: 12, 1: 20, 2: 30, 3: 42, 4: 57, 5: 72}[target_idx]
-    rep_label = ["0-17", "18-24", "25-34", "35-49", "50-64", "65+"][target_idx]
+    rep_age, rep_label = bin_info[target_idx]
     return rep_age, rep_label
 
 

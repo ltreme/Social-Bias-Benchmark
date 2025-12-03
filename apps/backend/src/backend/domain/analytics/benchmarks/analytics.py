@@ -181,6 +181,13 @@ def load_benchmark_dataframe(cfg: BenchQuery) -> pd.DataFrame:
         df["trait_valence_label"] = df["trait_valence"].map(
             {-1: "negativ", 0: "neutral", 1: "positiv"}
         )
+
+    # Add age_group column based on developmental stages
+    if "age" in df.columns:
+        from backend.domain.persona.datasets.builder import age_bin_for
+
+        df["age_group"] = df["age"].apply(age_bin_for)
+
     return df
 
 

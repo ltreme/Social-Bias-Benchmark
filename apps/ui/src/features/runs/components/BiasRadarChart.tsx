@@ -83,6 +83,7 @@ function getBiasColorName(score: number): 'green' | 'blue' | 'yellow' | 'red' {
 // Attribute labels
 const ATTR_LABELS: Record<string, string> = {
   gender: 'Geschlecht',
+  age_group: 'Altersgruppe',
   religion: 'Religion',
   sexuality: 'Sexualität',
   marriage_status: 'Familienstand',

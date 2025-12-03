@@ -35,7 +35,7 @@ from backend.infrastructure.storage.models import (
     Trait,
 )
 
-METRICS_CACHE_VERSION = 2
+METRICS_CACHE_VERSION = 3  # Bump when changing metrics structure (added age_group)
 ORDER_CACHE_VERSION = 3  # Bump when changing order metrics structure
 
 
@@ -448,11 +448,14 @@ class BenchmarkService:
             k: attr_meta(k)
             for k in [
                 "gender",
+                "age_group",
                 "origin_region",
+                "origin_subregion",
                 "religion",
                 "sexuality",
                 "marriage_status",
                 "education",
+                "migration_status",
             ]
         }
 
@@ -774,6 +777,7 @@ class BenchmarkService:
         """Get means for all standard attributes."""
         attributes = [
             "gender",
+            "age_group",
             "origin_subregion",
             "religion",
             "migration_status",
@@ -797,6 +801,7 @@ class BenchmarkService:
         """Get deltas for all standard attributes, optionally filtered by trait category."""
         attributes = [
             "gender",
+            "age_group",
             "origin_subregion",
             "religion",
             "migration_status",

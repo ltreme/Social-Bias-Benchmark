@@ -11,6 +11,7 @@ import type { RunDeltas, AnalysisStatus } from '../api';
 
 const ATTRS = [
     { value: 'gender', label: 'Geschlecht', icon: '👤', description: 'Vergleich zwischen Geschlechtern' },
+    { value: 'age_group', label: 'Altersgruppe', icon: '🎂', description: 'Vergleich nach Entwicklungsphasen (Adoleszenz, Emerging/Early/Middle/Older Adulthood)' },
     { value: 'religion', label: 'Religion', icon: '🕊️', description: 'Vergleich zwischen Religionsgruppen' },
     { value: 'sexuality', label: 'Sexualität', icon: '🌈', description: 'Vergleich nach sexueller Orientierung' },
     { value: 'marriage_status', label: 'Familienstand', icon: '💍', description: 'Vergleich nach Familienstand' },

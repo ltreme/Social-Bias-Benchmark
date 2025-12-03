@@ -170,6 +170,7 @@ export function RunDetailPage() {
 
   const meansData = [
     { a: 'gender', q: { data: { rows: allMeans?.data?.gender || [] }, isLoading: loadingAllMeans, isError: errorAllMeans, error: allMeansError } },
+    { a: 'age_group', q: { data: { rows: allMeans?.data?.age_group || [] }, isLoading: loadingAllMeans, isError: errorAllMeans, error: allMeansError } },
     { a: 'origin_subregion', q: { data: { rows: allMeans?.data?.origin_subregion || [] }, isLoading: loadingAllMeans, isError: errorAllMeans, error: allMeansError } },
     { a: 'religion', q: { data: { rows: allMeans?.data?.religion || [] }, isLoading: loadingAllMeans, isError: errorAllMeans, error: allMeansError } },
     { a: 'migration_status', q: { data: { rows: allMeans?.data?.migration_status || [] }, isLoading: loadingAllMeans, isError: errorAllMeans, error: allMeansError } },
@@ -180,6 +181,7 @@ export function RunDetailPage() {
 
   const deltasData = [
     { a: 'gender', q: { data: allDeltas?.data?.gender, isLoading: loadingAllDeltas, isError: errorAllDeltas, error: allDeltasError } },
+    { a: 'age_group', q: { data: allDeltas?.data?.age_group, isLoading: loadingAllDeltas, isError: errorAllDeltas, error: allDeltasError } },
     { a: 'origin_subregion', q: { data: allDeltas?.data?.origin_subregion, isLoading: loadingAllDeltas, isError: errorAllDeltas, error: allDeltasError } },
     { a: 'religion', q: { data: allDeltas?.data?.religion, isLoading: loadingAllDeltas, isError: errorAllDeltas, error: allDeltasError } },
     { a: 'migration_status', q: { data: allDeltas?.data?.migration_status, isLoading: loadingAllDeltas, isError: errorAllDeltas, error: allDeltasError } },
@@ -191,6 +193,7 @@ export function RunDetailPage() {
   // Helper to build deltasData array from raw API response
   const buildDeltasData = (data: typeof radarDeltasAll, isLoading: boolean) => [
     { a: 'gender', q: { data: data?.data?.gender, isLoading, isError: false } },
+    { a: 'age_group', q: { data: data?.data?.age_group, isLoading, isError: false } },
     { a: 'origin_subregion', q: { data: data?.data?.origin_subregion, isLoading, isError: false } },
     { a: 'religion', q: { data: data?.data?.religion, isLoading, isError: false } },
     { a: 'migration_status', q: { data: data?.data?.migration_status, isLoading, isError: false } },

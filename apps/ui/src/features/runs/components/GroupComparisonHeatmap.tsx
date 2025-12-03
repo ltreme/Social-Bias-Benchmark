@@ -8,6 +8,14 @@ const CATEGORY_TRANSLATIONS: Record<string, string> = {
   'male': 'Männlich',
   'female': 'Weiblich',
   'diverse': 'Divers',
+  // Age groups (developmental stages)
+  '0-9': 'Kindheit (0-9)',
+  '10-19': 'Adoleszenz (10-19)',
+  '20-29': 'Emerging Adulthood (20-29)',
+  '30-44': 'Early Adulthood (30-44)',
+  '45-64': 'Middle Adulthood (45-64)',
+  '65+': 'Older Adulthood (65+)',
+  'unknown': 'Unbekannt',
   // Religion
   'Christians': 'Christen',
   'Muslims': 'Muslime',
