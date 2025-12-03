@@ -1,5 +1,5 @@
-import { Alert, Badge, Button, Group, Paper, Popover, SimpleGrid, Spoiler, Stack, Text, ThemeIcon, Title, Progress, Tabs, ActionIcon, Tooltip } from '@mantine/core';
-import { IconDownload, IconDatabase, IconCpu, IconMessage, IconMessageCog, IconChartBar, IconClipboardCheck, IconAlertTriangle, IconPlayerPlay, IconCheck, IconX } from '@tabler/icons-react';
+import { Alert, Badge, Button, Group, Paper, Popover, SimpleGrid, Spoiler, Stack, Text, ThemeIcon, Title, Progress, Tabs, Menu } from '@mantine/core';
+import { IconDownload, IconDatabase, IconCpu, IconMessage, IconMessageCog, IconChartBar, IconClipboardCheck, IconAlertTriangle, IconPlayerPlay, IconCheck, IconX, IconFileTypePdf, IconChevronDown } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from '@tanstack/react-router';
 import { useThemedColor } from '../../lib/useThemeColors';
@@ -22,6 +22,7 @@ import { AsyncContent } from '../../components/AsyncContent';
 import { OverviewTab } from './components/OverviewTab';
 import { OrderConsistencyTab } from './components/OrderConsistencyTab';
 import { BiasTab } from './components/BiasTab';
+import { usePdfExport } from './usePdfExport';
 
 const ATTRS = [
   { value: 'gender', label: 'Geschlecht' },
@@ -88,6 +89,10 @@ export function RunDetailPage() {
   const warmStepErrorMessage = warmStepErrors.length
     ? warmStepErrors.map((s) => `${formatWarmStepName(s.name)}: ${s.error ?? 'Fehler'}`).join(' • ')
     : null;
+
+  // PDF export
+  const { exportToPdf, isExporting, progress: pdfProgress } = usePdfExport();
+
   const warmupErrorMessage =
     (warmup.start.isError ? ((warmup.start.error as any)?.message ?? String(warmup.start.error ?? 'Fehler')) : null) ||
     (warmup.status.isError ? ((warmup.status.error as any)?.message ?? String(warmup.status.error ?? 'Fehler')) : null) ||
@@ -277,17 +282,46 @@ export function RunDetailPage() {
               </Text>
             )}
           </div>
-          <Tooltip label="Prompt/Response-Logs herunterladen (JSON)">
-            <ActionIcon 
-              variant="light" 
-              size="lg"
-              component="a"
-              href={`${import.meta.env.VITE_API_BASE_URL || ''}/runs/${runId}/logs`}
-              download={`run_${runId}_logs.json`}
-            >
-              <IconDownload size={18} />
-            </ActionIcon>
-          </Tooltip>
+          <Group gap="xs">
+            <Menu shadow="md" width={220} position="bottom-end">
+              <Menu.Target>
+                <Button 
+                  variant="light" 
+                  leftSection={<IconDownload size={16} />}
+                  rightSection={<IconChevronDown size={14} />}
+                  loading={isExporting}
+                  data-print-hide
+                >
+                  {isExporting ? `${pdfProgress}%` : 'Export'}
+                </Button>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Label>Analyse exportieren</Menu.Label>
+                <Menu.Item
+                  leftSection={<IconFileTypePdf size={16} />}
+                  onClick={() => run && exportToPdf({
+                    run,
+                    metrics,
+                    orderMetrics: order.data,
+                    allDeltas: allDeltas?.data,
+                  }, {
+                    filename: `run_${runId}_analyse.pdf`,
+                  })}
+                  disabled={isExporting || warmLoading || !run}
+                >
+                  PDF-Report herunterladen
+                </Menu.Item>
+                <Menu.Item
+                  leftSection={<IconDownload size={16} />}
+                  component="a"
+                  href={`${import.meta.env.VITE_API_BASE_URL || ''}/runs/${runId}/logs`}
+                  download={`run_${runId}_logs.json`}
+                >
+                  Logs herunterladen (JSON)
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          </Group>
         </Group>
       </Paper>
 
