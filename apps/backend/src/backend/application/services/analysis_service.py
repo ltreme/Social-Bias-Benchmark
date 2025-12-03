@@ -452,7 +452,9 @@ class AnalysisService:
         Returns:
             Updated AnalysisJob record
         """
-        from backend.application.services.benchmark_service import BenchmarkService
+        from backend.application.services.benchmark_analytics_service import (
+            BenchmarkAnalyticsService,
+        )
 
         db = get_db()
         t0 = time.time()
@@ -473,9 +475,9 @@ class AnalysisService:
         try:
             _LOG.info(f"[Analysis] Running full order analysis for run {run_id}")
 
-            # Use existing BenchmarkService for metrics computation
-            benchmark_service = BenchmarkService()
-            order_result = benchmark_service.get_order_metrics(run_id)
+            # Use BenchmarkAnalyticsService for metrics computation
+            analytics_service = BenchmarkAnalyticsService()
+            order_result = analytics_service.get_order_metrics(run_id)
 
             # Extract summary from order_metrics result
             # The result contains rma, mae, and by_case with per-case breakdown
@@ -525,7 +527,9 @@ class AnalysisService:
         Returns:
             Updated AnalysisJob record
         """
-        from backend.application.services.benchmark_service import BenchmarkService
+        from backend.application.services.benchmark_analytics_service import (
+            BenchmarkAnalyticsService,
+        )
 
         db = get_db()
         t0 = time.time()
@@ -554,17 +558,24 @@ class AnalysisService:
                 f"[Analysis] Running bias analysis ({attribute}) for run {run_id}"
             )
 
-            # Use existing BenchmarkService for bias analysis
-            benchmark_service = BenchmarkService()
-            bias_result = benchmark_service.get_bias(run_id, attribute)
+            # Use BenchmarkAnalyticsService for bias analysis
+            analytics_service = BenchmarkAnalyticsService()
+            means_result = analytics_service.get_means(run_id, attribute)
+
+            # Extract group means from rows
+            rows = means_result.get("rows", [])
+            group_means = {row["category"]: row["mean"] for row in rows}
+            means_list = [row["mean"] for row in rows if row.get("mean") is not None]
+            overall_mean = sum(means_list) / len(means_list) if means_list else None
+            max_diff = max(means_list) - min(means_list) if len(means_list) > 1 else 0
 
             summary = {
                 "run_id": run_id,
                 "attribute": attribute,
-                "groups": bias_result.get("groups", {}),
-                "overall_mean": bias_result.get("overall_mean"),
-                "group_means": bias_result.get("group_means", {}),
-                "max_diff": bias_result.get("max_diff"),
+                "groups": {row["category"]: row for row in rows},
+                "overall_mean": overall_mean,
+                "group_means": group_means,
+                "max_diff": max_diff,
                 "computed_at": _utcnow().isoformat(),
             }
 

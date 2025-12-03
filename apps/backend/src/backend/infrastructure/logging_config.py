@@ -89,7 +89,8 @@ def setup_logging():
         "backend.infrastructure.benchmark.cache_warming",
         "backend.infrastructure.benchmark.persister_bench",
         "backend.infrastructure.llm",
-        "backend.application.services.benchmark_service",
+        "backend.application.services.benchmark_run_service",
+        "backend.application.services.benchmark_analytics_service",
         "backend.application.services.attrgen_service",
     ]
     for logger_name in benchmark_loggers:

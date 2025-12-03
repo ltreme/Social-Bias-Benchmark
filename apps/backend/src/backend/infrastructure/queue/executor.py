@@ -11,7 +11,7 @@ from typing import Any, Callable, Dict, Optional
 import peewee as pw
 
 from backend.application.services.attrgen_service import AttrGenService
-from backend.application.services.benchmark_service import BenchmarkService
+from backend.application.services.benchmark_run_service import BenchmarkRunService
 from backend.infrastructure.storage.models import TaskQueue, utcnow
 
 _LOG = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ class QueueExecutor:
         self._running = False
         self._paused = False
         self._worker_thread: Optional[threading.Thread] = None
-        self._benchmark_service = BenchmarkService()
+        self._benchmark_service = BenchmarkRunService()
         self._attrgen_service = AttrGenService()
         self._notification_callback: Optional[Callable] = None
         self._last_activity = time.time()

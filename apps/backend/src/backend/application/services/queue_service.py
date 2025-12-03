@@ -145,11 +145,11 @@ class QueueService:
         """
         try:
             if task_type == "benchmark":
-                from backend.application.services.benchmark_service import (
-                    BenchmarkService,
+                from backend.application.services.benchmark_run_service import (
+                    BenchmarkRunService,
                 )
 
-                service = BenchmarkService()
+                service = BenchmarkRunService()
                 status = service.get_status(run_id)
                 done = status.get("done", 0)
                 total = status.get("total", 0)

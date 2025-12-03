@@ -10,7 +10,10 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
-from backend.application.services.benchmark_service import BenchmarkService
+from backend.application.services.benchmark_analytics_service import (
+    BenchmarkAnalyticsService,
+)
+from backend.application.services.benchmark_run_service import BenchmarkRunService
 
 from ..deps import db_session
 from ..utils import ensure_db
@@ -18,28 +21,34 @@ from ..utils import ensure_db
 router = APIRouter(tags=["runs"], dependencies=[Depends(db_session)])
 
 
-def _get_service() -> BenchmarkService:
-    """Get benchmark service instance."""
+def _get_run_service() -> BenchmarkRunService:
+    """Get benchmark run service instance."""
     ensure_db()
-    return BenchmarkService()
+    return BenchmarkRunService()
+
+
+def _get_analytics_service() -> BenchmarkAnalyticsService:
+    """Get benchmark analytics service instance."""
+    ensure_db()
+    return BenchmarkAnalyticsService()
 
 
 @router.get("/runs")
 def list_runs() -> List[Dict[str, Any]]:
     """List all benchmark runs."""
-    return _get_service().list_runs()
+    return _get_run_service().list_runs()
 
 
 @router.get("/runs/{run_id}")
 def get_run(run_id: int) -> Dict[str, Any]:
     """Get details of a specific benchmark run."""
-    return _get_service().get_run(run_id)
+    return _get_run_service().get_run(run_id)
 
 
 @router.get("/models")
 def list_models() -> List[str]:
     """List all available models."""
-    return _get_service().list_models()
+    return _get_run_service().list_models()
 
 
 @router.post("/benchmarks/start")
@@ -64,7 +73,7 @@ def start_benchmark(body: dict) -> dict:
     }
     """
     try:
-        return _get_service().start_benchmark(body)
+        return _get_run_service().start_benchmark(body)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -74,13 +83,13 @@ def start_benchmark(body: dict) -> dict:
 @router.get("/benchmarks/{run_id}/status")
 def bench_status(run_id: int) -> dict:
     """Get status of a benchmark run."""
-    return _get_service().get_status(run_id)
+    return _get_run_service().get_status(run_id)
 
 
 @router.post("/benchmarks/{run_id}/cancel")
 def bench_cancel(run_id: int) -> dict:
     """Cancel a running benchmark."""
-    result = _get_service().cancel_benchmark(run_id)
+    result = _get_run_service().cancel_benchmark(run_id)
     if not result.get("ok"):
         raise HTTPException(
             status_code=400, detail=result.get("error", "Unknown error")
@@ -91,31 +100,31 @@ def bench_cancel(run_id: int) -> dict:
 @router.get("/datasets/{dataset_id}/benchmarks/active")
 def active_benchmark(dataset_id: int) -> dict:
     """Get active benchmark for a dataset."""
-    return _get_service().get_active_benchmark(dataset_id)
+    return _get_run_service().get_active_benchmark(dataset_id)
 
 
 @router.get("/runs/{run_id}/metrics")
 def run_metrics(run_id: int) -> Dict[str, Any]:
     """Get comprehensive metrics for a benchmark run."""
-    return _get_service().get_metrics(run_id)
+    return _get_analytics_service().get_metrics(run_id)
 
 
 @router.get("/runs/{run_id}/order-metrics")
 def run_order_metrics(run_id: int) -> Dict[str, Any]:
     """Get order effect metrics (in vs. rev)."""
-    return _get_service().get_order_metrics(run_id)
+    return _get_analytics_service().get_order_metrics(run_id)
 
 
 @router.get("/runs/{run_id}/missing")
 def run_missing(run_id: int) -> Dict[str, Any]:
     """Get count and sample of missing benchmark results."""
-    return _get_service().get_missing(run_id)
+    return _get_run_service().get_missing(run_id)
 
 
 @router.delete("/runs/{run_id}")
 def delete_run(run_id: int) -> Dict[str, Any]:
     """Delete a benchmark run and all associated results."""
-    return _get_service().delete_run(run_id)
+    return _get_run_service().delete_run(run_id)
 
 
 @router.get("/runs/{run_id}/deltas")
@@ -128,7 +137,7 @@ def run_deltas(
     trait_category: Optional[str] = Query(None),
 ) -> Dict[str, Any]:
     """Get delta analysis for an attribute."""
-    return _get_service().get_deltas(
+    return _get_analytics_service().get_deltas(
         run_id, attribute, baseline, n_perm, alpha, trait_category
     )
 
@@ -141,13 +150,13 @@ def run_means(
     trait_category: Optional[str] = Query(None),
 ) -> Dict[str, Any]:
     """Get mean ratings per category for a given attribute."""
-    return _get_service().get_means(run_id, attribute, top_n, trait_category)
+    return _get_analytics_service().get_means(run_id, attribute, top_n, trait_category)
 
 
 @router.get("/runs/{run_id}/means/all")
 def run_means_all(run_id: int) -> Dict[str, Any]:
     """Get mean ratings for all standard attributes."""
-    return _get_service().get_all_means(run_id)
+    return _get_analytics_service().get_all_means(run_id)
 
 
 @router.get("/runs/{run_id}/deltas/all/{trait_category}")
@@ -163,7 +172,9 @@ def run_deltas_all(
     """
     # Convert 'all' to None for the service
     category_filter = None if trait_category == "all" else trait_category
-    return _get_service().get_all_deltas(run_id, trait_category=category_filter)
+    return _get_analytics_service().get_all_deltas(
+        run_id, trait_category=category_filter
+    )
 
 
 @router.get("/runs/{run_id}/forest")
@@ -176,7 +187,7 @@ def run_forest(
     trait_category: Optional[str] = Query(None),
 ) -> Dict[str, Any]:
     """Get forest plot data for attribute comparisons."""
-    return _get_service().get_forest(
+    return _get_analytics_service().get_forest(
         run_id, attribute, baseline, target, min_n, trait_category
     )
 
@@ -184,13 +195,13 @@ def run_forest(
 @router.post("/runs/{run_id}/warm-cache")
 def warm_run_cache(run_id: int) -> Dict[str, Any]:
     """Start asynchronous cache warming job for a run."""
-    return _get_service().start_warm_cache(run_id)
+    return _get_analytics_service().start_warm_cache(run_id)
 
 
 @router.get("/runs/{run_id}/warm-cache")
 def warm_run_cache_status(run_id: int) -> Dict[str, Any]:
     """Get status of cache warming job."""
-    return _get_service().get_warm_cache_status(run_id)
+    return _get_analytics_service().get_warm_cache_status(run_id)
 
 
 # ============================================================================
