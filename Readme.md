@@ -10,13 +10,12 @@ Overview
   - `backend.infrastructure`: database models, repositories, LLM adapters, translators, notifications.
 
 Quick Start (Docker + UI)
-- Requirements: Docker and Docker Compose (v2).
-- Start stack with hot reload for API and UI:
-  - `docker compose up`
+- Requirements: Docker and Docker Compose
+- Start the stack with hot reload for API and UI:
+  - `docker-compose up` (or `docker compose up`)
 - Open UI: http://localhost:5173
 - API base URL: http://localhost:8765 (the UI uses this via `VITE_API_BASE_URL`).
-- Data persists under `./data/benchmark.db` (bind-mounted into the container). No manual DB init needed.
-- When running API/CLIs outside Docker, export `PYTHONPATH=apps/backend/src` so the layered package can be imported.
+- Data persists in PostgreSQL (Docker volume `pg_data`).
 
 Common tasks in the UI
 - Datasets: create/browse datasets (pool, balanced, counterfactuals, reality).
@@ -35,17 +34,24 @@ Dependency changes
 - Node (UI): `npm ci` runs on container start. After changing `apps/ui/package.json`, restart the UI:
   - `docker compose restart ui`
 
-LLM backend (vLLM)
-- Start a vLLM server separately (example):
-  - `python -m vllm.entrypoints.openai.api_server --model "Qwen/Qwen2.5-1.5B-Instruct" --host 0.0.0.0 --port 8000`
-- The API uses env vars to reach vLLM (configure in your shell or via `docker compose` overrides):
-  - `VLLM_BASE_URL` (e.g., `http://localhost:8000`)
-  - `VLLM_API_KEY` (optional)
+LLM backend (vLLM – required for AttrGen & Benchmark)
+- Attribute generation and benchmark runs require a running vLLM server (local or remote).
+- Local start (see quickstart): https://docs.vllm.ai/en/stable/getting_started/quickstart.html
+  - Example:
+    - `python -m vllm.entrypoints.openai.api_server --model "Qwen/Qwen2.5-1.5B-Instruct" --host 0.0.0.0 --port 8000`
+- Remote via SSH tunnel (forwards remote port 8000 to local 8000):
+  - `ssh -N -L 8000:127.0.0.1:8000 user@remote-host`
+  - While the SSH session is active, vLLM is reachable at `http://localhost:8000` locally.
+- Docker Compose defaults:
+  - The API uses `VLLM_BASE_URL=http://host.docker.internal:8000` (see `docker-compose.yml`).
+  - If vLLM runs locally (or via SSH tunnel) on port 8000, AttrGen/Benchmark work out-of-the-box.
+  - If you use a different host/port, adjust `VLLM_BASE_URL` in `docker-compose.yml` or via a compose override.
+  - Optional: set `VLLM_API_KEY` if your server requires one.
 
 Configuration
 - Database:
-  - Default is SQLite at `data/benchmark.db` (created automatically).
-  - Override with `DB_URL` (e.g., `postgres://user:pass@host/db`).
+  - The provided docker-compose uses PostgreSQL by default (see `DB_URL` in `docker-compose.yml`).
+  - To use SQLite inside the API container, set `DB_URL=sqlite:////app/data/benchmark.db` (the path will be created automatically).
 - UI → API:
   - `VITE_API_BASE_URL` is set to `http://localhost:8765` in `docker-compose.yml`.
 
