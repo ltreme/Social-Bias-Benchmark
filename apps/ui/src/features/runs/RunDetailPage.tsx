@@ -545,22 +545,23 @@ export function RunDetailPage() {
               warmSteps.map((step, idx) => {
                 const isDone = step.status === 'done';
                 const isError = step.status === 'error';
-                const color = isDone ? 'teal' : isError ? 'red' : 'blue';
+                const colorKey = isDone ? 'teal' : isError ? 'red' : 'blue';
+                const colorSet = getColor(colorKey);
                 return (
-                  <Paper key={`${step.name}-${step.started_at ?? idx}`} p="xs" bg={`${color}.0`} radius="sm">
+                  <Paper key={`${step.name}-${step.started_at ?? idx}`} p="xs" bg={colorSet.bg} radius="sm">
                     <Group justify="space-between" gap={6}>
                       <Group gap="xs">
-                        <ThemeIcon size="sm" radius="xl" variant="light" color={color}>
+                        <ThemeIcon size="sm" radius="xl" variant="light" color={colorKey}>
                           {isDone ? <IconCheck size={12} /> : isError ? <IconX size={12} /> : <IconPlayerPlay size={12} />}
                         </ThemeIcon>
                         <Text size="sm">{formatWarmStepName(step.name)}</Text>
                       </Group>
-                      <Text size="xs" c={`${color}.7`}>
+                      <Text size="xs" c={colorSet.text}>
                         {isDone ? formatDuration(step.duration_ms) : isError ? 'Fehler' : 'läuft …'}
                       </Text>
                     </Group>
                     {step.error && isError && (
-                      <Text size="xs" c="red.7" mt={4}>{step.error}</Text>
+                      <Text size="xs" c={getColor('red').text} mt={4}>{step.error}</Text>
                     )}
                   </Paper>
                 );
