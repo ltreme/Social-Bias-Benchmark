@@ -60,7 +60,6 @@ esac
 
 echo "[gen_personas] RUN_ID: ${RUN_ID} | Modell: ${MODEL_NAME} | Precision: ${MIXED_PRECISION} | Quantisierung: ${QUANT_MODE}" >&2
 
-python apps/benchmark/src/benchmark/cli/run_preprocessing.py \
-	--model_name "${MODEL_NAME}" \
-	--mixed_precision "${MIXED_PRECISION}" \
-	"${QUANT_FLAGS[@]}"
+echo "Dieses Skript ist veraltet. Verwende stattdessen den neuen CLI-Einstieg:"
+echo "  PYTHONPATH=apps/backend/src python apps/backend/src/backend/application/cli/run_attr_generation.py --help"
+exit 1

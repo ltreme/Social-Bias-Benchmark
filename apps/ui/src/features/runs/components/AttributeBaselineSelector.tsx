@@ -9,7 +9,7 @@ type AttributeBaselineSelectorProps = {
   categories: string[];
   baseline?: string;
   defaultBaseline?: string;
-  onBaselineChange: (value: string | undefined) => void;
+  onBaselineChange: (value: string | null) => void;
 };
 
 export function AttributeBaselineSelector({ attributes, attribute, onAttributeChange, categories, baseline, defaultBaseline, onBaselineChange }: AttributeBaselineSelectorProps) {

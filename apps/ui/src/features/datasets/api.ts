@@ -9,13 +9,22 @@ export type Dataset = {
     seed?: number;
     config_json?: Record<string, any>;
     enriched_percentage?: number;
+    runs_count?: number;
+    models_count?: number;
+    source_dataset_id?: number | null;
+    source_dataset_name?: string | null;
 };
 
 export type Run = {
     id: number;
     model_name: string;
     include_rationale: boolean;
+    system_prompt?: string | null;
     created_at: string;
+    status?: string;
+    done?: number;
+    total?: number;
+    pct?: number;
 }
 
 export async function fetchDatasets(params?: { q?: string }) {
@@ -127,5 +136,16 @@ export async function startBenchmark(body: { dataset_id: number; model_name?: st
 }
 export async function fetchBenchmarkStatus(runId: number) {
     const res = await api.get<BenchStatus>(`/benchmarks/${runId}/status`);
+    return res.data;
+}
+
+export type ActiveBenchmark = { ok: boolean; active: boolean; run_id?: number; status?: string; done?: number; total?: number; pct?: number; error?: string };
+export async function fetchActiveBenchmark(datasetId: number) {
+    const res = await api.get<ActiveBenchmark>(`/datasets/${datasetId}/benchmarks/active`);
+    return res.data;
+}
+
+export async function cancelBenchmark(runId: number) {
+    const res = await api.post<{ ok: boolean }>(`/benchmarks/${runId}/cancel`, {});
     return res.data;
 }

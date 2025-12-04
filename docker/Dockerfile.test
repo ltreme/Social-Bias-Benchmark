@@ -1,0 +1,25 @@
+# Test Dockerfile - extends the dev image with test dependencies
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies (backend + dev/test dependencies)
+COPY apps/backend/requirements.txt /tmp/requirements.txt
+COPY apps/requirements-dev.txt /tmp/requirements-dev.txt
+RUN python -m pip install --upgrade pip setuptools wheel \
+    && pip install --no-cache-dir -r /tmp/requirements.txt \
+    && pip install --no-cache-dir -r /tmp/requirements-dev.txt \
+    && pip install --no-cache-dir pytest-cov pytest-mock pytest-timeout pytest-xdist
+
+# Test-specific packages already installed via requirements-dev.txt + extras above
+
+EXPOSE 8765

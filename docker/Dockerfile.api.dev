@@ -13,7 +13,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies for the API
-COPY apps/api/requirements.txt /tmp/requirements.txt
+COPY apps/backend/requirements.txt /tmp/requirements.txt
 RUN python -m pip install --upgrade pip setuptools wheel \
     && pip install --no-cache-dir -r /tmp/requirements.txt
 

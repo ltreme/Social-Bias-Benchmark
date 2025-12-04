@@ -1,7 +1,6 @@
 #!/bin/bash
 
-#python apps/benchmark/src/benchmark/cli/run_preprocessing.py --model_name mistralai/Mistral-Small-24B-Instruct-2501
-
-python apps/benchmark/src/benchmark/cli/run_bias_benchmark.py --model_name mistralai/Mistral-Small-24B-Instruct-2501
-
-echo "✅ Benchmark completed"
+echo "[deprecated] Dieser Helper nutzt den alten Benchmark-CLI."
+echo "Verwende stattdessen:"
+echo "  PYTHONPATH=apps/backend/src python apps/backend/src/backend/application/cli/run_core_benchmark.py --help"
+exit 1

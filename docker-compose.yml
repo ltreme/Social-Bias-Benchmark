@@ -5,6 +5,7 @@ services:
       POSTGRES_DB: sbb
       POSTGRES_USER: sbb
       POSTGRES_PASSWORD: sbb
+      TZ: Europe/Berlin
     volumes:
       - pg_data:/var/lib/postgresql/data
     # No host port mapping needed; api reaches it via service name 'postgres'
@@ -21,24 +22,34 @@ services:
       dockerfile: docker/Dockerfile.api.dev
     working_dir: /app
     command: >-
-      bash -lc "uvicorn api.main:app --host 0.0.0.0 --port 8765 --reload \
-      --app-dir apps/api/src \
-      --reload-dir apps/api/src \
-      --reload-dir apps/shared/src \
-      --reload-dir apps/analysis/src \
-      --reload-dir apps/benchmark/src \
-      --reload-dir apps/persona_generator/src"
+      bash -lc "uvicorn backend.application.api.main:app --host 0.0.0.0 --port 8765 --reload \
+      --app-dir apps/backend/src \
+      --reload-dir apps/backend/src \
+      --workers 1 \
+      --timeout-keep-alive 75"
     environment:
+      TZ: Europe/Berlin
       # SQLite path defaults to ./data/benchmark.db (mounted via repo volume)
       PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "0"
       # Base URL for vLLM server reachable from inside the container
       # If your vLLM runs on the host at localhost:8000, use host.docker.internal
       VLLM_BASE_URL: http://host.docker.internal:8000
       # Optionally override DB with: DB_URL=sqlite:////app/data/benchmark.db
       # Use Peewee pooled connections for PostgreSQL (larger pool for concurrent UI queries)
-      DB_URL: postgresql+pool://sbb:sbb@postgres:5432/sbb?max_connections=80&stale_timeout=300
+      # Increased from 20 to 64 to handle benchmark + UI polling simultaneously
+      DB_URL: postgresql+pool://sbb:sbb@postgres:5432/sbb?max_connections=64&stale_timeout=60
+      PYTHONPATH: apps/backend/src
+      LOG_LEVEL: DEBUG
+      BENCH_PROGRESS_LOG: "true"
+      # Prompt/Response logging: Set to "0" to disable
+      PROMPT_LOG_ENABLED: "true"
+      PROMPT_LOG_DIR: /app/logs
     volumes:
-      - .:/app
+      # Use cached mode for better read performance on macOS
+      - .:/app:cached
+      # Store __pycache__ in volume for faster imports
+      - api_pycache:/app/apps/backend/src/backend/__pycache__
     ports:
       - "8765:8765"
     depends_on:
@@ -55,6 +66,7 @@ services:
       VITE_API_BASE_URL: http://localhost:8765
       # Increase Vite HMR stability in some environments (optional)
       # VITE_PORT can be set here if you want a fixed port
+      TZ: Europe/Berlin
     volumes:
       - .:/app
       # Keep node_modules inside the container to avoid host/container OS mismatch
@@ -67,3 +79,4 @@ services:
 volumes:
   ui_node_modules:
   pg_data:
+  api_pycache:

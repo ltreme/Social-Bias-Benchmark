@@ -6,7 +6,7 @@ set -euo pipefail
 # - cf-of-balanced-20250919 (dataset_id=5)
 # Model: stelterlab/Mistral-Small-3.2-24B-Instruct-2506-FP8 (served via vLLM)
 
-export PYTHONPATH=apps
+export PYTHONPATH=apps/backend/src
 
 MODEL="stelterlab/Mistral-Small-3.2-24B-Instruct-2506-FP8"
 VLLM_URL="http://localhost:8000"
@@ -21,13 +21,13 @@ BATCH_BENCH=8
 MAXTOK_BENCH=64
 
 #echo "[Step] DB migrate (idempotent)"
-#python apps/shared/src/shared/storage/migrate.py
+#python apps/backend/src/backend/infrastructure/storage/migrate.py
 
 # echo "[Info] Ensure vLLM is running at ${VLLM_URL} serving ${MODEL}"
 # echo "       Example: python -m vllm.entrypoints.openai.api_server --model \"${MODEL}\" --host 0.0.0.0 --port 8000"
 
 # echo "[Step] Attribute generation for dataset ${DS_BAL} (balanced)"
-# python apps/benchmark/src/benchmark/cli/run_attr_generation.py \
+# python apps/backend/src/backend/application/cli/run_attr_generation.py \
 #   --dataset-id ${DS_BAL} \
 #   --llm vllm \
 #   --vllm-model "${MODEL}" \
@@ -37,7 +37,7 @@ MAXTOK_BENCH=64
 #   --persist peewee
 
 # echo "[Step] Attribute generation for dataset ${DS_CF} (counterfactuals)"
-# python apps/benchmark/src/benchmark/cli/run_attr_generation.py \
+# python apps/backend/src/backend/application/cli/run_attr_generation.py \
 #   --dataset-id ${DS_CF} \
 #   --llm vllm \
 #   --vllm-model "${MODEL}" \
@@ -47,7 +47,7 @@ MAXTOK_BENCH=64
 #   --persist peewee
 
 # echo "[Step] Core benchmark on dataset ${DS_BAL} (with rationale ON)"
-# python apps/benchmark/src/benchmark/cli/run_core_benchmark.py \
+# python apps/backend/src/backend/application/cli/run_core_benchmark.py \
 #   --dataset-id ${DS_BAL} \
 #   --llm vllm \
 #   --vllm-model "${MODEL}" \
@@ -58,7 +58,7 @@ MAXTOK_BENCH=64
 #   --with-rational on
 
 echo "[Step] Core benchmark on dataset ${DS_BAL} (with rationale OFF)"
-python apps/benchmark/src/benchmark/cli/run_core_benchmark.py \
+python apps/backend/src/backend/application/cli/run_core_benchmark.py \
   --dataset-id ${DS_BAL} \
   --llm vllm \
   --vllm-model "${MODEL}" \
@@ -69,7 +69,7 @@ python apps/benchmark/src/benchmark/cli/run_core_benchmark.py \
   --with-rational off
 
 echo "[Step] Core benchmark on dataset ${DS_CF} (with rationale ON)"
-python apps/benchmark/src/benchmark/cli/run_core_benchmark.py \
+python apps/backend/src/backend/application/cli/run_core_benchmark.py \
   --dataset-id ${DS_CF} \
   --llm vllm \
   --vllm-model "${MODEL}" \
@@ -80,7 +80,7 @@ python apps/benchmark/src/benchmark/cli/run_core_benchmark.py \
   --with-rational on
 
 echo "[Step] Core benchmark on dataset ${DS_CF} (with rationale OFF)"
-python apps/benchmark/src/benchmark/cli/run_core_benchmark.py \
+python apps/backend/src/backend/application/cli/run_core_benchmark.py \
   --dataset-id ${DS_CF} \
   --llm vllm \
   --vllm-model "${MODEL}" \
@@ -91,4 +91,3 @@ python apps/benchmark/src/benchmark/cli/run_core_benchmark.py \
   --with-rational off
 
 echo "[Done] Runs completed. Analyze with run_benchmark_analysis.py using --dataset-ids ${DS_BAL} or ${DS_CF}."
-

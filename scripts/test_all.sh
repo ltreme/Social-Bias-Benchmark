@@ -2,5 +2,6 @@
 set -e
 
 source venv/bin/activate
-python -m unittest discover apps/persona_generator/tests -p "*.py" -v
-python -m unittest discover apps/benchmark/tests -p "*.py" -v
+export PYTHONPATH=apps/backend/src
+python -m unittest discover apps/backend/tests/persona -p "test_*.py" -v
+python -m unittest discover apps/backend/tests/benchmark -p "test_*.py" -v

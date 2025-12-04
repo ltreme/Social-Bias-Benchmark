@@ -1,8 +1,8 @@
 import axios from 'axios';
 import { notifications } from '@mantine/notifications';
 
-// Allow overriding the Axios timeout via env; default to 3 minutes for heavy queries
-const DEFAULT_TIMEOUT_MS = 180_000;
+// Allow overriding the Axios timeout via env; default to 10 minutes for heavy queries
+const DEFAULT_TIMEOUT_MS = 600_000;
 const timeoutMs = Number(import.meta.env.VITE_API_TIMEOUT_MS ?? DEFAULT_TIMEOUT_MS);
 
 export const api = axios.create({

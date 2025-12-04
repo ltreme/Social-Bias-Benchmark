@@ -1,9 +1,9 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useParams, useSearch, useNavigate } from '@tanstack/react-router';
-import { Card, Group, NumberInput, Select, TextInput, Title, Button } from '@mantine/core';
+import { Card, Group, NumberInput, Select, TextInput, Title, Button, Stack, Loader, Center } from '@mantine/core';
 import { DataTable } from '../../components/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
-import { useDatasetPersonas } from './hooks';
+import { useInfiniteDatasetPersonas } from './hooks';
 import { useAttrgenRuns } from '../datasets/hooks';
 import { personasCsvUrl } from './api';
 
@@ -16,12 +16,11 @@ export function PersonaBrowserPage() {
   const runsList = useAttrgenRuns(idNum);
   useEffect(() => {
     // keep URL in sync when selection changes
-    navigate({ to: '/datasets/$datasetId/personas', params: { datasetId: String(datasetId) }, search: prev => ({ ...prev, attrgenRunId }) });
-  }, [attrgenRunId]);
+    navigate({ to: '/datasets/$datasetId/personas', params: { datasetId: String(datasetId) }, search: (prev: Record<string, unknown>) => ({ ...prev, attrgenRunId }) });
+  }, [attrgenRunId, datasetId, navigate]);
 
-  // Query state
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(50);
+  // Filter state
+  const pageSize = 50;
   const [sort, setSort] = useState('created_at');
   const [order, setOrder] = useState<'asc'|'desc'>('desc');
   const [gender, setGender] = useState<string | undefined>();
@@ -31,9 +30,8 @@ export function PersonaBrowserPage() {
   const [minAge, setMinAge] = useState<number | undefined>();
   const [maxAge, setMaxAge] = useState<number | undefined>();
 
-  const params = useMemo(() => ({
-    limit: pageSize,
-    offset: (page - 1) * pageSize,
+  // Build base params for infinite query
+  const baseParams = useMemo(() => ({
     sort,
     order,
     gender,
@@ -43,13 +41,52 @@ export function PersonaBrowserPage() {
     min_age: minAge,
     max_age: maxAge,
     attrgen_run_id: attrgenRunId,
-  }), [page, pageSize, sort, order, gender, education, religion, originSubregion, minAge, maxAge, attrgenRunId]);
+  }), [sort, order, gender, education, religion, originSubregion, minAge, maxAge, attrgenRunId]);
 
-  const { data, isLoading } = useDatasetPersonas(idNum, params);
-  const total = data?.total || 0;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  // Fetch with infinite query
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+  } = useInfiniteDatasetPersonas(idNum, baseParams, pageSize);
 
-  type Row = NonNullable<typeof data>['items'][number];
+  // Combine all pages
+  const allItems = useMemo(() => {
+    if (!data?.pages) return [];
+    return data.pages.flatMap(page => page.items || []);
+  }, [data]);
+
+  const total = data?.pages?.[0]?.total || 0;
+  const loadedCount = allItems.length;
+
+  // Infinite scroll observer
+  const observerTarget = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const currentTarget = observerTarget.current;
+    if (currentTarget) {
+      observer.observe(currentTarget);
+    }
+
+    return () => {
+      if (currentTarget) {
+        observer.unobserve(currentTarget);
+      }
+    };
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  type Row = typeof allItems[number];
   const baseColumns: ColumnDef<Row>[] = [
     { header: 'UUID', accessorKey: 'uuid' },
     { header: 'Erstellt', accessorKey: 'created_at' },
@@ -88,11 +125,10 @@ export function PersonaBrowserPage() {
         </div>
       ) : null}
       <Group mb="md" justify="right">
-        <Button disabled={!attrgenRunId} onClick={() => {
-          if (!attrgenRunId) return;
+        <Button onClick={() => {
           const url = personasCsvUrl(idNum, attrgenRunId);
           window.open(url, '_blank');
-        }}>Als CSV herunterladen</Button>
+        }}>Als CSV herunterladen{attrgenRunId ? ' (mit Zusatz-Attributen)' : ' (nur Basis-Daten)'}</Button>
       </Group>
       <Group grow mb="md">
         <Select label="Sortierung" data={[{value:'created_at',label:'Erstellt'}, {value:'age',label:'Alter'}, {value:'gender',label:'Geschlecht'}, {value:'education',label:'Bildung'}, {value:'religion',label:'Religion'}, {value:'origin_subregion',label:'Herkunft Subregion'}]} value={sort} onChange={(v)=>setSort((v as any) || 'created_at')} />
@@ -105,19 +141,37 @@ export function PersonaBrowserPage() {
         <NumberInput label="max Alter" value={maxAge} onChange={(v)=>setMaxAge(Number.isFinite(Number(v)) ? Number(v) : undefined)} />
       </Group>
 
-      {isLoading ? 'Laden…' : <DataTable data={data?.items || []} columns={columns} />}
-
-      <Group justify="space-between" mt="md">
-        <Group>
-          <Button variant="default" disabled={page <= 1} onClick={()=>setPage((p)=>Math.max(1, p-1))}>Zurück</Button>
-          <Button variant="default" disabled={page >= totalPages} onClick={()=>setPage((p)=>Math.min(totalPages, p+1))}>Weiter</Button>
-        </Group>
-        <Group>
-          <NumberInput label="Seite" value={page} onChange={(v)=>setPage(Math.min(totalPages, Math.max(1, Number(v||1))))} min={1} max={totalPages} style={{ width: 140 }} />
-          <NumberInput label="Pro Seite" value={pageSize} onChange={(v)=>{ setPageSize(Number(v||50)); setPage(1); }} min={10} max={500} style={{ width: 160 }} />
-          <div style={{ alignSelf:'end' }}>Gesamt: {total} · Seiten: {totalPages}</div>
-        </Group>
-      </Group>
+      {isLoading ? (
+        <Center p="xl">
+          <Loader />
+        </Center>
+      ) : (
+        <Stack gap="md">
+          <DataTable data={allItems} columns={columns} />
+          
+          {/* Infinite scroll trigger */}
+          <div ref={observerTarget} style={{ height: 1 }} />
+          
+          {isFetchingNextPage && (
+            <Center p="md">
+              <Loader size="sm" />
+            </Center>
+          )}
+          
+          {!isFetchingNextPage && hasNextPage && (
+            <Center p="md">
+              <Button onClick={() => fetchNextPage()}>
+                Weitere {Math.min(pageSize, total - loadedCount)} laden
+              </Button>
+            </Center>
+          )}
+          
+          <Center p="xs" style={{ color: '#888', fontSize: '0.9em' }}>
+            {loadedCount} von {total} geladen
+            {!hasNextPage && loadedCount > 0 && ' · Alle Einträge geladen'}
+          </Center>
+        </Stack>
+      )}
     </Card>
   );
 }

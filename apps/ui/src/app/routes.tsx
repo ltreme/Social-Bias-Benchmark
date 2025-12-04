@@ -2,11 +2,12 @@ import { createRootRoute, createRoute, createRouter } from '@tanstack/react-rout
 import { PageShell } from '../components/PageShell';
 import { DatasetsPage } from '../features/datasets/DatasetsPage';
 import { DatasetDetailPage } from '../features/datasets/DatasetDetailPage';
+import { RunsPage } from '../features/runs/RunsPage';
 import { RunDetailPage } from '../features/runs/RunDetailPage';
-import { ComparePage } from '../features/compare/ComparePage';
-import { CasesPage } from '../features/cases/CasesPage';
+import { TraitsPage } from '../features/traits/TraitsPage';
 import { PersonaBrowserPage } from '../features/personas/PersonaBrowserPage';
 import { ModelsPage } from '../features/models/ModelsPage';
+import { QueuePage } from '../features/queue/QueuePage';
 
 export const rootRoute = createRootRoute({
     component: () => <PageShell />,
@@ -31,16 +32,16 @@ const runDetailRoute = createRoute({
     component: RunDetailPage,
 });
 
-const compareRoute = createRoute({
+const runsRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: '/compare',
-    component: ComparePage,
+    path: '/runs',
+    component: RunsPage,
 });
 
-const casesRoute = createRoute({
+const traitsRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: '/cases',
-    component: CasesPage,
+    path: '/traits',
+    component: TraitsPage,
 });
 
 const datasetPersonasRoute = createRoute({
@@ -55,5 +56,11 @@ const modelsRoute = createRoute({
     component: ModelsPage,
 });
 
-export const routeTree = rootRoute.addChildren([datasetsRoute, datasetDetailRoute, runDetailRoute, compareRoute, casesRoute, datasetPersonasRoute, modelsRoute]);
+const queueRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/queue',
+    component: QueuePage,
+});
+
+export const routeTree = rootRoute.addChildren([datasetsRoute, datasetDetailRoute, runsRoute, runDetailRoute, traitsRoute, datasetPersonasRoute, modelsRoute, queueRoute]);
 export const router = createRouter({ routeTree });

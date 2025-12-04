@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchDatasets, fetchDatasetComposition, fetchDataset, fetchRunsByDataset, createPool, buildBalanced, sampleReality, buildCounterfactuals, startAttrGen, fetchAttrgenStatus, fetchLatestAttrgen, fetchAttrgenRuns, startBenchmark, fetchBenchmarkStatus, deleteDataset, deleteAttrgenRun, fetchPoolStatus, fetchBalancedStatus, fetchDeleteStatus } from './api';
+import { fetchDatasets, fetchDatasetComposition, fetchDataset, fetchRunsByDataset, createPool, buildBalanced, sampleReality, buildCounterfactuals, startAttrGen, fetchAttrgenStatus, fetchLatestAttrgen, fetchAttrgenRuns, startBenchmark, fetchBenchmarkStatus, deleteDataset, deleteAttrgenRun, fetchPoolStatus, fetchBalancedStatus, fetchDeleteStatus, cancelBenchmark, fetchActiveBenchmark } from './api';
 
 export function useDatasets(q?: string) {
     return useQuery({ queryKey: ['datasets', q], queryFn: () => fetchDatasets(q ? { q } : undefined) });
@@ -22,7 +22,7 @@ export function useCreatePool() {
 }
 
 export function usePoolStatus(jobId?: number) {
-    return useQuery({ queryKey: ['pool-status', jobId], queryFn: () => fetchPoolStatus(jobId as number), enabled: Number.isFinite(jobId || NaN), refetchInterval: 1000 });
+    return useQuery({ queryKey: ['pool-status', jobId], queryFn: () => fetchPoolStatus(jobId as number), enabled: Number.isFinite(jobId || NaN), refetchInterval: 5000 });
 }
 
 export function useBuildBalanced() {
@@ -30,7 +30,7 @@ export function useBuildBalanced() {
 }
 
 export function useBalancedStatus(jobId?: number) {
-    return useQuery({ queryKey: ['balanced-status', jobId], queryFn: () => fetchBalancedStatus(jobId as number), enabled: Number.isFinite(jobId || NaN), refetchInterval: 1000 });
+    return useQuery({ queryKey: ['balanced-status', jobId], queryFn: () => fetchBalancedStatus(jobId as number), enabled: Number.isFinite(jobId || NaN), refetchInterval: 5000 });
 }
 
 export function useSampleReality() {
@@ -46,7 +46,7 @@ export function useStartAttrgen() {
 }
 
 export function useAttrgenStatus(runId?: number) {
-    return useQuery({ queryKey: ['attrgen-status', runId], queryFn: () => fetchAttrgenStatus(runId!), enabled: !!runId, refetchInterval: 2000 });
+    return useQuery({ queryKey: ['attrgen-status', runId], queryFn: () => fetchAttrgenStatus(runId!), enabled: !!runId, refetchInterval: 5000 });
 }
 
 export function useLatestAttrgen(datasetId?: number) {
@@ -62,7 +62,35 @@ export function useStartBenchmark() {
 }
 
 export function useBenchmarkStatus(runId?: number) {
-    return useQuery({ queryKey: ['bench-status', runId], queryFn: () => fetchBenchmarkStatus(runId!), enabled: !!runId, refetchInterval: 2000 });
+    return useQuery({
+        queryKey: ['bench-status', runId],
+        queryFn: () => fetchBenchmarkStatus(runId!),
+        enabled: !!runId,
+        refetchInterval: (query) => {
+            const status = (query.state.data?.status || '').toLowerCase();
+            return ['queued', 'running', 'partial', 'cancelling'].includes(status) ? 2000 : false;
+        },
+    });
+}
+
+export function useCancelBenchmark() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (runId: number) => cancelBenchmark(runId),
+        onSuccess: (_res, runId) => {
+            qc.invalidateQueries({ queryKey: ['bench-status', runId] });
+            qc.invalidateQueries({ queryKey: ['bench-active'] });
+        },
+    });
+}
+
+export function useActiveBenchmark(datasetId?: number) {
+    return useQuery({
+        queryKey: ['bench-active', datasetId],
+        queryFn: () => fetchActiveBenchmark(datasetId!),
+        enabled: Number.isFinite(datasetId || NaN),
+        refetchInterval: 5000, // Reduced from 2s to avoid DB exhaustion
+    });
 }
 
 export function useDeleteDataset() {
@@ -76,7 +104,7 @@ export function useDeleteDataset() {
 }
 
 export function useDeleteStatus(jobId?: number) {
-    return useQuery({ queryKey: ['delete-status', jobId], queryFn: () => fetchDeleteStatus(jobId as number), enabled: Number.isFinite(jobId || NaN), refetchInterval: 1000 });
+    return useQuery({ queryKey: ['delete-status', jobId], queryFn: () => fetchDeleteStatus(jobId as number), enabled: Number.isFinite(jobId || NaN), refetchInterval: 3000 });
 }
 
 export function useDeleteAttrgenRun(datasetId: number) {

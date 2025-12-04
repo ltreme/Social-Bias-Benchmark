@@ -1,0 +1,587 @@
+"""Service for benchmark analytics and metrics.
+
+Handles:
+- Rating metrics and histograms
+- Order effect analysis
+- Bias analysis (deltas, means, forest plots)
+- Cache warming
+"""
+
+from __future__ import annotations
+
+from typing import Any, Dict, List, Optional
+
+import numpy as np
+import pandas as pd
+
+from backend.domain.analytics.benchmarks import analytics as bench_ana
+from backend.domain.analytics.benchmarks.metrics import (
+    compute_means_by_attribute,
+    compute_order_effect_metrics,
+    compute_rating_histogram,
+    compute_trait_category_histograms,
+    compute_trait_category_summary,
+    filter_by_trait_category,
+)
+from backend.infrastructure.benchmark import (
+    cache_warming,
+    data_loader,
+    progress_tracker,
+)
+from backend.infrastructure.storage import benchmark_cache
+from backend.infrastructure.storage.models import Trait
+
+METRICS_CACHE_VERSION = (
+    4  # Bump when changing metrics structure (histograms now use raw ratings)
+)
+ORDER_CACHE_VERSION = 3  # Bump when changing order metrics structure
+
+
+class BenchmarkAnalyticsService:
+    """Service for benchmark analytics and metrics."""
+
+    def get_metrics(self, run_id: int) -> Dict[str, Any]:
+        """Get comprehensive metrics for a run."""
+        ck = benchmark_cache.cache_key(run_id, "metrics", {"v": METRICS_CACHE_VERSION})
+        cached = benchmark_cache.get_cached(run_id, "metrics", ck)
+        if cached:
+            return cached
+
+        df = data_loader.df_for_read(run_id, progress_tracker.get_progress)
+        if df.empty:
+            payload = {
+                "ok": True,
+                "n": 0,
+                "hist": {"bins": [], "shares": []},
+                "attributes": {},
+            }
+            benchmark_cache.put_cached(run_id, "metrics", ck, payload)
+            return payload
+
+        hist = compute_rating_histogram(df)
+
+        def attr_meta(col: str) -> Dict[str, Any]:
+            if col not in df.columns:
+                return {"categories": [], "baseline": None}
+            work = df.copy()
+            work[col] = work[col].fillna("Unknown")
+            tab = bench_ana.summarise_rating_by(work, col)[[col, "count", "mean"]]
+            base = None
+            if not tab.empty:
+                base = str(tab.sort_values("count", ascending=False)[col].iloc[0])
+            cats_meta = [
+                {
+                    "category": str(r[col]),
+                    "count": int(r["count"]),
+                    "mean": float(r["mean"]),
+                }
+                for _, r in tab.iterrows()
+            ]
+            return {"categories": cats_meta, "baseline": base}
+
+        attrs = {
+            k: attr_meta(k)
+            for k in [
+                "gender",
+                "age_group",
+                "origin_region",
+                "origin_subregion",
+                "religion",
+                "sexuality",
+                "marriage_status",
+                "education",
+                "migration_status",
+            ]
+        }
+
+        cat_hists = compute_trait_category_histograms(df)
+        cat_summary = compute_trait_category_summary(df)
+
+        payload = {
+            "ok": True,
+            "n": int(len(df)),
+            "hist": hist,
+            "trait_categories": {
+                "histograms": cat_hists,
+                "summary": cat_summary,
+            },
+            "attributes": attrs,
+        }
+        benchmark_cache.put_cached(run_id, "metrics", ck, payload)
+        return payload
+
+    def get_order_metrics(self, run_id: int) -> Dict[str, Any]:
+        """Get order effect metrics."""
+        ck = benchmark_cache.cache_key(run_id, "order", {"v": ORDER_CACHE_VERSION})
+        cached = benchmark_cache.get_cached(run_id, "order", ck)
+        if cached:
+            return cached
+
+        df = data_loader.df_for_read(run_id, progress_tracker.get_progress)
+        if df.empty:
+            payload = {
+                "ok": True,
+                "n_pairs": 0,
+                "rma": {},
+                "obe": {},
+                "usage": {},
+                "test_retest": {},
+                "correlation": {},
+                "by_case": [],
+            }
+            benchmark_cache.put_cached(run_id, "order", ck, payload)
+            return payload
+
+        metrics = compute_order_effect_metrics(df)
+
+        # Per-case breakdown
+        if "scale_order" in df.columns:
+            work = df.copy()
+            rating_col = (
+                "rating_pre_valence"
+                if "rating_pre_valence" in work.columns
+                else "rating"
+            )
+            sub = work.loc[
+                work["scale_order"].isin(["in", "rev"]) & work[rating_col].notna(),
+                ["persona_uuid", "case_id", rating_col, "scale_order"],
+            ]
+            if not sub.empty:
+                piv = sub.pivot_table(
+                    index=["persona_uuid", "case_id"],
+                    columns="scale_order",
+                    values=rating_col,
+                    aggfunc="first",
+                ).reset_index()
+                if "in" in piv.columns and "rev" in piv.columns:
+                    pairs = piv.dropna(subset=["in", "rev"]).copy()
+                    if not pairs.empty:
+                        pairs["abs_diff"] = (
+                            pairs["in"].astype(float) - pairs["rev"].astype(float)
+                        ).abs()
+
+                        rows: List[Dict[str, Any]] = []
+                        try:
+                            trait_map = {}
+                            trait_cat_map = {}
+                            for r in Trait.select():
+                                trait_map[str(r.id)] = str(r.adjective)
+                                trait_cat_map[str(r.id)] = str(r.category or "")
+                        except Exception:
+                            pass
+
+                        by_case = (
+                            pairs.groupby("case_id")
+                            .agg(
+                                n=("in", "count"),
+                                mean_in=("in", "mean"),
+                                mean_rev=("rev", "mean"),
+                                abs_diff_mean=("abs_diff", "mean"),
+                            )
+                            .reset_index()
+                        )
+
+                        for _, row in by_case.iterrows():
+                            cid = str(row["case_id"])
+                            expected_rev = 6.0 - row["mean_in"]
+                            rma_case = (
+                                row["mean_rev"] - expected_rev
+                                if row["mean_rev"] == row["mean_rev"]
+                                else None
+                            )
+                            rows.append(
+                                {
+                                    "case_id": cid,
+                                    "label": trait_map.get(cid, cid),
+                                    "trait_category": trait_cat_map.get(cid, ""),
+                                    "n": int(row["n"]),
+                                    "mean_in": (
+                                        float(row["mean_in"])
+                                        if row["mean_in"] == row["mean_in"]
+                                        else None
+                                    ),
+                                    "mean_rev": (
+                                        float(row["mean_rev"])
+                                        if row["mean_rev"] == row["mean_rev"]
+                                        else None
+                                    ),
+                                    "abs_diff": (
+                                        float(row["abs_diff_mean"])
+                                        if row["abs_diff_mean"] == row["abs_diff_mean"]
+                                        else None
+                                    ),
+                                    "rma": (
+                                        float(rma_case)
+                                        if rma_case is not None and rma_case == rma_case
+                                        else None
+                                    ),
+                                }
+                            )
+
+                        metrics["by_case"] = rows
+
+                        # Aggregate by trait category
+                        by_cat = (
+                            pairs.merge(
+                                pd.DataFrame(
+                                    [
+                                        {"case_id": k, "trait_category": v}
+                                        for k, v in trait_cat_map.items()
+                                    ]
+                                ),
+                                on="case_id",
+                                how="left",
+                            )
+                            .groupby("trait_category")
+                            .agg(
+                                n=("in", "count"),
+                                abs_diff_mean=("abs_diff", "mean"),
+                            )
+                            .reset_index()
+                        )
+                        metrics["by_trait_category"] = [
+                            {
+                                "trait_category": str(row["trait_category"]),
+                                "n": int(row["n"]),
+                                "abs_diff": (
+                                    float(row["abs_diff_mean"])
+                                    if row["abs_diff_mean"] == row["abs_diff_mean"]
+                                    else None
+                                ),
+                            }
+                            for _, row in by_cat.iterrows()
+                        ]
+
+        payload = {"ok": True, **metrics}
+        benchmark_cache.put_cached(run_id, "order", ck, payload)
+        return payload
+
+    def get_all_means(self, run_id: int) -> Dict[str, Any]:
+        """Get means for all standard attributes."""
+        attributes = [
+            "gender",
+            "age_group",
+            "origin_subregion",
+            "religion",
+            "migration_status",
+            "sexuality",
+            "marriage_status",
+            "education",
+        ]
+        results = {}
+        for attr in attributes:
+            res = self.get_means(run_id, attr)
+            if res.get("ok"):
+                results[attr] = res.get("rows", [])
+            else:
+                results[attr] = []
+        return {"ok": True, "data": results}
+
+    def get_all_deltas(
+        self, run_id: int, trait_category: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Get deltas for all standard attributes, optionally filtered by trait category."""
+        attributes = [
+            "gender",
+            "age_group",
+            "origin_subregion",
+            "religion",
+            "migration_status",
+            "sexuality",
+            "marriage_status",
+            "education",
+        ]
+        results = {}
+        for attr in attributes:
+            res = self.get_deltas(run_id, attr, trait_category=trait_category)
+            if res.get("ok"):
+                results[attr] = res
+            else:
+                results[attr] = {"ok": False}
+        return {"ok": True, "data": results}
+
+    def get_deltas(
+        self,
+        run_id: int,
+        attribute: str,
+        baseline: Optional[str] = None,
+        n_perm: int = 1000,
+        alpha: float = 0.05,
+        trait_category: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Get delta analysis."""
+        ck = benchmark_cache.cache_key(
+            run_id,
+            "deltas",
+            {
+                "attribute": attribute,
+                "baseline": baseline,
+                "n_perm": int(n_perm),
+                "alpha": float(alpha),
+                "trait_category": trait_category,
+            },
+        )
+        cached = benchmark_cache.get_cached(run_id, "deltas", ck)
+        if cached:
+            return cached
+
+        df = filter_by_trait_category(
+            data_loader.df_for_read(run_id, progress_tracker.get_progress),
+            trait_category,
+        )
+        if df.empty or attribute not in df.columns:
+            payload = {"ok": True, "n": 0, "rows": []}
+            benchmark_cache.put_cached(run_id, "deltas", ck, payload)
+            return payload
+
+        result = bench_ana.build_deltas_payload(
+            df, attribute, baseline=baseline, n_perm=n_perm, alpha=alpha
+        )
+        payload = {"ok": True, **result}
+        benchmark_cache.put_cached(run_id, "deltas", ck, payload)
+        return payload
+
+    def get_means(
+        self,
+        run_id: int,
+        attribute: str,
+        top_n: Optional[int] = None,
+        trait_category: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Get mean ratings by attribute."""
+        ck = benchmark_cache.cache_key(
+            run_id,
+            "means",
+            {"attribute": attribute, "top_n": top_n, "trait_category": trait_category},
+        )
+        cached = benchmark_cache.get_cached(run_id, "means", ck)
+        if cached:
+            return cached
+
+        df = data_loader.df_for_read(run_id, progress_tracker.get_progress)
+        if df.empty or attribute not in df.columns:
+            payload = {"ok": True, "rows": []}
+            benchmark_cache.put_cached(run_id, "means", ck, payload)
+            return payload
+
+        work = filter_by_trait_category(df, trait_category)
+        if work.empty:
+            payload = {"ok": True, "rows": []}
+            benchmark_cache.put_cached(run_id, "means", ck, payload)
+            return payload
+
+        rows = compute_means_by_attribute(work, attribute, top_n)
+        payload = {"ok": True, "rows": rows}
+        benchmark_cache.put_cached(run_id, "means", ck, payload)
+        return payload
+
+    def get_forest(
+        self,
+        run_id: int,
+        attribute: str,
+        baseline: Optional[str] = None,
+        target: Optional[str] = None,
+        min_n: int = 1,
+        trait_category: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Get forest plot data."""
+        ck = benchmark_cache.cache_key(
+            run_id,
+            "forest",
+            {
+                "attribute": attribute,
+                "baseline": baseline,
+                "target": target,
+                "min_n": int(min_n),
+                "trait_category": trait_category,
+            },
+        )
+        cached = benchmark_cache.get_cached(run_id, "forest", ck)
+        if cached:
+            return cached
+
+        df = filter_by_trait_category(
+            data_loader.df_for_read(run_id, progress_tracker.get_progress),
+            trait_category,
+        )
+        if df.empty or attribute not in df.columns:
+            payload = {"ok": True, "n": 0, "rows": []}
+            benchmark_cache.put_cached(run_id, "forest", ck, payload)
+            return payload
+
+        work = df.copy()
+        rating_col = (
+            "rating_pre_valence" if "rating_pre_valence" in work.columns else "rating"
+        )
+        work[attribute] = work[attribute].fillna("Unknown").astype(str)
+        if baseline is None:
+            s = work.groupby(attribute)[rating_col].size().sort_values(ascending=False)
+            baseline = str(s.index[0]) if not s.empty else "Unknown"
+        if target is None:
+            s2 = (
+                work.loc[work[attribute] != baseline]
+                .groupby(attribute)[rating_col]
+                .size()
+                .sort_values(ascending=False)
+            )
+            target = str(s2.index[0]) if not s2.empty else None
+
+        agg = (
+            work.groupby(["case_id", "trait_category", attribute])[rating_col]
+            .agg(count="count", mean="mean", std="std")
+            .reset_index()
+        )
+        agg = agg.loc[agg["case_id"].astype(str).str.startswith("g")]
+        if agg.empty:
+            payload = {"ok": True, "n": 0, "rows": []}
+            benchmark_cache.put_cached(run_id, "forest", ck, payload)
+            return payload
+
+        baseline_df = agg.loc[agg[attribute] == baseline].set_index(
+            ["case_id", "trait_category"]
+        )
+        if baseline_df.empty:
+            payload = {"ok": True, "n": 0, "rows": []}
+            benchmark_cache.put_cached(run_id, "forest", ck, payload)
+            return payload
+
+        rows_list: List[Dict[str, Any]] = []
+        cats = (
+            [target]
+            if target is not None
+            else [
+                c
+                for c in agg[attribute].dropna().unique().tolist()
+                if str(c) != str(baseline)
+            ]
+        )
+        cats = [c for c in cats if c is not None]
+
+        for cat in cats:
+            cat_df = agg.loc[agg[attribute] == cat].set_index(
+                ["case_id", "trait_category"]
+            )
+            merged = (
+                baseline_df.join(
+                    cat_df,
+                    how="inner",
+                    lsuffix="_base",
+                    rsuffix="_cat",
+                )
+                .reset_index()
+                .rename(columns={"index": "case_id"})
+            )
+            if merged.empty:
+                continue
+            merged = merged.loc[
+                (merged["count_base"] >= min_n) & (merged["count_cat"] >= min_n)
+            ].copy()
+            if merged.empty:
+                continue
+            merged["delta"] = merged["mean_cat"] - merged["mean_base"]
+            merged["se"] = np.sqrt(
+                (merged["std_base"] ** 2) / merged["count_base"]
+                + (merged["std_cat"] ** 2) / merged["count_cat"]
+            )
+            se_mask = (merged["count_base"] > 1) & (merged["count_cat"] > 1)
+            merged.loc[~se_mask, "se"] = np.nan
+            merged["ci_low"] = merged["delta"] - 1.96 * merged["se"]
+            merged["ci_high"] = merged["delta"] + 1.96 * merged["se"]
+            for row in merged.itertuples(index=False):
+                rows_list.append(
+                    {
+                        "case_id": str(row.case_id),
+                        "category": str(cat),
+                        "baseline": str(baseline),
+                        "trait_category": str(row.trait_category),
+                        "n_base": int(row.count_base),
+                        "n_cat": int(row.count_cat),
+                        "delta": (
+                            float(row.delta) if row.delta == row.delta else float("nan")
+                        ),
+                        "se": float(row.se) if row.se == row.se else None,
+                        "ci_low": (
+                            float(row.ci_low) if row.ci_low == row.ci_low else None
+                        ),
+                        "ci_high": (
+                            float(row.ci_high) if row.ci_high == row.ci_high else None
+                        ),
+                    }
+                )
+
+        labels_map: Dict[str, str] = {
+            str(c.id): str(c.adjective) for c in Trait.select()
+        }
+        valence_map: Dict[str, int | None] = {
+            str(c.id): c.valence for c in Trait.select()
+        }
+        for r in rows_list:
+            r["label"] = labels_map.get(r["case_id"], r["case_id"])
+            r["valence"] = valence_map.get(r["case_id"])
+
+        if rows_list:
+            arr = pd.DataFrame(rows_list)
+            if arr["se"].notna().any():
+                sub = arr.loc[arr["se"].notna()].copy()
+                w = 1.0 / (sub["se"] ** 2)
+                w = w.replace([np.inf, -np.inf], np.nan).fillna(0.0)
+                mu = (
+                    float(np.nansum(w * sub["delta"]) / np.nansum(w))
+                    if np.nansum(w) > 0
+                    else float("nan")
+                )
+                se_mu = (
+                    float(np.sqrt(1.0 / np.nansum(w)))
+                    if np.nansum(w) > 0
+                    else float("nan")
+                )
+                overall = {
+                    "mean": mu if np.isfinite(mu) else None,
+                    "ci_low": mu - 1.96 * se_mu if np.isfinite(se_mu) else None,
+                    "ci_high": mu + 1.96 * se_mu if np.isfinite(se_mu) else None,
+                }
+            else:
+                overall = {"mean": None, "ci_low": None, "ci_high": None}
+        else:
+            overall = {"mean": None, "ci_low": None, "ci_high": None}
+
+        rows_list.sort(
+            key=lambda r: (
+                r["delta"] if (r["delta"] == r["delta"]) else float("inf"),
+                (r.get("label") or r["case_id"]),
+            )
+        )
+        payload = {
+            "ok": True,
+            "n": len(rows_list),
+            "rows": rows_list,
+            "overall": overall,
+        }
+        benchmark_cache.put_cached(run_id, "forest", ck, payload)
+        return payload
+
+    def start_warm_cache(self, run_id: int) -> Dict[str, Any]:
+        """Start warm cache job."""
+        job = cache_warming.start_warm_cache_job(
+            run_id,
+            self.get_metrics,
+            self.get_missing,
+            self.get_order_metrics,
+            self.get_means,
+            self.get_deltas,
+            self.get_forest,
+        )
+        return {"ok": True, **job}
+
+    def get_warm_cache_status(self, run_id: int) -> Dict[str, Any]:
+        """Get warm cache job status."""
+        job = cache_warming.get_warm_cache_job(run_id)
+        return cache_warming.warm_job_snapshot(run_id, job)
+
+    def get_missing(self, run_id: int) -> Dict[str, Any]:
+        """Delegate to run service for cache warming compatibility."""
+        from backend.application.services.benchmark_run_service import (
+            BenchmarkRunService,
+        )
+
+        return BenchmarkRunService().get_missing(run_id)

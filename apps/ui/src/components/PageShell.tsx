@@ -1,29 +1,71 @@
-import { AppShell, Burger, Group, NavLink } from '@mantine/core';
-import { Outlet, Link, useRouterState } from '@tanstack/react-router';
-import { useState } from 'react';
+import { AppShell, Group, Tabs } from '@mantine/core';
+import { Outlet, Link, useRouterState, useNavigate } from '@tanstack/react-router';
+import { IconDatabase, IconList, IconCpu, IconListCheck, IconPlayerPlay } from '@tabler/icons-react';
+import { ThemeToggle } from './ThemeToggle';
 
 export function PageShell() {
-    const [opened, setOpened] = useState(false);
     const state = useRouterState();
+    const navigate = useNavigate();
+    
+    // Determine active tab based on current path
+    const getActiveTab = () => {
+        const path = state.location.pathname;
+        if (path.startsWith('/runs')) return 'runs';
+        if (path.startsWith('/traits')) return 'traits';
+        if (path.startsWith('/models')) return 'models';
+        if (path.startsWith('/queue')) return 'queue';
+        return 'datasets';
+    };
 
     return (
         <AppShell
             header={{ height: 56 }}
-            navbar={{ width: 260, breakpoint: 'sm', collapsed: { mobile: !opened } }}
             padding="md"
         >
             <AppShell.Header>
-                <Group h="100%" px="md">
-                    <Burger opened={opened} onClick={() => setOpened((v) => !v)} hiddenFrom="sm" size="sm" />
-                    <strong>Benchmark UI</strong>
+                <Group h="100%" px="md" justify="space-between">
+                    <Group gap="xs" align="center" wrap="nowrap" component={Link} to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
+                        <img
+                            src="/equibench-icon-48x48.png"
+                            alt="EquiBench logo"
+                            width={32}
+                            height={32}
+                            style={{ display: 'block' }}
+                        />
+                        <strong>Equi-Bench</strong>
+                    </Group>
+                    <Tabs 
+                        value={getActiveTab()} 
+                        onChange={(value) => {
+                            if (value === 'datasets') navigate({ to: '/' });
+                            else if (value === 'runs') navigate({ to: '/runs' });
+                            else if (value === 'traits') navigate({ to: '/traits' });
+                            else if (value === 'models') navigate({ to: '/models' });
+                            else if (value === 'queue') navigate({ to: '/queue' });
+                        }}
+                        variant="pills"
+                    >
+                        <Tabs.List>
+                            <Tabs.Tab value="datasets" leftSection={<IconDatabase size={16} />}>
+                                Datasets
+                            </Tabs.Tab>
+                            <Tabs.Tab value="runs" leftSection={<IconPlayerPlay size={16} />}>
+                                Runs
+                            </Tabs.Tab>
+                            <Tabs.Tab value="traits" leftSection={<IconList size={16} />}>
+                                Traits
+                            </Tabs.Tab>
+                            <Tabs.Tab value="models" leftSection={<IconCpu size={16} />}>
+                                Models
+                            </Tabs.Tab>
+                            <Tabs.Tab value="queue" leftSection={<IconListCheck size={16} />}>
+                                Queue
+                            </Tabs.Tab>
+                        </Tabs.List>
+                    </Tabs>
+                    <ThemeToggle />
                 </Group>
             </AppShell.Header>
-            <AppShell.Navbar p="md">
-                <NavLink label="Datasets" component={Link} to="/" active={state.location.pathname === '/'} />
-                <NavLink label="Compare" component={Link} to="/compare" active={state.location.pathname === '/compare'} />
-                <NavLink label="Cases" component={Link} to="/cases" active={state.location.pathname === '/cases'} />
-                <NavLink label="Models" component={Link} to="/models" active={state.location.pathname === '/models'} />
-            </AppShell.Navbar>
             <AppShell.Main>
                 <Outlet />
             </AppShell.Main>
