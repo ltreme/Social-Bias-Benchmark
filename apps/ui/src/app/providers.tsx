@@ -1,4 +1,4 @@
-import { MantineProvider } from '@mantine/core';
+import { createTheme, MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider } from '@tanstack/react-router';
@@ -11,9 +11,19 @@ import '../print.css';
 
 const router = createRouter({ routeTree });
 
+const theme = createTheme({
+    components: {
+        Tooltip: {
+            defaultProps: {
+                color: 'dark',
+            },
+        },
+    },
+});
+
 export function AppProviders() {
     return (
-        <MantineProvider defaultColorScheme="auto">
+        <MantineProvider defaultColorScheme="auto" theme={theme}>
             <Notifications position="top-right" limit={3} />
             <QueryClientProvider client={queryClient}>
                 <RouterProvider router={router} />

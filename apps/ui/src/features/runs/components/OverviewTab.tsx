@@ -100,121 +100,138 @@ export function OverviewTab({
     return (
         <Stack gap="md">
             {/* Quick Analysis Summary */}
-            <Card withBorder padding="md">
-                <Title order={4} mb="md">Quick-Check</Title>
+            <Card withBorder padding="sm">
+                <Title order={5} mb="sm">Quick-Check</Title>
                 <AsyncContent isLoading={isLoadingQuick} loadingLabel="Lade Quick-Analyse...">
                     {quickAnalysis ? (
-                        <SimpleGrid cols={{ base: 2, md: 4 }} spacing="md">
+                        <SimpleGrid cols={{ base: 2, md: 4 }} spacing="sm">
                             {/* Ergebnisse */}
-                            <Paper p="md" bg={getColor('blue').bg} radius="md">
-                                <Group justify="space-between" align="flex-start" mb="xs">
-                                    <ThemeIcon size={44} radius="md" variant="light" color="blue">
-                                        <IconChartBar size={24} />
-                                    </ThemeIcon>
+                            <Paper p="sm" bg={getColor('blue').bg} radius="md">
+                                <Group gap="xs" wrap="nowrap" justify="space-between">
+                                    <Group gap="xs" wrap="nowrap">
+                                        <ThemeIcon size="md" radius="md" variant="light" color="blue">
+                                            <IconChartBar size={16} />
+                                        </ThemeIcon>
+                                        <div>
+                                            <Text size="xs" c={getColor('blue').label} tt="uppercase" fw={600} lh={1}>Ergebnisse</Text>
+                                            <Text size="md" fw={700} c={getColor('blue').text} lh={1.2}>
+                                                {quickAnalysis.total_results.toLocaleString('de-DE')}
+                                            </Text>
+                                        </div>
+                                    </Group>
                                     <Tooltip 
                                         label="Gesamtzahl der erfolgreich verarbeiteten Antworten des Modells"
                                         multiline
                                         w={220}
                                         withArrow
                                     >
-                                        <ActionIcon variant="subtle" color="gray" size="sm">
-                                            <IconInfoCircle size={16} />
+                                        <ActionIcon variant="subtle" color="gray" size="xs">
+                                            <IconInfoCircle size={14} />
                                         </ActionIcon>
                                     </Tooltip>
                                 </Group>
-                                <Text size="xs" c={getColor('blue').label} tt="uppercase" fw={600}>Ergebnisse</Text>
-                                <Text size="xl" fw={700} c={getColor('blue').text}>
-                                    {quickAnalysis.total_results.toLocaleString('de-DE')}
-                                </Text>
                             </Paper>
 
                             {/* Fehlerrate */}
-                            <Paper p="md" bg={quickAnalysis.error_count > 0 ? getColor('orange').bg : getColor('teal').bg} radius="md">
-                                <Group justify="space-between" align="flex-start" mb="xs">
-                                    <ThemeIcon 
-                                        size={44} 
-                                        radius="md" 
-                                        variant="light" 
-                                        color={quickAnalysis.error_count > 0 ? 'orange' : 'teal'}
-                                    >
-                                        <IconAlertTriangle size={24} />
-                                    </ThemeIcon>
+                            <Paper p="sm" bg={quickAnalysis.error_count > 0 ? getColor('orange').bg : getColor('teal').bg} radius="md">
+                                <Group gap="xs" wrap="nowrap" justify="space-between">
+                                    <Group gap="xs" wrap="nowrap">
+                                        <ThemeIcon 
+                                            size="md" 
+                                            radius="md" 
+                                            variant="light" 
+                                            color={quickAnalysis.error_count > 0 ? 'orange' : 'teal'}
+                                        >
+                                            <IconAlertTriangle size={16} />
+                                        </ThemeIcon>
+                                        <div>
+                                            <Text size="xs" c={quickAnalysis.error_count > 0 ? getColor('orange').label : getColor('teal').label} tt="uppercase" fw={600} lh={1}>Fehlerrate</Text>
+                                            <Group gap={4} align="baseline">
+                                                <Text 
+                                                    size="md" 
+                                                    fw={700} 
+                                                    c={quickAnalysis.error_count > 0 ? getColor('orange').text : getColor('teal').text}
+                                                    lh={1.2}
+                                                >
+                                                    {formatPercent(quickAnalysis.error_rate)}
+                                                </Text>
+                                                {quickAnalysis.error_count > 0 && (
+                                                    <Badge color="orange" size="xs" variant="filled">
+                                                        {quickAnalysis.error_count}
+                                                    </Badge>
+                                                )}
+                                            </Group>
+                                        </div>
+                                    </Group>
                                     <Tooltip 
                                         label="Anteil der Anfragen, bei denen das Modell keine gültige Antwort liefern konnte (z.B. Parsing-Fehler, Timeout)"
                                         multiline
                                         w={250}
                                         withArrow
                                     >
-                                        <ActionIcon variant="subtle" color="gray" size="sm">
-                                            <IconInfoCircle size={16} />
+                                        <ActionIcon variant="subtle" color="gray" size="xs">
+                                            <IconInfoCircle size={14} />
                                         </ActionIcon>
                                     </Tooltip>
-                                </Group>
-                                <Text size="xs" c={quickAnalysis.error_count > 0 ? getColor('orange').label : getColor('teal').label} tt="uppercase" fw={600}>Fehlerrate</Text>
-                                <Group gap={6} align="baseline">
-                                    <Text 
-                                        size="xl" 
-                                        fw={700} 
-                                        c={quickAnalysis.error_count > 0 ? getColor('orange').text : getColor('teal').text}
-                                    >
-                                        {formatPercent(quickAnalysis.error_rate)}
-                                    </Text>
-                                    {quickAnalysis.error_count > 0 && (
-                                        <Badge color="orange" size="sm" variant="filled">
-                                            {quickAnalysis.error_count}
-                                        </Badge>
-                                    )}
                                 </Group>
                             </Paper>
 
                             {/* Order RMA */}
-                            <Paper p="md" bg={getColor('violet').bg} radius="md">
-                                <Group justify="space-between" align="flex-start" mb="xs">
-                                    <ThemeIcon size={44} radius="md" variant="light" color="violet">
-                                        <IconArrowsSort size={24} />
-                                    </ThemeIcon>
+                            <Paper p="sm" bg={getColor('violet').bg} radius="md">
+                                <Group gap="xs" wrap="nowrap" justify="space-between">
+                                    <Group gap="xs" wrap="nowrap">
+                                        <ThemeIcon size="md" radius="md" variant="light" color="violet">
+                                            <IconArrowsSort size={16} />
+                                        </ThemeIcon>
+                                        <div>
+                                            <Text size="xs" c={getColor('violet').label} tt="uppercase" fw={600} lh={1}>
+                                                RMA{orderSample?.is_sample ? ' (Sample)' : ''}
+                                            </Text>
+                                            <Text size="md" fw={700} c={getColor('violet').text} lh={1.2}>
+                                                {formatRating(orderSample?.rma)}
+                                            </Text>
+                                        </div>
+                                    </Group>
                                     <Tooltip 
                                         label="Rank-biserial Moving Average: Misst die Konsistenz der Rangordnung über Paarvergleiche. Werte nahe 1 bedeuten hohe Übereinstimmung."
                                         multiline
                                         w={280}
                                         withArrow
                                     >
-                                        <ActionIcon variant="subtle" color="gray" size="sm">
-                                            <IconInfoCircle size={16} />
+                                        <ActionIcon variant="subtle" color="gray" size="xs">
+                                            <IconInfoCircle size={14} />
                                         </ActionIcon>
                                     </Tooltip>
                                 </Group>
-                                <Text size="xs" c={getColor('violet').label} tt="uppercase" fw={600}>
-                                    Order RMA{orderSample?.is_sample ? ' (Sample)' : ''}
-                                </Text>
-                                <Text size="xl" fw={700} c={getColor('violet').text}>
-                                    {formatRating(orderSample?.rma)}
-                                </Text>
                             </Paper>
 
                             {/* Order MAE */}
-                            <Paper p="md" bg={getColor('violet').bg} radius="md">
-                                <Group justify="space-between" align="flex-start" mb="xs">
-                                    <ThemeIcon size={44} radius="md" variant="light" color="grape">
-                                        <IconTarget size={24} />
-                                    </ThemeIcon>
+                            <Paper p="sm" bg={getColor('violet').bg} radius="md">
+                                <Group gap="xs" wrap="nowrap" justify="space-between">
+                                    <Group gap="xs" wrap="nowrap">
+                                        <ThemeIcon size="md" radius="md" variant="light" color="grape">
+                                            <IconTarget size={16} />
+                                        </ThemeIcon>
+                                        <div>
+                                            <Text size="xs" c={getColor('violet').label} tt="uppercase" fw={600} lh={1}>
+                                                MAE{orderSample?.is_sample ? ' (Sample)' : ''}
+                                            </Text>
+                                            <Text size="md" fw={700} c={getColor('violet').text} lh={1.2}>
+                                                {formatRating(orderSample?.mae)}
+                                            </Text>
+                                        </div>
+                                    </Group>
                                     <Tooltip 
                                         label="Mean Absolute Error: Durchschnittliche Abweichung der Bewertungen bei wiederholten Anfragen. Niedrigere Werte = stabilere Antworten."
                                         multiline
                                         w={280}
                                         withArrow
                                     >
-                                        <ActionIcon variant="subtle" color="gray" size="sm">
-                                            <IconInfoCircle size={16} />
+                                        <ActionIcon variant="subtle" color="gray" size="xs">
+                                            <IconInfoCircle size={14} />
                                         </ActionIcon>
                                     </Tooltip>
                                 </Group>
-                                <Text size="xs" c={getColor('violet').label} tt="uppercase" fw={600}>
-                                    Order MAE{orderSample?.is_sample ? ' (Sample)' : ''}
-                                </Text>
-                                <Text size="xl" fw={700} c={getColor('violet').text}>
-                                    {formatRating(orderSample?.mae)}
-                                </Text>
                             </Paper>
                         </SimpleGrid>
                     ) : (
@@ -253,30 +270,6 @@ export function OverviewTab({
                     ) : null}
                 </AsyncContent>
             </Card>
-
-            {/* Trait Categories Overview */}
-            {metrics?.trait_categories?.summary?.length ? (
-                <Card withBorder padding="md">
-                    <Title order={4} mb="sm">Trait-Kategorien – Überblick</Title>
-                    <Text size="sm" c="dimmed" mb="sm">
-                        Mittelwerte pro Trait-Kategorie helfen einzuschätzen, ob „sozial" vs. „Kompetenz" unterschiedlich bewertet werden.
-                    </Text>
-                    <Grid>
-                        {metrics.trait_categories.summary.map((cat) => (
-                            <Grid.Col key={cat.category} span={{ base: 6, md: 4 }}>
-                                <Card withBorder padding="sm">
-                                    <Text fw={600}>{cat.category}</Text>
-                                    <Text size="sm">n={cat.count}</Text>
-                                    <Text size="sm">
-                                        Mittelwert: {cat.mean?.toFixed(2)}
-                                        {typeof cat.std === 'number' ? ` (SD ${cat.std.toFixed(2)})` : ''}
-                                    </Text>
-                                </Card>
-                            </Grid.Col>
-                        ))}
-                    </Grid>
-                </Card>
-            ) : null}
         </Stack>
     );
 }

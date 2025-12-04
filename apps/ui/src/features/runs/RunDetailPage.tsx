@@ -1,5 +1,5 @@
-import { Alert, Badge, Button, Group, Paper, Popover, SimpleGrid, Spoiler, Stack, Text, ThemeIcon, Title, Progress, Tabs, Menu } from '@mantine/core';
-import { IconDownload, IconDatabase, IconCpu, IconMessage, IconMessageCog, IconChartBar, IconClipboardCheck, IconAlertTriangle, IconPlayerPlay, IconCheck, IconX, IconFileTypePdf, IconChevronDown, IconRefresh } from '@tabler/icons-react';
+import { Alert, Badge, Button, Group, Paper, Popover, SimpleGrid, Spoiler, Stack, Text, ThemeIcon, Title, Progress, Tabs, Menu, ActionIcon, Tooltip } from '@mantine/core';
+import { IconDownload, IconChartBar, IconAlertTriangle, IconPlayerPlay, IconCheck, IconX, IconFileTypePdf, IconRefresh } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
@@ -23,6 +23,8 @@ import { AsyncContent } from '../../components/AsyncContent';
 import { OverviewTab } from './components/OverviewTab';
 import { OrderConsistencyTab } from './components/OrderConsistencyTab';
 import { BiasTab } from './components/BiasTab';
+import { RunInfoCards } from './components/RunInfoCards';
+import { TraitCategorySummary } from './components/TraitCategorySummary';
 import { usePdfExport } from './usePdfExport';
 
 const ATTRS = [
@@ -296,175 +298,79 @@ export function RunDetailPage() {
   return (
     <Stack gap="md">
       {/* Header */}
-      <Paper p="md" withBorder>
-        <Group justify="space-between" align="flex-start">
-          <div>
-            <Group gap="xs" align="center">
-              <Title order={2}>Run {runId}</Title>
-              {benchStatus.data?.status && (
-                <Badge 
-                  size="lg" 
-                  color={benchStatus.data.status === 'done' ? 'green' : benchStatus.data.status === 'running' ? 'blue' : 'gray'}
-                  variant="light"
-                >
-                  {benchStatus.data.status}
-                </Badge>
-              )}
-            </Group>
-            {run?.created_at && (
-              <Text size="sm" c="dimmed" mt={4}>
-                Erstellt am {new Date(run.created_at).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })}
-              </Text>
-            )}
-          </div>
-          <Group gap="xs">
-            <Button
+      <Group justify="space-between" align="center">
+        <Group gap="sm" align="center">
+          <Title order={3}>Run {runId}</Title>
+          {benchStatus.data?.status && (
+            <Badge 
+              size="md" 
+              color={benchStatus.data.status === 'done' ? 'green' : benchStatus.data.status === 'running' ? 'blue' : 'gray'}
+              variant="light"
+            >
+              {benchStatus.data.status}
+            </Badge>
+          )}
+          {run?.created_at && (
+            <Text size="sm" c="dimmed" ml="xs">
+              {new Date(run.created_at).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })}
+            </Text>
+          )}
+        </Group>
+        <Group gap="xs">
+          <Tooltip label="Cache leeren">
+            <ActionIcon
               variant="light"
               color="gray"
-              leftSection={<IconRefresh size={16} />}
+              size="lg"
               onClick={clearRunCache}
               loading={isClearingCache}
               data-print-hide
             >
-              Cache leeren
-            </Button>
-            <Menu shadow="md" width={220} position="bottom-end">
-              <Menu.Target>
-                <Button 
-                  variant="light" 
-                  leftSection={<IconDownload size={16} />}
-                  rightSection={<IconChevronDown size={14} />}
-                  loading={isExporting}
-                  data-print-hide
-                >
-                  {isExporting ? `${pdfProgress}%` : 'Export'}
-                </Button>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Label>Analyse exportieren</Menu.Label>
-                <Menu.Item
-                  leftSection={<IconFileTypePdf size={16} />}
-                  onClick={() => run && exportToPdf({
-                    run,
-                    metrics,
-                    orderMetrics: order.data,
-                    allDeltas: allDeltas?.data,
-                  }, {
-                    filename: `run_${runId}_analyse.pdf`,
-                  })}
-                  disabled={isExporting || warmLoading || !run}
-                >
-                  PDF-Report herunterladen
-                </Menu.Item>
-                <Menu.Item
-                  leftSection={<IconDownload size={16} />}
-                  component="a"
-                  href={`${import.meta.env.VITE_API_BASE_URL || ''}/runs/${runId}/logs`}
-                  download={`run_${runId}_logs.json`}
-                >
-                  Logs herunterladen (JSON)
-                </Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
-          </Group>
+              <IconRefresh size={20} />
+            </ActionIcon>
+          </Tooltip>
+          
+          <Tooltip label="PDF-Report herunterladen">
+            <ActionIcon
+              variant="light"
+              color="blue"
+              size="lg"
+              onClick={() => run && exportToPdf({
+                run,
+                metrics,
+                orderMetrics: order.data,
+                allDeltas: allDeltas?.data,
+              }, {
+                filename: `run_${runId}_analyse.pdf`,
+              })}
+              loading={isExporting}
+              disabled={isExporting || warmLoading || !run}
+              data-print-hide
+            >
+              <IconFileTypePdf size={20} />
+            </ActionIcon>
+          </Tooltip>
+
+          <Tooltip label="Logs herunterladen (JSON)">
+            <ActionIcon
+              variant="light"
+              color="gray"
+              size="lg"
+              component="a"
+              href={`${import.meta.env.VITE_API_BASE_URL || ''}/runs/${runId}/logs`}
+              download={`run_${runId}_logs.json`}
+              data-print-hide
+            >
+              <IconDownload size={20} />
+            </ActionIcon>
+          </Tooltip>
         </Group>
-      </Paper>
+      </Group>
 
       {isLoadingRun ? null : run ? (
         <>
           {/* Info Cards Grid */}
-          <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md">
-            {/* Dataset Card */}
-            <Paper p="md" withBorder>
-              <Group gap="sm" wrap="nowrap">
-                <ThemeIcon size="lg" radius="md" variant="light" color="blue">
-                  <IconDatabase size={20} />
-                </ThemeIcon>
-                <div style={{ minWidth: 0 }}>
-                  <Text size="xs" c="dimmed" tt="uppercase" fw={600}>Datensatz</Text>
-                  <Text size="sm" fw={500} truncate>
-                    <Link to={`/datasets/${run.dataset?.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                      {run.dataset?.name}
-                    </Link>
-                  </Text>
-                </div>
-              </Group>
-            </Paper>
-
-            {/* Model Card */}
-            <Paper p="md" withBorder>
-              <Group gap="sm" wrap="nowrap">
-                <ThemeIcon size="lg" radius="md" variant="light" color="violet">
-                  <IconCpu size={20} />
-                </ThemeIcon>
-                <div style={{ minWidth: 0 }}>
-                  <Text size="xs" c="dimmed" tt="uppercase" fw={600}>Modell</Text>
-                  <Text size="sm" fw={500} truncate>{run.model_name}</Text>
-                </div>
-              </Group>
-            </Paper>
-
-            {/* Results Card */}
-            <Paper p="md" withBorder>
-              <Group gap="sm" wrap="nowrap">
-                <ThemeIcon size="lg" radius="md" variant="light" color="teal">
-                  <IconChartBar size={20} />
-                </ThemeIcon>
-                <div>
-                  <Text size="xs" c="dimmed" tt="uppercase" fw={600}>Ergebnisse</Text>
-                  <Text size="sm" fw={500}>
-                    {run.n_results?.toLocaleString('de-DE') ?? '–'}
-                    {benchDone !== null && benchTotal !== null && benchDone < benchTotal && (
-                      <Text span size="xs" c="dimmed"> / {benchTotal.toLocaleString('de-DE')}</Text>
-                    )}
-                  </Text>
-                </div>
-              </Group>
-            </Paper>
-
-            {/* Options Card */}
-            <Paper p="md" withBorder>
-              <Group gap="sm" wrap="nowrap">
-                <ThemeIcon size="lg" radius="md" variant="light" color="orange">
-                  <IconClipboardCheck size={20} />
-                </ThemeIcon>
-                <div>
-                  <Text size="xs" c="dimmed" tt="uppercase" fw={600}>Optionen</Text>
-                  <Group gap={6} mt={2}>
-                    {run.include_rationale ? (
-                      <Badge size="sm" variant="light" color="blue" leftSection={<IconMessage size={12} />}>
-                        Rationale
-                      </Badge>
-                    ) : null}
-                    {run.system_prompt ? (
-                      <Popover width={400} position="bottom" withArrow shadow="md">
-                        <Popover.Target>
-                          <Badge 
-                            size="sm" 
-                            variant="light" 
-                            color="orange" 
-                            leftSection={<IconMessageCog size={12} />}
-                            style={{ cursor: 'pointer' }}
-                          >
-                            Custom Prompt
-                          </Badge>
-                        </Popover.Target>
-                        <Popover.Dropdown>
-                          <Text size="xs" fw={600} mb={4}>System Prompt:</Text>
-                          <Text size="xs" style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
-                            {run.system_prompt}
-                          </Text>
-                        </Popover.Dropdown>
-                      </Popover>
-                    ) : null}
-                    {!run.include_rationale && !run.system_prompt && (
-                      <Text size="sm" c="dimmed">Standard</Text>
-                    )}
-                  </Group>
-                </div>
-              </Group>
-            </Paper>
-          </SimpleGrid>
+          <RunInfoCards run={run} benchDone={benchDone} benchTotal={benchTotal} />
 
           {/* Progress Bar (if not complete) */}
           {benchDone !== null && benchTotal !== null && benchDone < benchTotal && (
@@ -520,52 +426,8 @@ export function RunDetailPage() {
           )}
           {/* Trait Categories Summary */}
           {metrics?.trait_categories?.summary?.length ? (
-            <Paper p="md" withBorder>
-              <Group gap="xs" mb="sm">
-                <ThemeIcon size="md" radius="md" variant="light" color="grape">
-                  <IconChartBar size={16} />
-                </ThemeIcon>
-                <Title order={5}>Trait-Kategorien</Title>
-              </Group>
-              <Text size="sm" c="dimmed" mb="md">
-                Mittelwerte pro Trait-Kategorie helfen einzuschätzen, ob „sozial" vs. „Kompetenz" unterschiedlich bewertet werden.
-              </Text>
-              <SimpleGrid cols={{ base: 2, sm: 3, md: 4 }} spacing="sm">
-                {metrics.trait_categories.summary.map((cat) => (
-                  <Paper key={cat.category} p="sm" bg={getColor('gray').bg} radius="md">
-                    <Text size="sm" fw={600} mb={4}>{cat.category}</Text>
-                    <Group gap="xs">
-                      <Text size="xs" c="dimmed">n={cat.count.toLocaleString('de-DE')}</Text>
-                      <Text size="xs">μ={cat.mean?.toFixed(2)}</Text>
-                      {typeof cat.std === 'number' && <Text size="xs" c="dimmed">σ={cat.std.toFixed(2)}</Text>}
-                    </Group>
-                  </Paper>
-                ))}
-              </SimpleGrid>
-            </Paper>
+            <TraitCategorySummary categories={metrics.trait_categories.summary} />
           ) : null}
-
-          {/* Experiment Description - Collapsible */}
-          <Paper p="md" withBorder>
-            <Spoiler maxHeight={60} showLabel="Mehr anzeigen" hideLabel="Weniger anzeigen">
-              <Title order={5} mb="xs">Versuchsaufbau</Title>
-              <Text size="sm" mb="xs">
-                Dieser Benchmark evaluiert Modellantworten zu Personas auf einer 5-Punkte-Likert-Skala
-                pro Trait (Adjektiv). Höhere Werte bedeuten stärkere Ausprägung der Eigenschaft
-                (1 = gar nicht &lt;adjektiv&gt; … 5 = sehr &lt;adjektiv&gt;).
-              </Text>
-              <Text size="xs" c="dimmed" mb="md">
-                Datensatz: {run?.dataset?.name ?? '–'}{metrics?.n ? ` · n=${metrics.n.toLocaleString('de-DE')}` : ''} · Modell: {run?.model_name}
-                {typeof run?.include_rationale === 'boolean' ? ` · Begründungen: ${run.include_rationale ? 'ein' : 'aus'}` : ''}
-              </Text>
-              <Stack gap={4}>
-                <Text size="xs" c="dimmed">• Verteilungen und Mittelwerte fassen Bewertungen über alle Antworten zusammen</Text>
-                <Text size="xs" c="dimmed">• Deltas zeigen Mittelwerts-Unterschiede zwischen Baseline und Zielgruppe</Text>
-                <Text size="xs" c="dimmed">• Forest-Plots visualisieren Unterschiede pro Trait mit Konfidenzintervallen</Text>
-                <Text size="xs" c="dimmed">• Order-Metriken bewerten Konsistenz über Paarvergleiche und Wiederholungen</Text>
-              </Stack>
-            </Spoiler>
-          </Paper>
         </>
       ) : (
         <Paper p="md" withBorder>
