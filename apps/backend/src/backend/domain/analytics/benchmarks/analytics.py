@@ -824,6 +824,145 @@ def mann_whitney_cliffs(a: pd.Series, b: pd.Series):
     return (float(U1), float(p), float(cliffs))
 
 
+# ---------- Kruskal-Wallis Omnibus Test ----------
+
+
+def kruskal_wallis_by_attribute(
+    df: pd.DataFrame,
+    attribute: str,
+    min_group_size: int = 10,
+) -> dict[str, Any]:
+    """
+    Kruskal-Wallis H-Test for multi-group comparison.
+
+    This is an omnibus test to determine whether there are any statistically
+    significant differences between two or more groups of an independent variable
+    on a continuous or ordinal dependent variable.
+
+    Args:
+        df: DataFrame with 'rating' column and the specified attribute
+        attribute: Column name for grouping (e.g., 'gender', 'religion')
+        min_group_size: Minimum observations per group to include
+
+    Returns:
+        Dict with H-statistic, p-value, degrees of freedom, effect size (eta²),
+        and group information
+    """
+    from scipy.stats import kruskal
+
+    work = df.copy()
+    work[attribute] = work[attribute].fillna("Unknown").astype(str)
+    # Use valence-aligned rating for bias analysis
+    # This ensures negative traits (e.g., "incompetent") are transformed
+    # so that high values always mean positive attribution
+    rating_col = "rating"
+
+    # Build groups with sufficient observations
+    groups = []
+    group_names = []
+    group_sizes = {}
+
+    for cat, grp in work.groupby(attribute):
+        ratings = pd.to_numeric(grp[rating_col], errors="coerce").dropna()
+        if len(ratings) >= min_group_size:
+            groups.append(ratings.values)
+            group_names.append(str(cat))
+            group_sizes[str(cat)] = int(len(ratings))
+
+    if len(groups) < 2:
+        return {
+            "attribute": attribute,
+            "error": "Less than 2 groups with sufficient data",
+            "n_groups": len(groups),
+            "group_sizes": group_sizes,
+        }
+
+    try:
+        h_stat, p_value = kruskal(*groups)
+    except Exception as e:
+        return {
+            "attribute": attribute,
+            "error": str(e),
+            "n_groups": len(groups),
+            "group_sizes": group_sizes,
+        }
+
+    k = len(groups)
+    n = sum(len(g) for g in groups)
+
+    # Effect size: Epsilon-squared (η²_H)
+    # η² = (H - k + 1) / (n - k)
+    # Interpretation (Cohen, 1988): small ≈ 0.01, medium ≈ 0.06, large ≈ 0.14
+    eta2 = (h_stat - k + 1) / (n - k) if n > k else 0.0
+    eta2 = max(0.0, eta2)  # Clamp to non-negative
+
+    def interpret_eta2(eta2_val: float) -> str:
+        if eta2_val < 0.01:
+            return "negligible"
+        elif eta2_val < 0.06:
+            return "small"
+        elif eta2_val < 0.14:
+            return "medium"
+        else:
+            return "large"
+
+    return {
+        "attribute": attribute,
+        "h_statistic": float(h_stat) if np.isfinite(h_stat) else None,
+        "p_value": float(p_value) if np.isfinite(p_value) else None,
+        "df": k - 1,
+        "n_groups": k,
+        "n_total": n,
+        "group_sizes": group_sizes,
+        "group_names": group_names,
+        "significant_001": bool(p_value < 0.001) if np.isfinite(p_value) else False,
+        "significant_01": bool(p_value < 0.01) if np.isfinite(p_value) else False,
+        "significant_05": bool(p_value < 0.05) if np.isfinite(p_value) else False,
+        "effect_size_eta2": float(eta2) if np.isfinite(eta2) else None,
+        "effect_interpretation": interpret_eta2(eta2),
+    }
+
+
+def kruskal_wallis_all_attributes(
+    df: pd.DataFrame,
+    attributes: list[str] | None = None,
+    min_group_size: int = 10,
+) -> dict[str, dict[str, Any]]:
+    """
+    Run Kruskal-Wallis test for all demographic attributes.
+
+    Args:
+        df: DataFrame with rating and attribute columns
+        attributes: List of attribute columns to test (default: common demographic attrs)
+        min_group_size: Minimum observations per group
+
+    Returns:
+        Dict mapping attribute name to Kruskal-Wallis result dict
+    """
+    if attributes is None:
+        # Default demographic attributes
+        attributes = [
+            "gender",
+            "age_group",
+            "religion",
+            "sexuality",
+            "marriage_status",
+            "education",
+            "origin_subregion",
+            "migration_status",
+        ]
+
+    results = {}
+    for attr in attributes:
+        if attr in df.columns:
+            result = kruskal_wallis_by_attribute(df, attr, min_group_size)
+            # Only include if we got valid results (not skipped due to insufficient groups)
+            if result.get("h_statistic") is not None:
+                results[attr] = result
+
+    return results
+
+
 # ---------- Report helpers ----------
 
 

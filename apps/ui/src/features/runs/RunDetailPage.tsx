@@ -622,6 +622,7 @@ export function RunDetailPage() {
 
           <Tabs.Panel value="bias">
             <BiasTab
+              runId={idNum}
               attribute={attr}
               onAttributeChange={(v) => { setAttr(v); setBaseline(undefined); setTargets([]); }}
               availableCategories={availableCats}

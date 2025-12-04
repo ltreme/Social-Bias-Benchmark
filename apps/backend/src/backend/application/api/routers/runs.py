@@ -192,6 +192,16 @@ def run_forest(
     )
 
 
+@router.get("/runs/{run_id}/kruskal")
+def run_kruskal_wallis(run_id: int) -> Dict[str, Any]:
+    """Get Kruskal-Wallis omnibus test results for all demographic attributes.
+
+    Tests whether response distributions differ significantly across groups
+    within each demographic attribute.
+    """
+    return _get_analytics_service().get_kruskal_wallis(run_id)
+
+
 @router.post("/runs/{run_id}/warm-cache")
 def warm_run_cache(run_id: int) -> Dict[str, Any]:
     """Start asynchronous cache warming job for a run."""

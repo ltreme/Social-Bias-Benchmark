@@ -6,6 +6,7 @@ import { ImprovedForestPlot } from './ImprovedForestPlot';
 import { GroupComparisonCards, translateCategory } from './GroupComparisonHeatmap';
 import { SignificanceTable } from './SignificanceTable';
 import { MeansSummary } from './MeansSummary';
+import { KruskalWallisCard } from './KruskalWallisCard';
 import { useThemedColor } from '../../../lib/useThemeColors';
 import type { RunDeltas, AnalysisStatus } from '../api';
 
@@ -21,6 +22,8 @@ const ATTRS = [
 ];
 
 type BiasTabProps = {
+    // Run ID for child components
+    runId: number;
     // Attribute selection
     attribute: string;
     onAttributeChange: (attr: string) => void;
@@ -64,6 +67,7 @@ function getAnalysisStatusBadge(status?: string) {
 }
 
 export function BiasTab({
+    runId,
     attribute,
     onAttributeChange,
     availableCategories,
@@ -341,6 +345,9 @@ export function BiasTab({
                     />
                 </AsyncContent>
             </Card>
+
+            {/* Kruskal-Wallis Omnibus Test */}
+            <KruskalWallisCard runId={runId} />
 
             {/* Significance Tables */}
             <Card withBorder padding="md">

@@ -15,6 +15,10 @@ import numpy as np
 import pandas as pd
 
 from backend.domain.analytics.benchmarks import analytics as bench_ana
+from backend.domain.analytics.benchmarks.analytics import (
+    benjamini_hochberg,
+    mann_whitney_cliffs,
+)
 from backend.domain.analytics.benchmarks.metrics import (
     compute_means_by_attribute,
     compute_order_effect_metrics,
@@ -32,7 +36,7 @@ from backend.infrastructure.storage import benchmark_cache
 from backend.infrastructure.storage.models import Trait
 
 METRICS_CACHE_VERSION = (
-    4  # Bump when changing metrics structure (histograms now use raw ratings)
+    5  # Bump when changing metrics structure (histograms now use rating_raw)
 )
 ORDER_CACHE_VERSION = 3  # Bump when changing order metrics structure
 
@@ -487,10 +491,36 @@ class BenchmarkAnalyticsService:
             merged.loc[~se_mask, "se"] = np.nan
             merged["ci_low"] = merged["delta"] - 1.96 * merged["se"]
             merged["ci_high"] = merged["delta"] + 1.96 * merged["se"]
+
+            # Compute Mann-Whitney + Cliff's Delta per trait
             for row in merged.itertuples(index=False):
+                case_id = str(row.case_id)
+                # Get raw ratings for this trait
+                base_ratings = pd.to_numeric(
+                    work.loc[
+                        (work[attribute] == baseline) & (work["case_id"] == case_id),
+                        rating_col,
+                    ],
+                    errors="coerce",
+                ).dropna()
+                cat_ratings = pd.to_numeric(
+                    work.loc[
+                        (work[attribute] == cat) & (work["case_id"] == case_id),
+                        rating_col,
+                    ],
+                    errors="coerce",
+                ).dropna()
+
+                # Mann-Whitney U test + Cliff's Delta
+                if len(base_ratings) >= 2 and len(cat_ratings) >= 2:
+                    _, p_val, cliffs_d = mann_whitney_cliffs(base_ratings, cat_ratings)
+                else:
+                    p_val = float("nan")
+                    cliffs_d = float("nan")
+
                 rows_list.append(
                     {
-                        "case_id": str(row.case_id),
+                        "case_id": case_id,
                         "category": str(cat),
                         "baseline": str(baseline),
                         "trait_category": str(row.trait_category),
@@ -506,6 +536,10 @@ class BenchmarkAnalyticsService:
                         "ci_high": (
                             float(row.ci_high) if row.ci_high == row.ci_high else None
                         ),
+                        "p_value": float(p_val) if np.isfinite(p_val) else None,
+                        "cliffs_delta": (
+                            float(cliffs_d) if np.isfinite(cliffs_d) else None
+                        ),
                     }
                 )
 
@@ -518,6 +552,29 @@ class BenchmarkAnalyticsService:
         for r in rows_list:
             r["label"] = labels_map.get(r["case_id"], r["case_id"])
             r["valence"] = valence_map.get(r["case_id"])
+
+        # Apply FDR correction (Benjamini-Hochberg) to p-values
+        if rows_list:
+            p_values = [
+                r.get("p_value") if r.get("p_value") is not None else float("nan")
+                for r in rows_list
+            ]
+            try:
+                q_values = benjamini_hochberg(p_values)
+            except Exception:
+                q_values = [float("nan")] * len(rows_list)
+
+            for r, q_val in zip(rows_list, q_values):
+                r["q_value"] = float(q_val) if np.isfinite(q_val) else None
+                # Significant after FDR correction at alpha=0.05
+                p_val = r.get("p_value")
+                r["significant"] = bool(
+                    q_val is not None and np.isfinite(q_val) and q_val < 0.05
+                )
+                # Also store uncorrected significance for reference
+                r["significant_uncorrected"] = bool(
+                    p_val is not None and np.isfinite(p_val) and p_val < 0.05
+                )
 
         if rows_list:
             arr = pd.DataFrame(rows_list)
@@ -585,3 +642,105 @@ class BenchmarkAnalyticsService:
         )
 
         return BenchmarkRunService().get_missing(run_id)
+
+    def get_kruskal_wallis(self, run_id: int) -> Dict[str, Any]:
+        """Kruskal-Wallis H-Test für alle demographischen Attribute.
+
+        Führt einen Omnibus-Test durch, der prüft, ob sich die Verteilung
+        der Antworten zwischen den Gruppen eines Attributs signifikant
+        unterscheidet.
+
+        Returns:
+            Dict mit:
+            - attributes: Liste der Testergebnisse pro Attribut
+                - attribute: Name des Attributs
+                - h_stat: Kruskal-Wallis H-Statistik
+                - p_value: p-Wert
+                - eta_squared: Effektstärke η²
+                - n_groups: Anzahl der Gruppen
+                - n_total: Gesamtanzahl Beobachtungen
+                - significant: bool (p < 0.05)
+                - effect_interpretation: "klein"/"mittel"/"groß"
+            - summary: Übersicht (anzahl signifikant, total)
+        """
+        from backend.domain.analytics.benchmarks.analytics import (
+            kruskal_wallis_all_attributes,
+        )
+
+        # Check cache first
+        ck = "all"
+        cached = benchmark_cache.get_cached(run_id, "kruskal_wallis", ck)
+        if cached is not None:
+            return cached
+
+        # Load data using the same loader as other methods
+        df = data_loader.df_for_read(run_id, progress_tracker.get_progress)
+        if df is None or df.empty:
+            return {"attributes": [], "summary": {"significant_count": 0, "total": 0}}
+
+        # Ensure rating column exists (used by kruskal_wallis_by_attribute)
+        if "rating" not in df.columns and "rating_pre_valence" not in df.columns:
+            return {"attributes": [], "summary": {"significant_count": 0, "total": 0}}
+
+        # Run Kruskal-Wallis test for all attributes
+        results = kruskal_wallis_all_attributes(df)
+
+        # Interpret effect sizes
+        def interpret_eta_squared(eta_sq: float) -> str:
+            """Cohen's benchmarks for η²."""
+            if eta_sq < 0.01:
+                return "vernachlässigbar"
+            elif eta_sq < 0.06:
+                return "klein"
+            elif eta_sq < 0.14:
+                return "mittel"
+            else:
+                return "groß"
+
+        attributes = []
+        significant_count = 0
+
+        for attr, data in results.items():
+            # Skip entries with errors
+            if "error" in data:
+                continue
+
+            p_val = data.get("p_value")
+            if p_val is None:
+                continue
+
+            is_sig = p_val < 0.05
+            if is_sig:
+                significant_count += 1
+
+            h_stat = data.get("h_statistic", 0.0)
+            eta_sq = data.get("effect_size_eta2", 0.0)
+
+            attributes.append(
+                {
+                    "attribute": attr,
+                    "h_stat": round(h_stat, 3) if h_stat else 0.0,
+                    "p_value": p_val,
+                    "eta_squared": round(eta_sq, 4) if eta_sq else 0.0,
+                    "n_groups": data.get("n_groups", 0),
+                    "n_total": data.get("n_total", 0),
+                    "significant": is_sig,
+                    "effect_interpretation": (
+                        interpret_eta_squared(eta_sq) if eta_sq else "vernachlässigbar"
+                    ),
+                }
+            )
+
+        # Sort by effect size descending
+        attributes.sort(key=lambda x: x["eta_squared"], reverse=True)
+
+        payload = {
+            "attributes": attributes,
+            "summary": {
+                "significant_count": significant_count,
+                "total": len(attributes),
+            },
+        }
+
+        benchmark_cache.put_cached(run_id, "kruskal_wallis", ck, payload)
+        return payload

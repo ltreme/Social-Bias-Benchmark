@@ -202,8 +202,8 @@ export function OrderMetricsCard({ data }: OrderMetricsCardProps) {
                     <Group justify="space-between" wrap="nowrap">
                       <Text size="xs" truncate style={{ maxWidth: 120 }}>{r.adjective || r.case_id}{r.case_id ? ` (${r.case_id})` : ''}</Text>
                       <Group gap={4}>
-                        <Text size="xs" fw={600}>{(r.exact_rate).toFixed(2)}</Text>
-                        <Text size="xs" c="dimmed">(n={r.n_pairs})</Text>
+                        <Text size="xs" fw={600}>{(r.exact_rate ?? 0).toFixed(2)}</Text>
+                        <Text size="xs" c="dimmed">(n={r.n_pairs ?? 0})</Text>
                       </Group>
                     </Group>
                   </Paper>

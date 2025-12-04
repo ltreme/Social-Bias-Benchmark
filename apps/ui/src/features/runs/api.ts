@@ -244,3 +244,31 @@ export async function requestAnalysis(runId: number, request: AnalyzeRequest) {
     const res = await api.post<AnalyzeResponse>(`/runs/${runId}/analyze`, request);
     return res.data;
 }
+
+// ============================================================================
+// Kruskal-Wallis API
+// ============================================================================
+
+export type KruskalResult = {
+    attribute: string;
+    h_stat: number | null;
+    p_value: number | null;
+    eta_squared: number | null;
+    n_groups: number | null;
+    n_total: number | null;
+    significant: boolean;
+    effect_interpretation: string;
+};
+
+export type KruskalWallisResponse = {
+    attributes: KruskalResult[];
+    summary: {
+        significant_count: number;
+        total: number;
+    };
+};
+
+export async function fetchKruskalWallis(runId: number) {
+    const res = await api.get<KruskalWallisResponse>(`/runs/${runId}/kruskal`);
+    return res.data;
+}

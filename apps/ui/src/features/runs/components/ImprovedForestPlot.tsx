@@ -12,6 +12,10 @@ type ForestRow = {
   ci_high?: number | null;
   se?: number | null;
   p_value?: number | null;
+  q_value?: number | null;  // FDR-corrected p-value
+  cliffs_delta?: number | null;  // Cliff's Delta effect size
+  significant?: boolean;  // FDR-corrected significance from backend
+  significant_uncorrected?: boolean;  // Uncorrected significance
   valence?: number | null;  // -1 = negative trait, 0 = neutral, 1 = positive
 };
 
@@ -27,16 +31,37 @@ const DEFAULT_COLORS = ['#228be6', '#fa5252', '#40c057', '#fab005', '#7950f2', '
 type FilterMode = 'all' | 'significant' | 'top10';
 
 function isSignificant(row: ForestRow): boolean {
-  // Check p-value
+  // Prefer backend FDR-corrected significance
+  if (row.significant !== undefined && row.significant !== null) {
+    return row.significant;
+  }
+  // Fallback: Check q-value (FDR-corrected)
+  if (row.q_value !== undefined && row.q_value !== null && row.q_value < 0.05) {
+    return true;
+  }
+  // Fallback: Check p-value (uncorrected)
   if (row.p_value !== undefined && row.p_value !== null && row.p_value < 0.05) {
     return true;
   }
-  // Check if CI doesn't cross zero
+  // Fallback: Check if CI doesn't cross zero
   if (row.ci_low !== undefined && row.ci_high !== undefined && 
       row.ci_low !== null && row.ci_high !== null) {
     return row.ci_low > 0 || row.ci_high < 0;
   }
   return false;
+}
+
+// Get significance level for display
+function getSignificanceLevel(row: ForestRow): { level: 'none' | 'uncorrected' | 'fdr'; stars: string } {
+  if (row.significant === true || (row.q_value != null && row.q_value < 0.05)) {
+    if (row.q_value != null && row.q_value < 0.001) return { level: 'fdr', stars: '***' };
+    if (row.q_value != null && row.q_value < 0.01) return { level: 'fdr', stars: '**' };
+    return { level: 'fdr', stars: '*' };
+  }
+  if (row.significant_uncorrected === true || (row.p_value != null && row.p_value < 0.05)) {
+    return { level: 'uncorrected', stars: '†' };
+  }
+  return { level: 'none', stars: '' };
 }
 
 export function ImprovedForestPlot({
@@ -118,6 +143,9 @@ export function ImprovedForestPlot({
   // Count stats
   const totalCount = primary?.rows?.length || 0;
   const significantCount = primary?.rows?.filter(r => isSignificant(r)).length || 0;
+  const significantUncorrectedCount = primary?.rows?.filter(r => 
+    r.significant_uncorrected === true || (r.p_value != null && r.p_value < 0.05)
+  ).length || 0;
   const displayedCount = forestLabels.length;
   
   // Build traces
@@ -134,6 +162,29 @@ export function ImprovedForestPlot({
     });
     
     const markerSizes = rows.map(r => isSignificant(r) ? 10 : 7);
+    
+    // Build custom hover text with all statistics
+    const hoverTexts = rows.map(r => {
+      const sigLevel = getSignificanceLevel(r);
+      const parts = [
+        `<b>${r.label || r.case_id}</b>`,
+        `Δ = ${r.delta?.toFixed(3) ?? 'n/a'}`,
+        `CI: [${r.ci_low?.toFixed(3) ?? '?'}, ${r.ci_high?.toFixed(3) ?? '?'}]`,
+      ];
+      if (r.cliffs_delta != null) {
+        parts.push(`Cliff's δ = ${r.cliffs_delta.toFixed(3)}`);
+      }
+      if (r.p_value != null) {
+        parts.push(`p = ${r.p_value < 0.001 ? '<0.001' : r.p_value.toFixed(4)}`);
+      }
+      if (r.q_value != null) {
+        parts.push(`q (FDR) = ${r.q_value < 0.001 ? '<0.001' : r.q_value.toFixed(4)}`);
+      }
+      if (sigLevel.level !== 'none') {
+        parts.push(sigLevel.level === 'fdr' ? `<b>Signifikant (FDR)</b> ${sigLevel.stars}` : `Signifikant (unkorrigiert) ${sigLevel.stars}`);
+      }
+      return parts.join('<br>');
+    });
     
     return {
       name: d.target,
@@ -158,7 +209,8 @@ export function ImprovedForestPlot({
         line: { width: 1, color: '#fff' },
         symbol: 'circle',
       },
-      hovertemplate: '<b>%{y}</b><br>Δ = %{x:.3f}<extra>' + d.target + '</extra>',
+      hovertext: hoverTexts,
+      hoverinfo: 'text',
     };
   });
   
@@ -278,9 +330,11 @@ export function ImprovedForestPlot({
             <Badge size="xs" variant="light" color="gray">
               {displayedCount} / {totalCount} Traits
             </Badge>
-            <Badge size="xs" variant="light" color="green">
-              {significantCount} signifikant
-            </Badge>
+            <Tooltip label={`${significantUncorrectedCount} unkorrigiert signifikant`} withArrow>
+              <Badge size="xs" variant="light" color="green">
+                {significantCount} sig. (FDR)
+              </Badge>
+            </Tooltip>
           </Group>
         </Stack>
       </Group>
@@ -383,6 +437,13 @@ export function ImprovedForestPlot({
             <Text size="xs" c="dimmed">Overall Effect</Text>
           </Group>
         )}
+      </Group>
+      
+      {/* Significance notation */}
+      <Group gap="md" mt="xs" justify="center">
+        <Text size="xs" c="dimmed">
+          <b>Signifikanz:</b> * p &lt; 0.05, ** p &lt; 0.01, *** p &lt; 0.001 (FDR-korrigiert) | † p &lt; 0.05 (unkorrigiert)
+        </Text>
       </Group>
     </Paper>
   );
