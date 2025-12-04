@@ -19,24 +19,33 @@ from .models import (
 )
 
 
-def processed_path(filename: str) -> str:
+def _find_repo_root() -> Path:
+    """Find the repository root by looking for the data/ directory."""
+    cur = Path(__file__).resolve()
+    for parent in cur.parents:
+        # The true repo root has a data/ directory with persona subdirectory
+        if (parent / "data" / "persona").exists():
+            return parent
+    # Fallback: go up 7 levels from this file
+    # prefill_db.py -> storage -> infrastructure -> backend -> src -> backend -> apps -> (repo root)
+    return Path(__file__).parent.parent.parent.parent.parent.parent.parent
+
+
+def processed_path(filename: str) -> Path:
     """Returns the full path to a processed CSV file."""
-    # Get the repository root by going up from this file's location
-    repo_root = Path(__file__).parent.parent.parent.parent.parent.parent
+    repo_root = _find_repo_root()
     return repo_root / "data" / "persona" / "processed" / filename
 
 
-def raw_path(filename: str) -> str:
+def raw_path(filename: str) -> Path:
     """Returns the full path to a raw CSV file."""
-    # Get the repository root by going up from this file's location
-    repo_root = Path(__file__).parent.parent.parent.parent.parent.parent
+    repo_root = _find_repo_root()
     return repo_root / "data" / "persona" / "raw" / filename
 
 
-def traits_path(filename: str) -> str:
+def traits_path(filename: str) -> Path:
     """Returns the full path to a traits CSV file."""
-    # Get the repository root by going up from this file's location
-    repo_root = Path(__file__).parent.parent.parent.parent.parent.parent
+    repo_root = _find_repo_root()
     return repo_root / "data" / "cases" / filename
 
 
