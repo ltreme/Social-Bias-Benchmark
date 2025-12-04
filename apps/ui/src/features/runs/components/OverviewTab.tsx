@@ -223,6 +223,16 @@ export function OverviewTab({
                 </AsyncContent>
             </Card>
 
+            {/* Bias Radar Chart Grid - positioned prominently after Quick-Check */}
+            {runId && radarTraitCategories && radarTraitCategories.length > 0 && radarCategoryDeltasMap && (
+                <BiasRadarGrid 
+                    runId={runId}
+                    traitCategories={radarTraitCategories}
+                    categoryDeltasMap={radarCategoryDeltasMap}
+                    loadingStates={radarLoadingStates}
+                />
+            )}
+
             {/* Detailed Rating Distribution Chart */}
             <Card withBorder padding="md">
                 <Title order={4} mb="sm">Rating-Verteilung</Title>
@@ -243,16 +253,6 @@ export function OverviewTab({
                     ) : null}
                 </AsyncContent>
             </Card>
-
-            {/* Bias Radar Chart Grid */}
-            {runId && radarTraitCategories && radarTraitCategories.length > 0 && radarCategoryDeltasMap && (
-                <BiasRadarGrid 
-                    runId={runId}
-                    traitCategories={radarTraitCategories}
-                    categoryDeltasMap={radarCategoryDeltasMap}
-                    loadingStates={radarLoadingStates}
-                />
-            )}
 
             {/* Trait Categories Overview */}
             {metrics?.trait_categories?.summary?.length ? (
