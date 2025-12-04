@@ -171,16 +171,12 @@ export function OrderMetricsCard({ data }: OrderMetricsCardProps) {
                   <Paper key={cat.trait_category} p="sm" bg={getColor('gray').bg} radius="md">
                     <Text size="sm" fw={600}>{cat.trait_category}</Text>
                     <Group gap="xs" mt={4}>
-                      <Badge size="xs" variant="light" color="gray">n={cat.n_pairs}</Badge>
+                      <Badge size="xs" variant="light" color="gray">n={cat.n}</Badge>
                     </Group>
                     <Group gap="md" mt="xs">
                       <div>
-                        <Text size="xs" c="dimmed">Exact</Text>
-                        <Text size="sm" fw={500}>{(cat.exact_rate ?? 0).toFixed(3)}</Text>
-                      </div>
-                      <div>
                         <Text size="xs" c="dimmed">MAE</Text>
-                        <Text size="sm" fw={500}>{(cat.mae ?? 0).toFixed(3)}</Text>
+                        <Text size="sm" fw={500}>{(cat.abs_diff ?? 0).toFixed(3)}</Text>
                       </div>
                     </Group>
                   </Paper>
@@ -200,10 +196,10 @@ export function OrderMetricsCard({ data }: OrderMetricsCardProps) {
                 {data.by_case.map((r: any) => (
                   <Paper key={r.case_id} p="xs" bg={getColor('gray').bg} radius="sm">
                     <Group justify="space-between" wrap="nowrap">
-                      <Text size="xs" truncate style={{ maxWidth: 120 }}>{r.adjective || r.case_id}{r.case_id ? ` (${r.case_id})` : ''}</Text>
+                      <Text size="xs" truncate style={{ maxWidth: 120 }}>{r.label || r.case_id}{r.case_id ? ` (${r.case_id})` : ''}</Text>
                       <Group gap={4}>
-                        <Text size="xs" fw={600}>{(r.exact_rate ?? 0).toFixed(2)}</Text>
-                        <Text size="xs" c="dimmed">(n={r.n_pairs ?? 0})</Text>
+                        <Text size="xs" fw={600}>{(r.abs_diff ?? 0).toFixed(2)}</Text>
+                        <Text size="xs" c="dimmed">(n={r.n ?? 0})</Text>
                       </Group>
                     </Group>
                   </Paper>

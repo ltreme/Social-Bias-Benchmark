@@ -14,6 +14,7 @@ from backend.application.services.benchmark_analytics_service import (
     BenchmarkAnalyticsService,
 )
 from backend.application.services.benchmark_run_service import BenchmarkRunService
+from backend.infrastructure.storage import benchmark_cache
 
 from ..deps import db_session
 from ..utils import ensure_db
@@ -212,6 +213,17 @@ def warm_run_cache(run_id: int) -> Dict[str, Any]:
 def warm_run_cache_status(run_id: int) -> Dict[str, Any]:
     """Get status of cache warming job."""
     return _get_analytics_service().get_warm_cache_status(run_id)
+
+
+@router.delete("/runs/{run_id}/cache")
+def clear_run_cache(run_id: int) -> Dict[str, Any]:
+    """Clear all cached analytics data for a run.
+
+    This removes computed metrics, deltas, forests etc. from the cache,
+    forcing them to be recomputed on next request.
+    """
+    deleted = benchmark_cache.clear_run_cache(run_id)
+    return {"ok": True, "deleted": deleted}
 
 
 # ============================================================================

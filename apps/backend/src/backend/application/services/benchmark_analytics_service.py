@@ -38,7 +38,7 @@ from backend.infrastructure.storage.models import Trait
 METRICS_CACHE_VERSION = (
     5  # Bump when changing metrics structure (histograms now use rating_raw)
 )
-ORDER_CACHE_VERSION = 3  # Bump when changing order metrics structure
+ORDER_CACHE_VERSION = 4  # Bump: now uses rating_raw instead of rating_pre_valence
 
 
 class BenchmarkAnalyticsService:
@@ -141,11 +141,8 @@ class BenchmarkAnalyticsService:
         # Per-case breakdown
         if "scale_order" in df.columns:
             work = df.copy()
-            rating_col = (
-                "rating_pre_valence"
-                if "rating_pre_valence" in work.columns
-                else "rating"
-            )
+            # Use rating_raw for order effect analysis (raw values before any transformation)
+            rating_col = "rating_raw" if "rating_raw" in work.columns else "rating"
             sub = work.loc[
                 work["scale_order"].isin(["in", "rev"]) & work[rating_col].notna(),
                 ["persona_uuid", "case_id", rating_col, "scale_order"],

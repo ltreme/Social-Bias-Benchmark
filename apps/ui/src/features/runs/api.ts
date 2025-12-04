@@ -123,8 +123,8 @@ export type OrderMetrics = {
     usage: { eei?: number; mni?: number; sv?: number };
     test_retest: { within1_rate?: number; mean_abs_diff?: number };
     correlation: { pearson?: number; spearman?: number; kendall?: number };
-    by_case: Array<{ case_id: string; adjective?: string | null; trait_category?: string | null; n_pairs: number; exact_rate: number; mae: number }>;
-    by_trait_category?: Array<{ trait_category: string; n_pairs: number; exact_rate?: number; mae?: number }>;
+    by_case: Array<{ case_id: string; label?: string | null; trait_category?: string | null; n: number; mean_in?: number; mean_rev?: number; abs_diff?: number; rma?: number }>;
+    by_trait_category?: Array<{ trait_category: string; n: number; abs_diff?: number }>;
 };
 
 export async function fetchRunOrderMetrics(runId: number) {
@@ -181,6 +181,11 @@ export async function startRunWarmup(runId: number) {
 }
 export async function fetchRunWarmupStatus(runId: number) {
     const res = await api.get<RunWarmupStatus>(`/runs/${runId}/warm-cache`);
+    return res.data;
+}
+
+export async function clearRunCache(runId: number) {
+    const res = await api.delete<{ ok: boolean; deleted: number }>(`/runs/${runId}/cache`);
     return res.data;
 }
 

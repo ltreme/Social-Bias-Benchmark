@@ -108,3 +108,37 @@ def put_cached(run_id: int, kind: str, key: str, payload: Dict[str, Any]) -> Non
     except Exception:
         # Never fail the request due to cache issues
         pass
+
+
+def clear_run_cache(run_id: int) -> int:
+    """Clear all cached data for a benchmark run.
+
+    Args:
+        run_id: The benchmark run ID
+
+    Returns:
+        Number of deleted cache entries
+    """
+    try:
+        # Clear the database cache
+        deleted = BenchCache.delete().where(BenchCache.run_id == run_id).execute()
+
+        # Also clear the in-memory DataFrame cache to ensure fresh data
+        try:
+            from backend.infrastructure.benchmark import data_loader
+
+            data_loader.clear_cache()
+        except Exception:
+            pass
+
+        # Clear the warm cache job status so it can be re-run
+        try:
+            from backend.infrastructure.benchmark import cache_warming
+
+            cache_warming.clear_warm_cache_job(run_id)
+        except Exception:
+            pass
+
+        return deleted
+    except Exception:
+        return 0

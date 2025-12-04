@@ -121,24 +121,24 @@ export function OrderConsistencyTab({
                                 <Table.Tbody>
                                     {summary.per_case.map((row: any, idx: number) => (
                                         <Table.Tr key={row.case_id || idx}>
-                                            <Table.Td>{row.adjective || row.case_id}{row.case_id ? ` (${row.case_id})` : ''}</Table.Td>
-                                            <Table.Td ta="right">{row.n_pairs}</Table.Td>
+                                            <Table.Td>{row.label || row.case_id}{row.case_id ? ` (${row.case_id})` : ''}</Table.Td>
+                                            <Table.Td ta="right">{row.n}</Table.Td>
                                             <Table.Td ta="right">
                                                 <Text 
                                                     size="sm" 
-                                                    c={row.exact_rate >= 0.8 ? 'teal' : row.exact_rate >= 0.6 ? 'yellow.7' : 'red'}
+                                                    c={row.rma != null ? (Math.abs(row.rma) <= 0.3 ? 'teal' : Math.abs(row.rma) <= 0.6 ? 'yellow.7' : 'red') : 'dimmed'}
                                                     fw={500}
                                                 >
-                                                    {row.exact_rate != null ? row.exact_rate.toFixed(3) : '–'}
+                                                    {row.rma != null ? row.rma.toFixed(3) : '–'}
                                                 </Text>
                                             </Table.Td>
                                             <Table.Td ta="right">
                                                 <Text 
                                                     size="sm" 
-                                                    c={row.mae <= 0.3 ? 'teal' : row.mae <= 0.6 ? 'yellow.7' : 'red'}
+                                                    c={row.abs_diff != null ? (row.abs_diff <= 0.3 ? 'teal' : row.abs_diff <= 0.6 ? 'yellow.7' : 'red') : 'dimmed'}
                                                     fw={500}
                                                 >
-                                                    {row.mae != null ? row.mae.toFixed(3) : '–'}
+                                                    {row.abs_diff != null ? row.abs_diff.toFixed(3) : '–'}
                                                 </Text>
                                             </Table.Td>
                                         </Table.Tr>

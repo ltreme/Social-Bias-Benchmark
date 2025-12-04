@@ -32,6 +32,13 @@ def get_warm_cache_job(run_id: int) -> Optional[Dict[str, Any]]:
     return _WARM_CACHE_JOBS.get(run_id)
 
 
+def clear_warm_cache_job(run_id: int) -> None:
+    """Clear the warm cache job for a run, allowing it to be re-run."""
+    with _WARM_CACHE_LOCK:
+        if run_id in _WARM_CACHE_JOBS:
+            del _WARM_CACHE_JOBS[run_id]
+
+
 def warm_job_snapshot(run_id: int, job: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     """Create a snapshot of a warm cache job for API response.
 

@@ -1,6 +1,7 @@
 import { Alert, Badge, Button, Group, Paper, Popover, SimpleGrid, Spoiler, Stack, Text, ThemeIcon, Title, Progress, Tabs, Menu } from '@mantine/core';
-import { IconDownload, IconDatabase, IconCpu, IconMessage, IconMessageCog, IconChartBar, IconClipboardCheck, IconAlertTriangle, IconPlayerPlay, IconCheck, IconX, IconFileTypePdf, IconChevronDown } from '@tabler/icons-react';
+import { IconDownload, IconDatabase, IconCpu, IconMessage, IconMessageCog, IconChartBar, IconClipboardCheck, IconAlertTriangle, IconPlayerPlay, IconCheck, IconX, IconFileTypePdf, IconChevronDown, IconRefresh } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
 import { useThemedColor } from '../../lib/useThemeColors';
 import { 
@@ -92,6 +93,40 @@ export function RunDetailPage() {
 
   // PDF export
   const { exportToPdf, isExporting, progress: pdfProgress } = usePdfExport();
+  
+  // Query client für Cache-Invalidierung
+  const queryClient = useQueryClient();
+  const [isClearingCache, setIsClearingCache] = useState(false);
+  
+  const clearRunCache = async () => {
+    setIsClearingCache(true);
+    try {
+      // Zuerst Backend-Cache löschen
+      const { clearRunCache: clearBackendCache } = await import('./api');
+      await clearBackendCache(idNum);
+      
+      // Dann Frontend-Cache invalidieren
+      queryClient.invalidateQueries({ queryKey: ['run', idNum] });
+      queryClient.invalidateQueries({ queryKey: ['run-metrics', idNum] });
+      queryClient.invalidateQueries({ queryKey: ['run-missing', idNum] });
+      queryClient.invalidateQueries({ queryKey: ['run-order-metrics', idNum] });
+      queryClient.invalidateQueries({ queryKey: ['run-means', idNum] });
+      queryClient.invalidateQueries({ queryKey: ['run-means-all', idNum] });
+      queryClient.invalidateQueries({ queryKey: ['run-deltas', idNum] });
+      queryClient.invalidateQueries({ queryKey: ['run-deltas-all', idNum] });
+      queryClient.invalidateQueries({ queryKey: ['run-forest', idNum] });
+      queryClient.invalidateQueries({ queryKey: ['warmup-status', idNum] });
+      queryClient.invalidateQueries({ queryKey: ['analysis-status', idNum] });
+      queryClient.invalidateQueries({ queryKey: ['quick-analysis', idNum] });
+      queryClient.invalidateQueries({ queryKey: ['benchmark-status', idNum] });
+      
+      // Seite neu laden
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to clear cache:', error);
+      setIsClearingCache(false);
+    }
+  };
 
   const warmupErrorMessage =
     (warmup.start.isError ? ((warmup.start.error as any)?.message ?? String(warmup.start.error ?? 'Fehler')) : null) ||
@@ -283,6 +318,16 @@ export function RunDetailPage() {
             )}
           </div>
           <Group gap="xs">
+            <Button
+              variant="light"
+              color="gray"
+              leftSection={<IconRefresh size={16} />}
+              onClick={clearRunCache}
+              loading={isClearingCache}
+              data-print-hide
+            >
+              Cache leeren
+            </Button>
             <Menu shadow="md" width={220} position="bottom-end">
               <Menu.Target>
                 <Button 
