@@ -7,48 +7,44 @@ type OrderMetricsCardProps = {
   data: any | undefined;
 };
 
-function MetricCard({ 
-  icon: Icon, 
-  color, 
-  title, 
-  tooltip, 
+function MetricValueWithProgress({ 
+  label, 
   value, 
-  subValue,
-  grade,
-  progress,
+  progressValue,
+  color,
+  tooltip,
+  icon: Icon,
 }: {
-  icon: any;
-  color: string;
-  title: string;
-  tooltip: string;
+  label: string;
   value: string;
-  subValue?: string;
-  grade?: React.ReactNode;
-  progress?: { value: number; color: string };
+  progressValue?: number;
+  color?: string;
+  tooltip?: string;
+  icon: any;
 }) {
   return (
-    <Paper p="md" withBorder radius="md">
-      <Group justify="space-between" align="flex-start" mb="sm">
-        <Group gap="sm">
-          <ThemeIcon size={36} radius="md" variant="light" color={color}>
-            <Icon size={20} />
+    <Paper p="sm" withBorder radius="md">
+      <Group justify="space-between" align="flex-start" mb="xs">
+        <Group gap="xs" wrap="nowrap" style={{ flex: 1 }}>
+          <ThemeIcon size="md" radius="md" variant="light" color="blue" style={{ flexShrink: 0 }}>
+            <Icon size={16} />
           </ThemeIcon>
-          <div>
-            <Text size="sm" fw={600}>{title}</Text>
-            {grade}
+          <div style={{ minWidth: 0 }}>
+            <Text size="xs" c="dimmed" tt="uppercase" fw={700} lh={1}>{label}</Text>
+            <Text size="lg" fw={700} c={color} lh={1.2} mt={6}>{value}</Text>
           </div>
         </Group>
-        <Tooltip label={tooltip} multiline w={280} withArrow>
-          <ActionIcon variant="subtle" color="gray" size="sm">
-            <IconInfoCircle size={16} />
-          </ActionIcon>
-        </Tooltip>
+        {tooltip && (
+          <Tooltip label={tooltip} multiline w={200} withArrow>
+            <ActionIcon variant="subtle" color="gray" size="xs" style={{ flexShrink: 0 }}>
+              <IconInfoCircle size={14} />
+            </ActionIcon>
+          </Tooltip>
+        )}
       </Group>
-      {progress && (
-        <Progress value={progress.value} color={progress.color} size="sm" radius="xl" mb="xs" />
+      {progressValue !== undefined && (
+        <Progress value={progressValue} size="sm" radius="md" mt={8} />
       )}
-      <Text size="xl" fw={700} c={`${color}.7`}>{value}</Text>
-      {subValue && <Text size="xs" c="dimmed">{subValue}</Text>}
     </Paper>
   );
 }
@@ -64,8 +60,8 @@ export function OrderMetricsCard({ data }: OrderMetricsCardProps) {
   const within1Value = data.test_retest?.within1_rate ?? 0;
   const spearmanValue = data.correlation?.spearman ?? 0;
 
-  // Calculate progress colors based on grades
   const getRmaColor = (v: number) => v >= 0.8 ? 'teal' : v >= 0.6 ? 'yellow' : 'red';
+  const getMaeColor = (v: number) => v <= 0.3 ? 'teal' : v <= 0.6 ? 'yellow' : 'red';
   const getWithin1Color = (v: number) => v >= 0.9 ? 'teal' : v >= 0.75 ? 'yellow' : 'red';
   const getCorrColor = (v: number) => Math.abs(v) >= 0.8 ? 'teal' : Math.abs(v) >= 0.6 ? 'yellow' : 'red';
 
@@ -80,81 +76,96 @@ export function OrderMetricsCard({ data }: OrderMetricsCardProps) {
           <div>
             <Title order={4}>Order-Consistency</Title>
             <Text size="sm" c="dimmed">
-              Basierend auf {data.n_pairs?.toLocaleString('de-DE')} Dual-Paaren (in vs. reversed)
+              {data.n_pairs?.toLocaleString('de-DE')} Dual-Paare (in vs. reversed)
             </Text>
           </div>
         </Group>
-        <Text size="xs" c="dimmed">
-          Ziel: Antworten sollen unabhängig von der Reihenfolge der Skala gleich sein. Grün = gut, Rot = problematisch.
-        </Text>
       </Paper>
 
-      {/* Main Metrics Grid */}
-      <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
-        <MetricCard
+      {/* Main Metrics Grid - Compact */}
+      <SimpleGrid cols={{ base: 1, xs: 2, md: 3 }} spacing="sm">
+        <MetricValueWithProgress
           icon={IconTarget}
-          color="blue"
-          title="RMA (Agreement)"
-          tooltip="Anteil exakt gleicher Bewertungen nach Umrechnung (x' = 6 − x). Ziel: ≥ 0.80 für hohe Konsistenz."
+          label="RMA"
           value={rmaValue.toFixed(3)}
-          subValue={`MAE: ${maeValue.toFixed(3)}`}
-          grade={gradeRmaExact(rmaValue)}
-          progress={{ value: rmaValue * 100, color: getRmaColor(rmaValue) }}
+          progressValue={rmaValue * 100}
+          color={`${getRmaColor(rmaValue)}.7`}
+          tooltip="Anteil exakt gleicher Bewertungen. Ziel: ≥ 0.80"
         />
 
-        <MetricCard
+        <MetricValueWithProgress
           icon={IconScale}
-          color="violet"
-          title="Cliff's δ"
-          tooltip="Effektstärke zwischen normaler und umgekehrter Reihenfolge. Ideal nahe 0 (|δ| ≤ 0.15 = klein)."
+          label="Cliff's δ"
           value={Number.isFinite(cliffsValue) ? cliffsValue.toFixed(3) : '–'}
-          grade={gradeCliffs(cliffsValue)}
-          progress={Number.isFinite(cliffsValue) ? { 
-            value: Math.min(Math.abs(cliffsValue) * 100, 100), 
-            color: Math.abs(cliffsValue) <= 0.147 ? 'teal' : Math.abs(cliffsValue) <= 0.33 ? 'yellow' : 'red'
-          } : undefined}
+          color={Number.isFinite(cliffsValue) ? (Math.abs(cliffsValue) <= 0.147 ? 'teal' : Math.abs(cliffsValue) <= 0.33 ? 'yellow' : 'red') + '.7' : undefined}
+          tooltip="Effektstärke zwischen Ordnungen. Ideal: |δ| ≤ 0.15"
         />
 
-        <MetricCard
-          icon={IconChartLine}
-          color="orange"
-          title="Order-Bias (Δ)"
-          tooltip="Mittelwertdifferenz (in − rev) mit 95%-CI. Ziel: CI enthält 0 und |Δ| klein (< 0.2)."
-          value={`Δ ${(data.obe?.mean_diff ?? 0).toFixed(3)}`}
-          subValue={`CI: [${(data.obe?.ci_low ?? 0).toFixed(3)}, ${(data.obe?.ci_high ?? 0).toFixed(3)}]`}
-          grade={gradeObe(data.obe?.mean_diff, data.obe?.ci_low, data.obe?.ci_high)}
-        />
+        <Paper p="sm" withBorder radius="md">
+          <Group justify="space-between" align="flex-start" mb="xs">
+            <Group gap="xs" wrap="nowrap" style={{ flex: 1 }}>
+              <ThemeIcon size="md" radius="md" variant="light" color="orange" style={{ flexShrink: 0 }}>
+                <IconChartLine size={16} />
+              </ThemeIcon>
+              <div style={{ minWidth: 0 }}>
+                <Text size="xs" c="dimmed" tt="uppercase" fw={700} lh={1}>Order-Bias (Δ)</Text>
+                <Text size="lg" fw={700} lh={1.2} mt={6}>
+                  {(data.obe?.mean_diff ?? 0).toFixed(3)}
+                </Text>
+                <Text size="xs" c="dimmed" mt={6}>
+                  CI: [{(data.obe?.ci_low ?? 0).toFixed(2)}, {(data.obe?.ci_high ?? 0).toFixed(2)}]
+                </Text>
+              </div>
+            </Group>
+            <Tooltip label="Mittelwertdifferenz mit 95%-CI. Ziel: CI enthält 0 und |Δ| klein" multiline w={200} withArrow>
+              <ActionIcon variant="subtle" color="gray" size="xs" style={{ flexShrink: 0 }}>
+                <IconInfoCircle size={14} />
+              </ActionIcon>
+            </Tooltip>
+          </Group>
+        </Paper>
 
-        <MetricCard
+        <MetricValueWithProgress
           icon={IconRepeat}
-          color="teal"
-          title="Test-Retest"
-          tooltip="Stabilität zwischen in/rev: Anteil |Δ| ≤ 1 (Ziel: ≥ 0.90) und mittleres |Δ| (Ziel: ≤ 0.3)."
+          label="Test-Retest"
           value={(within1Value * 100).toFixed(1) + '%'}
-          subValue={`Mittl. |Δ|: ${(data.test_retest?.mean_abs_diff ?? 0).toFixed(3)}`}
-          grade={gradeWithin1(within1Value)}
-          progress={{ value: within1Value * 100, color: getWithin1Color(within1Value) }}
+          progressValue={within1Value * 100}
+          color={`${getWithin1Color(within1Value)}.7`}
+          tooltip="Anteil Abweichungen ≤ 1. Ziel: ≥ 90%"
         />
 
-        <MetricCard
+        <MetricValueWithProgress
           icon={IconChartLine}
-          color="grape"
-          title="Korrelation"
-          tooltip="Übereinstimmung der Rangfolge (Spearman ρ) bzw. Linearität (Pearson r). Ziel: ≥ 0.8."
-          value={`ρ = ${spearmanValue.toFixed(3)}`}
-          subValue={`r = ${(data.correlation?.pearson ?? 0).toFixed(3)}, τ = ${Number.isFinite(data.correlation?.kendall) ? data.correlation.kendall.toFixed(3) : '–'}`}
-          grade={gradeCorr(spearmanValue)}
-          progress={{ value: Math.abs(spearmanValue) * 100, color: getCorrColor(spearmanValue) }}
+          label="Korrelation"
+          value={spearmanValue.toFixed(3)}
+          progressValue={Math.abs(spearmanValue) * 100}
+          color={`${getCorrColor(spearmanValue)}.7`}
+          tooltip="Spearman ρ für Rangfolge-Übereinstimmung. Ziel: ≥ 0.80"
         />
 
-        <MetricCard
-          icon={IconChartBar}
-          color="pink"
-          title="Skalengebrauch"
-          tooltip="EEI (Extremwerte 1/5), MNI (Mitte 3), SV (Streuung). Deskriptiv: sehr hohe EEI/MNI können auf Schiefen hinweisen."
-          value={`EEI ${(data.usage?.eei ?? 0).toFixed(2)}`}
-          subValue={`MNI ${(data.usage?.mni ?? 0).toFixed(2)} · SV ${(data.usage?.sv ?? 0).toFixed(2)}`}
-        />
+        <Paper p="sm" withBorder radius="md">
+          <Group justify="space-between" align="flex-start" mb="xs">
+            <Group gap="xs" wrap="nowrap" style={{ flex: 1 }}>
+              <ThemeIcon size="md" radius="md" variant="light" color="pink" style={{ flexShrink: 0 }}>
+                <IconChartBar size={16} />
+              </ThemeIcon>
+              <div style={{ minWidth: 0 }}>
+                <Text size="xs" c="dimmed" tt="uppercase" fw={700} lh={1}>Skalengebrauch</Text>
+                <Text size="lg" fw={700} lh={1.2} mt={6}>
+                  EEI {(data.usage?.eei ?? 0).toFixed(2)}
+                </Text>
+                <Text size="xs" c="dimmed" mt={6}>
+                  MNI {(data.usage?.mni ?? 0).toFixed(2)} · SV {(data.usage?.sv ?? 0).toFixed(2)}
+                </Text>
+              </div>
+            </Group>
+            <Tooltip label="EEI = Extremwerte, MNI = Mitte, SV = Streuung" multiline w={200} withArrow>
+              <ActionIcon variant="subtle" color="gray" size="xs" style={{ flexShrink: 0 }}>
+                <IconInfoCircle size={14} />
+              </ActionIcon>
+            </Tooltip>
+          </Group>
+        </Paper>
       </SimpleGrid>
 
       {/* By Case / By Trait Category */}
@@ -164,36 +175,21 @@ export function OrderMetricsCard({ data }: OrderMetricsCardProps) {
             <>
               <Group gap="xs" mb="sm" align="center">
                 <Title order={5} mb={0}>Nach Trait-Kategorie</Title>
-                <Tooltip label="Durchschnittliche Abweichung pro Trait-Kategorie. MAE (Mean Absolute Error) zeigt die mittlere Abweichung zwischen in und rev an." multiline w={260} withArrow>
+                <Tooltip label="MAE pro Kategorie. Grün = konsistent, Rot = inkonsistent." multiline w={200} withArrow>
                   <ActionIcon variant="subtle" color="gray" size={18}>
                     <IconInfoCircle size={14} />
                   </ActionIcon>
                 </Tooltip>
               </Group>
-              <Text size="xs" c="dimmed" mb="md">
-                Aggregierte Order-Consistency getrennt nach Trait-Kategorien
-              </Text>
               <SimpleGrid cols={{ base: 2, sm: 3, md: 4 }} spacing="sm" mb="md">
                 {data.by_trait_category.map((cat: any) => {
                   const maeColor = cat.abs_diff <= 0.3 ? 'teal' : cat.abs_diff <= 0.6 ? 'yellow' : 'red';
                   return (
-                    <Paper key={cat.trait_category} p="sm" bg={getColor('gray').bg} radius="md">
-                      <Text size="sm" fw={600}>{cat.trait_category}</Text>
-                      <Group gap="xs" mt={4}>
+                    <Paper key={cat.trait_category} p="xs" bg={getColor('gray').bg} radius="md">
+                      <Text size="xs" fw={600} truncate>{cat.trait_category}</Text>
+                      <Group gap="xs" mt={4} justify="space-between" wrap="nowrap">
                         <Badge size="xs" variant="light" color="gray">n={cat.n}</Badge>
-                      </Group>
-                      <Group gap="md" mt="xs">
-                        <div>
-                          <Group gap={4} align="center">
-                            <Text size="xs" c="dimmed">MAE</Text>
-                            <Tooltip label="Mittlere absolute Abweichung. Niedrig = konsistent. Bei 5er-Likert: < 0.5 sehr gut." multiline w={180} withArrow>
-                              <ActionIcon variant="subtle" color="gray" size="xs">
-                                <IconInfoCircle size={12} />
-                              </ActionIcon>
-                            </Tooltip>
-                          </Group>
-                          <Text size="sm" fw={700} c={`${maeColor}.7`}>{(cat.abs_diff ?? 0).toFixed(3)}</Text>
-                        </div>
+                        <Text size="xs" fw={700} c={`${maeColor}.7`}>{(cat.abs_diff ?? 0).toFixed(3)}</Text>
                       </Group>
                     </Paper>
                   );
@@ -207,52 +203,33 @@ export function OrderMetricsCard({ data }: OrderMetricsCardProps) {
               {data.by_trait_category?.length > 0 && <Divider my="md" />}
               <Group gap="xs" mb="sm" align="center">
                 <Title order={5} mb={0}>Pro Trait</Title>
-                <Tooltip label="MAE und RMA pro Trait. MAE = mittlere Abweichung, RMA = Anteil exakt gleicher Antworten." multiline w={260} withArrow>
+                <Tooltip label="MAE und RMA pro Trait. Rot = Konsistenzprobleme." multiline w={200} withArrow>
                   <ActionIcon variant="subtle" color="gray" size={18}>
                     <IconInfoCircle size={14} />
                   </ActionIcon>
                 </Tooltip>
               </Group>
-              <Text size="xs" c="dimmed" mb="md">
-                Exakte Übereinstimmung je Trait. Hohe Abweichungen können auf text-/kontextabhängige Sensitivität hinweisen.
-              </Text>
               <SimpleGrid cols={{ base: 2, sm: 3, md: 4 }} spacing="xs">
                 {data.by_case.map((r: any) => {
                   const maeColor = r.abs_diff <= 0.3 ? 'teal' : r.abs_diff <= 0.6 ? 'yellow' : 'red';
-                  const rmaAbsVal = Math.abs(r.rma ?? 0);
-                  const rmaColor = rmaAbsVal <= 0.1 ? 'teal' : rmaAbsVal <= 0.3 ? 'yellow' : 'red';
                   return (
                     <Paper key={r.case_id} p="xs" bg={getColor('gray').bg} radius="sm">
-                      <Group justify="space-between" wrap="nowrap" mb={4}>
-                        <Text size="xs" truncate style={{ maxWidth: 100 }} fw={500}>{r.label || r.case_id}</Text>
+                      <Text size="xs" fw={600} truncate>{r.label || r.case_id}</Text>
+                      <Group gap={4} mt={3} wrap="nowrap">
                         <Badge size="xs" variant="dot" color="gray">n={r.n ?? 0}</Badge>
                       </Group>
-                      <Stack gap={4}>
-                        <Group gap={6} justify="space-between">
-                          <Group gap={6} align="center">
-                            <Text size="xs" c="dimmed" style={{ minWidth: 32 }}>MAE</Text>
-                            <Tooltip label="Mittlere absolute Abweichung zwischen Antworten. Niedrig = konsistent." multiline w={160} withArrow>
-                              <ActionIcon variant="subtle" color="gray" size="xs">
-                                <IconInfoCircle size={11} />
-                              </ActionIcon>
-                            </Tooltip>
-                          </Group>
+                      <Group gap={6} mt={2} wrap="wrap">
+                        <Group gap={3} wrap="nowrap">
+                          <Text size="xs" c="dimmed">MAE</Text>
                           <Text size="xs" fw={700} c={`${maeColor}.7`}>{(r.abs_diff ?? 0).toFixed(2)}</Text>
                         </Group>
                         {r.rma !== undefined && r.rma !== null && (
-                          <Group gap={6} justify="space-between">
-                            <Group gap={6} align="center">
-                              <Text size="xs" c="dimmed" style={{ minWidth: 32 }}>RMA</Text>
-                              <Tooltip label="Retest Match Agreement: Differenz zwischen erwartetem und beobachtetem Wert. Ideal nahe 0." multiline w={160} withArrow>
-                                <ActionIcon variant="subtle" color="gray" size="xs">
-                                  <IconInfoCircle size={11} />
-                                </ActionIcon>
-                              </Tooltip>
-                            </Group>
-                            <Text size="xs" fw={700} c={`${rmaColor}.7`}>{(r.rma ?? 0).toFixed(2)}</Text>
+                          <Group gap={3} wrap="nowrap">
+                            <Text size="xs" c="dimmed">RMA</Text>
+                            <Text size="xs" fw={700}>{(r.rma ?? 0).toFixed(2)}</Text>
                           </Group>
                         )}
-                      </Stack>
+                      </Group>
                     </Paper>
                   );
                 })}
