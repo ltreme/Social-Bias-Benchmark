@@ -162,25 +162,42 @@ export function OrderMetricsCard({ data }: OrderMetricsCardProps) {
         <Paper p="md" withBorder radius="md">
           {data.by_trait_category && data.by_trait_category.length > 0 && (
             <>
-              <Title order={5} mb="sm">Nach Trait-Kategorie</Title>
+              <Group gap="xs" mb="sm" align="center">
+                <Title order={5} mb={0}>Nach Trait-Kategorie</Title>
+                <Tooltip label="Durchschnittliche Abweichung pro Trait-Kategorie. MAE (Mean Absolute Error) zeigt die mittlere Abweichung zwischen in und rev an." multiline w={260} withArrow>
+                  <ActionIcon variant="subtle" color="gray" size={18}>
+                    <IconInfoCircle size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              </Group>
               <Text size="xs" c="dimmed" mb="md">
                 Aggregierte Order-Consistency getrennt nach Trait-Kategorien
               </Text>
               <SimpleGrid cols={{ base: 2, sm: 3, md: 4 }} spacing="sm" mb="md">
-                {data.by_trait_category.map((cat: any) => (
-                  <Paper key={cat.trait_category} p="sm" bg={getColor('gray').bg} radius="md">
-                    <Text size="sm" fw={600}>{cat.trait_category}</Text>
-                    <Group gap="xs" mt={4}>
-                      <Badge size="xs" variant="light" color="gray">n={cat.n}</Badge>
-                    </Group>
-                    <Group gap="md" mt="xs">
-                      <div>
-                        <Text size="xs" c="dimmed">MAE</Text>
-                        <Text size="sm" fw={500}>{(cat.abs_diff ?? 0).toFixed(3)}</Text>
-                      </div>
-                    </Group>
-                  </Paper>
-                ))}
+                {data.by_trait_category.map((cat: any) => {
+                  const maeColor = cat.abs_diff <= 0.3 ? 'teal' : cat.abs_diff <= 0.6 ? 'yellow' : 'red';
+                  return (
+                    <Paper key={cat.trait_category} p="sm" bg={getColor('gray').bg} radius="md">
+                      <Text size="sm" fw={600}>{cat.trait_category}</Text>
+                      <Group gap="xs" mt={4}>
+                        <Badge size="xs" variant="light" color="gray">n={cat.n}</Badge>
+                      </Group>
+                      <Group gap="md" mt="xs">
+                        <div>
+                          <Group gap={4} align="center">
+                            <Text size="xs" c="dimmed">MAE</Text>
+                            <Tooltip label="Mittlere absolute Abweichung. Niedrig = konsistent. Bei 5er-Likert: < 0.5 sehr gut." multiline w={180} withArrow>
+                              <ActionIcon variant="subtle" color="gray" size="xs">
+                                <IconInfoCircle size={12} />
+                              </ActionIcon>
+                            </Tooltip>
+                          </Group>
+                          <Text size="sm" fw={700} c={`${maeColor}.7`}>{(cat.abs_diff ?? 0).toFixed(3)}</Text>
+                        </div>
+                      </Group>
+                    </Paper>
+                  );
+                })}
               </SimpleGrid>
             </>
           )}
@@ -188,22 +205,57 @@ export function OrderMetricsCard({ data }: OrderMetricsCardProps) {
           {data.by_case && data.by_case.length > 0 && (
             <>
               {data.by_trait_category?.length > 0 && <Divider my="md" />}
-              <Title order={5} mb="sm">Pro Trait</Title>
+              <Group gap="xs" mb="sm" align="center">
+                <Title order={5} mb={0}>Pro Trait</Title>
+                <Tooltip label="MAE und RMA pro Trait. MAE = mittlere Abweichung, RMA = Anteil exakt gleicher Antworten." multiline w={260} withArrow>
+                  <ActionIcon variant="subtle" color="gray" size={18}>
+                    <IconInfoCircle size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              </Group>
               <Text size="xs" c="dimmed" mb="md">
                 Exakte Übereinstimmung je Trait. Hohe Abweichungen können auf text-/kontextabhängige Sensitivität hinweisen.
               </Text>
               <SimpleGrid cols={{ base: 2, sm: 3, md: 4 }} spacing="xs">
-                {data.by_case.map((r: any) => (
-                  <Paper key={r.case_id} p="xs" bg={getColor('gray').bg} radius="sm">
-                    <Group justify="space-between" wrap="nowrap">
-                      <Text size="xs" truncate style={{ maxWidth: 120 }}>{r.label || r.case_id}{r.case_id ? ` (${r.case_id})` : ''}</Text>
-                      <Group gap={4}>
-                        <Text size="xs" fw={600}>{(r.abs_diff ?? 0).toFixed(2)}</Text>
-                        <Text size="xs" c="dimmed">(n={r.n ?? 0})</Text>
+                {data.by_case.map((r: any) => {
+                  const maeColor = r.abs_diff <= 0.3 ? 'teal' : r.abs_diff <= 0.6 ? 'yellow' : 'red';
+                  const rmaAbsVal = Math.abs(r.rma ?? 0);
+                  const rmaColor = rmaAbsVal <= 0.1 ? 'teal' : rmaAbsVal <= 0.3 ? 'yellow' : 'red';
+                  return (
+                    <Paper key={r.case_id} p="xs" bg={getColor('gray').bg} radius="sm">
+                      <Group justify="space-between" wrap="nowrap" mb={4}>
+                        <Text size="xs" truncate style={{ maxWidth: 100 }} fw={500}>{r.label || r.case_id}</Text>
+                        <Badge size="xs" variant="dot" color="gray">n={r.n ?? 0}</Badge>
                       </Group>
-                    </Group>
-                  </Paper>
-                ))}
+                      <Stack gap={4}>
+                        <Group gap={6} justify="space-between">
+                          <Group gap={6} align="center">
+                            <Text size="xs" c="dimmed" style={{ minWidth: 32 }}>MAE</Text>
+                            <Tooltip label="Mittlere absolute Abweichung zwischen Antworten. Niedrig = konsistent." multiline w={160} withArrow>
+                              <ActionIcon variant="subtle" color="gray" size="xs">
+                                <IconInfoCircle size={11} />
+                              </ActionIcon>
+                            </Tooltip>
+                          </Group>
+                          <Text size="xs" fw={700} c={`${maeColor}.7`}>{(r.abs_diff ?? 0).toFixed(2)}</Text>
+                        </Group>
+                        {r.rma !== undefined && r.rma !== null && (
+                          <Group gap={6} justify="space-between">
+                            <Group gap={6} align="center">
+                              <Text size="xs" c="dimmed" style={{ minWidth: 32 }}>RMA</Text>
+                              <Tooltip label="Retest Match Agreement: Differenz zwischen erwartetem und beobachtetem Wert. Ideal nahe 0." multiline w={160} withArrow>
+                                <ActionIcon variant="subtle" color="gray" size="xs">
+                                  <IconInfoCircle size={11} />
+                                </ActionIcon>
+                              </Tooltip>
+                            </Group>
+                            <Text size="xs" fw={700} c={`${rmaColor}.7`}>{(r.rma ?? 0).toFixed(2)}</Text>
+                          </Group>
+                        )}
+                      </Stack>
+                    </Paper>
+                  );
+                })}
               </SimpleGrid>
             </>
           )}

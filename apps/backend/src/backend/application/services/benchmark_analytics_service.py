@@ -253,6 +253,12 @@ class BenchmarkAnalyticsService:
                             for _, row in by_cat.iterrows()
                         ]
 
+        # Ensure by_case and by_trait_category are always present
+        if "by_case" not in metrics:
+            metrics["by_case"] = []
+        if "by_trait_category" not in metrics:
+            metrics["by_trait_category"] = []
+
         payload = {"ok": True, **metrics}
         benchmark_cache.put_cached(run_id, "order", ck, payload)
         return payload

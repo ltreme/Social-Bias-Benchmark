@@ -275,6 +275,8 @@ def request_analysis(run_id: int, body: dict) -> Dict[str, Any]:
 
     Returns:
         Dict with job_id, task_id, status, message
+
+    Note: Order analysis is no longer queued - it's computed synchronously.
     """
     analysis_type = body.get("type")
     if not analysis_type:
@@ -284,6 +286,15 @@ def request_analysis(run_id: int, body: dict) -> Dict[str, Any]:
         raise HTTPException(
             status_code=400, detail=f"Invalid analysis type: {analysis_type}"
         )
+
+    # Order analysis is now synchronous via get_order_metrics
+    if analysis_type == "order":
+        return {
+            "job_id": None,
+            "task_id": None,
+            "status": "completed",
+            "message": "Order metrics are computed synchronously. Use /runs/{run_id}/order-metrics endpoint.",
+        }
 
     params = {}
     if analysis_type == "bias":

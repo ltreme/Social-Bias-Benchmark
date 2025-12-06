@@ -521,9 +521,6 @@ export function RunDetailPage() {
               orderMetrics={order.data}
               isLoadingOrder={order.isLoading}
               orderError={order.error}
-              analysisStatus={analysisStatus.data}
-              onRequestAnalysis={() => requestAnalysis.mutate({ runId: idNum, request: { type: 'order', force: true } })}
-              isRequestingAnalysis={requestAnalysis.isPending}
             />
           </Tabs.Panel>
 

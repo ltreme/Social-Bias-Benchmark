@@ -54,3 +54,13 @@ export function gradeCorr(v?: number) {
   return <GradeBadge color="red" text="niedrig" />;
 }
 
+export function gradeRmaPerTrait(v?: number) {
+  const x = Number(v ?? NaN);
+  if (!Number.isFinite(x)) return <GradeBadge color="yellow" text="n/a" />;
+  // RMA = difference between observed and expected. Ideal near 0.
+  const abs_v = Math.abs(x);
+  if (abs_v <= 0.1) return <GradeBadge color="green" text="sehr gut" />;
+  if (abs_v <= 0.3) return <GradeBadge color="yellow" text="ok" />;
+  return <GradeBadge color="red" text="abweichend" />;
+}
+

@@ -491,11 +491,12 @@ class QueueExecutor:
         analysis_service = AnalysisService()
 
         if analysis_type == "order":
-            # Deep order-consistency analysis
-            job = analysis_service.run_order_analysis(run_id)
-            if job.status == "failed":
-                raise RuntimeError(f"Order analysis failed: {job.error}")
-            _LOG.info(f"[QueueExecutor] Order analysis completed for run {run_id}")
+            # Order-consistency is now computed synchronously via get_order_metrics
+            # No queue job needed - skip silently
+            _LOG.info(
+                f"[QueueExecutor] Order analysis no longer uses queue, skipping for run {run_id}"
+            )
+            return
 
         elif analysis_type.startswith("bias"):
             # Bias analysis - attribute may be in task_type (bias:gender) or config
