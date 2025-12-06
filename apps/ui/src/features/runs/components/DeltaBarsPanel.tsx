@@ -1,4 +1,4 @@
-import { Paper, Text, Title, Group, ThemeIcon, SimpleGrid, Tooltip } from '@mantine/core';
+import { Paper, Text, Title, Group, ThemeIcon, SimpleGrid, Tooltip, useMantineColorScheme, useMantineTheme } from '@mantine/core';
 import { IconArrowUp, IconArrowDown, IconMinus, IconInfoCircle } from '@tabler/icons-react';
 import { ChartPanel } from '../../../components/ChartPanel';
 import { translateCategory } from './GroupComparisonHeatmap';
@@ -53,6 +53,9 @@ function getPlotColorLight(row: DeltaRow): string {
 
 export function DeltaBarsPanel({ deltas, title, baseline }: { deltas?: Deltas; title: string; baseline?: string }) {
   const getThemeColor = useThemedColor();
+  const { colorScheme } = useMantineColorScheme();
+  const theme = useMantineTheme();
+  const isDark = colorScheme === 'dark';
 
   if (!deltas || !deltas.rows || deltas.rows.length === 0) {
     return (
@@ -71,6 +74,35 @@ export function DeltaBarsPanel({ deltas, title, baseline }: { deltas?: Deltas; t
     displayCategory: translateCategory(row.category),
   }));
   
+  // Theme-aware colors from Mantine theme
+  const gridColor = isDark ? theme.colors.dark[4] : theme.colors.gray[2];
+  const zeroLineColor = isDark ? theme.colors.gray[5] : theme.colors.gray[6];
+  const annotationColor = isDark ? theme.colors.gray[4] : theme.colors.gray[6];
+  const bgColor = isDark ? theme.colors.dark[7] : theme.white;
+  const textColor = isDark ? theme.colors.gray[3] : theme.black;
+
+  // Helper to get error bar color (brighter in dark mode)
+  const getErrorBarColor = (row: any) => {
+    const sig = isSignificant(row);
+    const delta = row.delta ?? 0;
+    
+    if (!sig) return isDark ? theme.colors.gray[5] : '#868e96';
+    if (delta > 0) return isDark ? theme.colors.green[4] : '#2f9e44';
+    if (delta < 0) return isDark ? theme.colors.red[4] : '#e03131';
+    return isDark ? theme.colors.gray[5] : '#868e96';
+  };
+
+  // Helper to get stem line color (even brighter in dark mode)
+  const getStemColor = (row: any) => {
+    const sig = isSignificant(row);
+    const delta = row.delta ?? 0;
+    
+    if (!sig) return isDark ? theme.colors.gray[4] : '#dee2e6';
+    if (delta > 0) return isDark ? theme.colors.green[3] : '#b2f2bb';
+    if (delta < 0) return isDark ? theme.colors.red[3] : '#ffc9c9';
+    return isDark ? theme.colors.gray[4] : '#dee2e6';
+  };
+  
   // Create lollipop chart data
   const traces: Partial<Plotly.Data>[] = [
     // Stems (lines from 0 to point)
@@ -79,7 +111,7 @@ export function DeltaBarsPanel({ deltas, title, baseline }: { deltas?: Deltas; t
       mode: 'lines' as const,
       x: [0, row.delta ?? 0],
       y: [row.displayCategory, row.displayCategory],
-      line: { color: getPlotColorLight(row), width: 3 },
+      line: { color: getStemColor(row), width: isDark ? 4 : 3 },
       showlegend: false,
       hoverinfo: 'skip' as const,
     })),
@@ -93,16 +125,16 @@ export function DeltaBarsPanel({ deltas, title, baseline }: { deltas?: Deltas; t
       marker: { 
         size: 12, 
         color: translatedRows.map(r => getPlotColor(r)),
-        line: { color: '#fff', width: 2 },
+        line: { color: isDark ? theme.colors.dark[7] : '#fff', width: 2 },
       },
       error_x: {
         type: 'data' as const,
         symmetric: false,
         array: translatedRows.map((r) => (r.ci_high != null && r.delta != null) ? Math.max(0, r.ci_high - r.delta) : 0),
         arrayminus: translatedRows.map((r) => (r.ci_low != null && r.delta != null) ? Math.max(0, r.delta - r.ci_low) : 0),
-        thickness: 2,
-        width: 6,
-        color: translatedRows.map(r => getPlotColor(r)),
+        thickness: isDark ? 4 : 2,
+        width: 10,
+        color: isDark ? theme.colors.gray[4] : '#495057',
       },
       hovertemplate: translatedRows.map((r) => {
         const sig = isSignificant(r) ? '✓ signifikant' : '○ nicht signifikant';
@@ -136,12 +168,14 @@ export function DeltaBarsPanel({ deltas, title, baseline }: { deltas?: Deltas; t
       <Group justify="space-between" align="flex-start" mb="md">
         <div>
           <Title order={5}>{title}</Title>
-          <Text size="xs" c="dimmed">Mittelwertdifferenz zur Baseline{baseline ? ` (${baseline})` : ''}</Text>
+          <Text size="xs" c="dimmed">
+            Mittelwertdifferenz zur Baseline{baseline ? ` (${baseline})` : ''} mit Konfidenzintervallen
+          </Text>
         </div>
         <Tooltip 
-          label="Positive Werte (grün): Gruppe wird höher bewertet als Baseline. Negative Werte (rot): niedriger. Grau: nicht signifikant (p ≥ 0.05)."
+          label="Lollipop-Chart zeigt Delta-Werte mit 95%-Konfidenzintervallen (horizontale Fehlerbalken). Ergänzt die Gruppen-Cards um statistische Unsicherheit. Grün = signifikant höher, Rot = signifikant niedriger, Grau = nicht signifikant."
           multiline
-          w={280}
+          w={320}
           withArrow
         >
           <ThemeIcon variant="subtle" color="gray" size="sm">
@@ -179,19 +213,24 @@ export function DeltaBarsPanel({ deltas, title, baseline }: { deltas?: Deltas; t
         height={chartHeight}
         layout={{
           showlegend: false,
-          margin: { l: 120, r: 40, t: 30, b: 50 },
+          paper_bgcolor: bgColor,
+          plot_bgcolor: bgColor,
+          font: { color: textColor },
+          margin: { l: 140, r: 40, t: 30, b: 60 },
           xaxis: { 
-            title: { text: 'Delta (Δ)', standoff: 10 },
+            title: { text: 'Delta (Δ)', standoff: 10, font: { color: textColor } },
             zeroline: true,
-            zerolinecolor: '#333',
+            zerolinecolor: zeroLineColor,
             zerolinewidth: 2,
             range: [-(maxAbs + padding), maxAbs + padding],
-            gridcolor: '#f1f3f5',
+            gridcolor: gridColor,
+            tickfont: { color: textColor },
           },
           yaxis: { 
             automargin: true,
             categoryorder: 'array',
             categoryarray: sortedRows.map(r => r.category).reverse(),
+            tickfont: { color: textColor },
           },
           shapes: [
             // Zero line emphasis
@@ -200,29 +239,29 @@ export function DeltaBarsPanel({ deltas, title, baseline }: { deltas?: Deltas; t
               x0: 0, x1: 0, 
               y0: 0, y1: 1, 
               xref: 'x', yref: 'paper', 
-              line: { color: '#333', width: 2 } 
+              line: { color: zeroLineColor, width: 2 } 
             },
           ],
           annotations: [
             // Left label
             {
               x: -(maxAbs + padding) * 0.9,
-              y: 1.08,
+              y: 1.05,
               xref: 'x',
               yref: 'paper',
               text: '← niedriger als Baseline',
               showarrow: false,
-              font: { size: 10, color: '#868e96' },
+              font: { size: 11, color: annotationColor },
             },
             // Right label
             {
               x: (maxAbs + padding) * 0.9,
-              y: 1.08,
+              y: 1.05,
               xref: 'x',
               yref: 'paper',
               text: 'höher als Baseline →',
               showarrow: false,
-              font: { size: 10, color: '#868e96' },
+              font: { size: 11, color: annotationColor },
             },
           ],
         }} 
