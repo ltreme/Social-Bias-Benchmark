@@ -64,7 +64,13 @@ export function ChartPanel({ title, data, layout, height }: ChartPanelProps) {
     }), [colors, layout, isDark]);
 
     return (
-        <div>
+        <div className="chart-panel-container">
+            <style>{`
+                .chart-panel-container .bars .point path {
+                    rx: 4px;
+                    ry: 4px;
+                }
+            `}</style>
             {title && <h3 style={{ marginBottom: 8, color: isDark ? '#c1c2c5' : '#212529' }}>{title}</h3>}
             <Plot
                 data={data}

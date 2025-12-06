@@ -59,7 +59,8 @@ export function OverviewTab({
 
     // Histogram bars from metrics
     const histCounts = metrics?.hist?.counts || (metrics ? metrics.hist.shares.map((p) => Math.round(p * (metrics.n || 0))) : []);
-    const palette = ['#3182bd', '#e6550d', '#31a354', '#756bb1'];
+    // Mantine-harmonische Farbpalette (gedämpftere Farben)
+    const palette = ['#339af0', '#9775fa', '#20c997', '#fcc419'];
     let histBars: Partial<Plotly.Data>[] = [];
     if (metrics) {
         if (!traitCategoryFilter && metrics.trait_categories?.histograms?.length) {
@@ -68,8 +69,16 @@ export function OverviewTab({
                 name: h.category,
                 x: h.bins,
                 y: h.shares,
-                marker: { color: palette[idx % palette.length], opacity: 0.85 },
-                hovertemplate: '%{x}: %{y:.0%} (n=%{customdata})',
+                text: h.shares.map((p: number) => `${(p * 100).toFixed(0)}%`),
+                textposition: 'outside',
+                textfont: { size: 10 },
+                cliponaxis: false,
+                marker: { 
+                    color: palette[idx % palette.length], 
+                    opacity: 0.9,
+                    line: { width: 0, color: palette[idx % palette.length] },
+                },
+                hovertemplate: '<b>%{x}</b><br>%{y:.1%} (n=%{customdata})<extra></extra>',
                 customdata: h.counts,
             }));
         } else {
@@ -81,18 +90,26 @@ export function OverviewTab({
                 shares: metrics.hist.shares,
                 counts: histCounts,
             };
+            // Farbverlauf von Blau zu Violett für einzelne Kategorie
+            const barColors = ['#4dabf7', '#748ffc', '#9775fa', '#be4bdb', '#e599f7'];
             histBars = [
                 {
                     type: 'bar',
                     x: baseHist.bins,
                     y: baseHist.shares,
-                    marker: { color: '#3182bd' },
-                    text: baseHist.shares.map((p: number, i: number) => `${(p * 100).toFixed(0)}% (n=${baseHist.counts?.[i] ?? 0})`),
+                    marker: { 
+                        color: barColors,
+                        opacity: 0.9,
+                        line: { width: 0 },
+                    },
+                    text: baseHist.shares.map((p: number) => `${(p * 100).toFixed(0)}%`),
                     textposition: 'outside',
-                    hovertemplate: '%{x}: %{y:.0%} (n=%{customdata})',
+                    textfont: { size: 11 },
+                    cliponaxis: false,
+                    hovertemplate: '<b>Rating %{x}</b><br>%{y:.1%} (n=%{customdata})<extra></extra>',
                     customdata: baseHist.counts,
+                    showlegend: false,
                 },
-                { type: 'scatter', mode: 'markers', x: baseHist.bins, y: baseHist.counts, yaxis: 'y2', opacity: 0, showlegend: false },
             ];
         }
     }
@@ -251,22 +268,38 @@ export function OverviewTab({
             )}
 
             {/* Detailed Rating Distribution Chart */}
-            <Card withBorder padding="md">
-                <Title order={4} mb="sm">Rating-Verteilung</Title>
+            <Card withBorder padding="sm">
+                <Group justify="space-between" align="center" mb={4}>
+                    <Title order={5}>Rating-Verteilung</Title>
+                    <Text size="xs" c="dimmed">1 = gar nicht · 5 = sehr ‹Adjektiv›</Text>
+                </Group>
                 <AsyncContent isLoading={isLoadingMetrics} isError={!!metricsError} error={metricsError}>
                     {metrics ? (
-                        <>
-                            <ChartPanel 
-                                title="" 
-                                data={histBars} 
-                                layout={{
-                                    barmode: 'group',
-                                    yaxis: { tickformat: '.0%', rangemode: 'tozero', title: { text: 'Anteil' } },
-                                    yaxis2: { overlaying: 'y', side: 'right', title: { text: 'Anzahl' }, rangemode: 'tozero', showgrid: false },
-                                }} 
-                            />
-                            <Text size="sm" c="dimmed">Skala: 1 = gar nicht &lt;adjektiv&gt; … 5 = sehr &lt;adjektiv&gt;</Text>
-                        </>
+                        <ChartPanel 
+                            title="" 
+                            data={histBars} 
+                            height={200}
+                            layout={{
+                                barmode: 'group',
+                                bargap: 0.3,
+                                margin: { t: 40, b: 36, l: 44, r: 12 },
+                                xaxis: { 
+                                    tickmode: 'array', 
+                                    tickvals: [1, 2, 3, 4, 5],
+                                    ticktext: ['1', '2', '3', '4', '5'],
+                                    fixedrange: true,
+                                },
+                                yaxis: { 
+                                    tickformat: '.0%', 
+                                    rangemode: 'tozero', 
+                                    title: { text: '' },
+                                    fixedrange: true,
+                                    gridwidth: 1,
+                                },
+                                legend: { orientation: 'h', y: -0.2, x: 0.5, xanchor: 'center' },
+                                hovermode: 'x unified',
+                            }} 
+                        />
                     ) : null}
                 </AsyncContent>
             </Card>
