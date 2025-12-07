@@ -3,6 +3,7 @@ import { IconChartBar, IconAlertTriangle, IconArrowsSort, IconTarget, IconInfoCi
 import { ChartPanel } from '../../../components/ChartPanel';
 import { AsyncContent } from '../../../components/AsyncContent';
 import { BiasRadarGrid } from './BiasRadarChart';
+import { KruskalWallisCard } from './KruskalWallisCard';
 import { useThemedColor } from '../../../lib/useThemeColors';
 import type { QuickAnalysis, RunMetrics, RunDeltas } from '../api';
 
@@ -257,16 +258,6 @@ export function OverviewTab({
                 </AsyncContent>
             </Card>
 
-            {/* Bias Radar Chart Grid - positioned prominently after Quick-Check */}
-            {runId && radarTraitCategories && radarTraitCategories.length > 0 && radarCategoryDeltasMap && (
-                <BiasRadarGrid 
-                    runId={runId}
-                    traitCategories={radarTraitCategories}
-                    categoryDeltasMap={radarCategoryDeltasMap}
-                    loadingStates={radarLoadingStates}
-                />
-            )}
-
             {/* Detailed Rating Distribution Chart */}
             <Card withBorder padding="sm">
                 <Group justify="space-between" align="center" mb={4}>
@@ -303,6 +294,21 @@ export function OverviewTab({
                     ) : null}
                 </AsyncContent>
             </Card>
+
+            {/* Bias Radar Chart Grid - Bias-Intensität pro Merkmal */}
+            {runId && radarTraitCategories && radarTraitCategories.length > 0 && radarCategoryDeltasMap && (
+                <BiasRadarGrid 
+                    runId={runId}
+                    traitCategories={radarTraitCategories}
+                    categoryDeltasMap={radarCategoryDeltasMap}
+                    loadingStates={radarLoadingStates}
+                />
+            )}
+
+            {/* Kruskal-Wallis Statistical Test */}
+            {runId && (
+                <KruskalWallisCard runId={runId} />
+            )}
         </Stack>
     );
 }

@@ -1,12 +1,11 @@
 import { Card, Group, MultiSelect, Select, Stack, Text, Title, Button, Badge, Paper, ThemeIcon, SimpleGrid, Tooltip, ActionIcon, Tabs } from '@mantine/core';
-import { IconRefresh, IconCheck, IconClock, IconAlertCircle, IconChartBar, IconInfoCircle, IconChartDots3, IconGridDots, IconChartBar as IconChartBars } from '@tabler/icons-react';
+import { IconRefresh, IconCheck, IconClock, IconAlertCircle, IconChartBar, IconInfoCircle, IconChartDots3, IconChartBar as IconChartBars } from '@tabler/icons-react';
 import { AsyncContent } from '../../../components/AsyncContent';
 import { DeltaBarsPanel } from './DeltaBarsPanel';
 import { ImprovedForestPlot } from './ImprovedForestPlot';
-import { GroupComparisonCards, translateCategory } from './GroupComparisonHeatmap';
+import { translateCategory } from './GroupComparisonHeatmap';
 import { SignificanceTable } from './SignificanceTable';
 import { MeansSummary } from './MeansSummary';
-import { KruskalWallisCard } from './KruskalWallisCard';
 import { useThemedColor } from '../../../lib/useThemeColors';
 import type { RunDeltas, AnalysisStatus } from '../api';
 
@@ -273,9 +272,6 @@ export function BiasTab({
                         <Tabs.Tab value="lollipop" leftSection={<IconChartBars size={16} />}>
                             Lollipop-Chart
                         </Tabs.Tab>
-                        <Tabs.Tab value="heatmap" leftSection={<IconGridDots size={16} />}>
-                            Gruppen-Cards
-                        </Tabs.Tab>
                         <Tabs.Tab value="forest" leftSection={<IconChartDots3 size={16} />}>
                             Forest Plot
                         </Tabs.Tab>
@@ -286,16 +282,6 @@ export function BiasTab({
                             <DeltaBarsPanel 
                                 deltas={deltas as any} 
                                 title="Gruppenvergleich (Lollipop)"
-                                baseline={baseline || defaultBaseline}
-                            />
-                        </AsyncContent>
-                    </Tabs.Panel>
-
-                    <Tabs.Panel value="heatmap">
-                        <AsyncContent isLoading={isLoadingDeltas} isError={!!deltasError} error={deltasError}>
-                            <GroupComparisonCards
-                                rows={deltas?.rows || []}
-                                attributeLabel={attrLabel}
                                 baseline={baseline || defaultBaseline}
                             />
                         </AsyncContent>
@@ -345,9 +331,6 @@ export function BiasTab({
                     />
                 </AsyncContent>
             </Card>
-
-            {/* Kruskal-Wallis Omnibus Test */}
-            <KruskalWallisCard runId={runId} />
 
             {/* Significance Tables */}
             <Card withBorder padding="md">
