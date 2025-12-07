@@ -1,13 +1,12 @@
-import { Card, Group, MultiSelect, Select, Stack, Text, Title, Button, Badge, Paper, ThemeIcon, SimpleGrid, Tooltip, ActionIcon, Tabs } from '@mantine/core';
-import { IconRefresh, IconCheck, IconClock, IconAlertCircle, IconChartBar, IconInfoCircle, IconChartDots3, IconChartBar as IconChartBars } from '@tabler/icons-react';
+import { Card, Group, MultiSelect, Select, Stack, Text, Title, Badge, Paper, ThemeIcon, SimpleGrid, Tooltip, ActionIcon, Tabs } from '@mantine/core';
+import { IconChartBar, IconInfoCircle, IconChartDots3, IconChartBar as IconChartBars } from '@tabler/icons-react';
 import { AsyncContent } from '../../../components/AsyncContent';
 import { DeltaBarsPanel } from './DeltaBarsPanel';
 import { ImprovedForestPlot } from './ImprovedForestPlot';
 import { translateCategory } from './GroupComparisonHeatmap';
 import { SignificanceTable } from './SignificanceTable';
-import { MeansSummary } from './MeansSummary';
 import { useThemedColor } from '../../../lib/useThemeColors';
-import type { RunDeltas, AnalysisStatus } from '../api';
+import type { RunDeltas } from '../api';
 
 const ATTRS = [
     { value: 'gender', label: 'Geschlecht', icon: '👤', description: 'Vergleich zwischen Geschlechtern' },
@@ -42,28 +41,8 @@ type BiasTabProps = {
     deltasError?: any;
     forestsQueries: Array<{ data?: any; isLoading: boolean; isError: boolean; error?: any }>;
     // All means & deltas for summary
-    meansData: Array<{ a: string; q: { data?: { rows: any[] }; isLoading: boolean; isError: boolean; error?: any } }>;
     deltasData: Array<{ a: string; q: { data?: RunDeltas; isLoading: boolean; isError: boolean; error?: any } }>;
-    // Analysis status
-    analysisStatus?: AnalysisStatus | null;
-    onRequestBiasAnalysis: (attribute: string) => void;
-    isRequestingAnalysis: boolean;
 };
-
-function getAnalysisStatusBadge(status?: string) {
-    switch (status) {
-        case 'completed':
-            return <Badge color="green" size="xs" leftSection={<IconCheck size={10} />}>Fertig</Badge>;
-        case 'running':
-            return <Badge color="blue" size="xs" leftSection={<IconClock size={10} />}>Läuft</Badge>;
-        case 'pending':
-            return <Badge color="yellow" size="xs" leftSection={<IconClock size={10} />}>Warteschlange</Badge>;
-        case 'failed':
-            return <Badge color="red" size="xs" leftSection={<IconAlertCircle size={10} />}>Fehler</Badge>;
-        default:
-            return null;
-    }
-}
 
 export function BiasTab({
     runId,
@@ -82,23 +61,13 @@ export function BiasTab({
     isLoadingDeltas,
     deltasError,
     forestsQueries,
-    meansData,
     deltasData,
-    analysisStatus,
-    onRequestBiasAnalysis,
-    isRequestingAnalysis,
 }: BiasTabProps) {
     const getColor = useThemedColor();
     const loadingForest = forestsQueries.length > 0 ? forestsQueries.some((q) => q.isLoading) : false;
     const errorForest = forestsQueries.length > 0 ? forestsQueries.some((q) => q.isError) : false;
     const forestError = forestsQueries.find((q) => q.isError)?.error;
     const attrLabel = ATTRS.find((x) => x.value === attribute)?.label || attribute;
-
-    // Check analysis status for current attribute
-    const biasAnalysisKey = `bias:${attribute}`;
-    const biasAnalysis = analysisStatus?.analyses?.[biasAnalysisKey];
-    const biasStatus = biasAnalysis?.status;
-    const isBiasRunning = biasStatus === 'running' || biasStatus === 'pending';
 
     return (
         <Stack gap="lg">
@@ -317,39 +286,9 @@ export function BiasTab({
                 </Tabs>
             </Paper>
 
-            {/* Means Summary */}
-            <Card withBorder padding="md">
-                <Title order={4}>Mittelwerte pro Merkmal</Title>
-                <AsyncContent
-                    isLoading={meansData.some(({ q }) => q.isLoading)}
-                    isError={meansData.some(({ q }) => q.isError)}
-                    error={meansData.find(({ q }) => q.isError)?.q.error}
-                >
-                    <MeansSummary
-                        items={meansData.map(({ a, q }) => ({ key: a, rows: q.data?.rows }))}
-                        getLabel={(key) => ATTRS.find((x) => x.value === key)?.label || key}
-                    />
-                </AsyncContent>
-            </Card>
-
             {/* Significance Tables */}
             <Card withBorder padding="md">
-                <Group justify="space-between" align="center" mb="md">
-                    <Title order={4}>Signifikanz-Tabellen (p, q, Cliff's δ)</Title>
-                    <Group gap="sm">
-                        {getAnalysisStatusBadge(biasStatus)}
-                        <Button
-                            size="xs"
-                            leftSection={<IconRefresh size={14} />}
-                            onClick={() => onRequestBiasAnalysis(attribute)}
-                            loading={isRequestingAnalysis || isBiasRunning}
-                            disabled={isBiasRunning}
-                            variant="light"
-                        >
-                            Deep-Analyse
-                        </Button>
-                    </Group>
-                </Group>
+                <Title order={4} mb="md">Signifikanz-Tabellen (p, q, Cliff's δ)</Title>
                 {deltasData.map(({ a, q }) => (
                     <div key={a} style={{ marginTop: 12 }}>
                         <b>{ATTRS.find(x => x.value === a)?.label || a}</b>

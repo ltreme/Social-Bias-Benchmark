@@ -10,12 +10,9 @@ import {
   useRunMissing, 
   useRunWarmup, 
   useQuickAnalysis, 
-  useAnalysisStatus, 
-  useRequestAnalysis,
   useRunOrderMetrics,
   useRunDeltas,
   useRunForests,
-  useRunAllMeans,
   useRunAllDeltas,
 } from './hooks';
 import { useStartBenchmark, useBenchmarkStatus } from '../datasets/hooks';
@@ -151,8 +148,6 @@ export function RunDetailPage() {
 
   // Analysis hooks
   const quickAnalysis = useQuickAnalysis(idNum, { enabled: warmReady });
-  const analysisStatus = useAnalysisStatus(idNum, { enabled: warmReady, polling: true });
-  const requestAnalysis = useRequestAnalysis();
 
   // Tab state
   const [activeTab, setActiveTab] = useState<string | null>('overview');
@@ -199,7 +194,6 @@ export function RunDetailPage() {
   const forestsQueries = useRunForests(idNum, attr, baseline, targets, { enabled: warmReady, traitCategory: traitCategoryFilter });
 
   // Aggregated data
-  const { data: allMeans, isLoading: loadingAllMeans, isError: errorAllMeans, error: allMeansError } = useRunAllMeans(idNum, { enabled: warmReady });
   const { data: allDeltas, isLoading: loadingAllDeltas, isError: errorAllDeltas, error: allDeltasError } = useRunAllDeltas(idNum, { enabled: warmReady });
   
   // Radar chart data for grid view - load data for each trait category
@@ -209,17 +203,6 @@ export function RunDetailPage() {
   const { data: radarDeltasAll, isLoading: loadingRadarAll } = useRunAllDeltas(idNum, { enabled: warmReady });
   const { data: radarDeltasCat1, isLoading: loadingRadarCat1 } = useRunAllDeltas(idNum, { enabled: warmReady && !!radarCategory1, traitCategory: radarCategory1 });
   const { data: radarDeltasCat2, isLoading: loadingRadarCat2 } = useRunAllDeltas(idNum, { enabled: warmReady && !!radarCategory2, traitCategory: radarCategory2 });
-
-  const meansData = [
-    { a: 'gender', q: { data: { rows: allMeans?.data?.gender || [] }, isLoading: loadingAllMeans, isError: errorAllMeans, error: allMeansError } },
-    { a: 'age_group', q: { data: { rows: allMeans?.data?.age_group || [] }, isLoading: loadingAllMeans, isError: errorAllMeans, error: allMeansError } },
-    { a: 'origin_subregion', q: { data: { rows: allMeans?.data?.origin_subregion || [] }, isLoading: loadingAllMeans, isError: errorAllMeans, error: allMeansError } },
-    { a: 'religion', q: { data: { rows: allMeans?.data?.religion || [] }, isLoading: loadingAllMeans, isError: errorAllMeans, error: allMeansError } },
-    { a: 'migration_status', q: { data: { rows: allMeans?.data?.migration_status || [] }, isLoading: loadingAllMeans, isError: errorAllMeans, error: allMeansError } },
-    { a: 'sexuality', q: { data: { rows: allMeans?.data?.sexuality || [] }, isLoading: loadingAllMeans, isError: errorAllMeans, error: allMeansError } },
-    { a: 'marriage_status', q: { data: { rows: allMeans?.data?.marriage_status || [] }, isLoading: loadingAllMeans, isError: errorAllMeans, error: allMeansError } },
-    { a: 'education', q: { data: { rows: allMeans?.data?.education || [] }, isLoading: loadingAllMeans, isError: errorAllMeans, error: allMeansError } },
-  ];
 
   const deltasData = [
     { a: 'gender', q: { data: allDeltas?.data?.gender, isLoading: loadingAllDeltas, isError: errorAllDeltas, error: allDeltasError } },
@@ -542,11 +525,7 @@ export function RunDetailPage() {
               isLoadingDeltas={loadingDeltas}
               deltasError={deltasError}
               forestsQueries={forestsQueries}
-              meansData={meansData}
               deltasData={deltasData}
-              analysisStatus={analysisStatus.data}
-              onRequestBiasAnalysis={(attribute: string) => requestAnalysis.mutate({ runId: idNum, request: { type: 'bias', attribute } })}
-              isRequestingAnalysis={requestAnalysis.isPending}
             />
           </Tabs.Panel>
         </Tabs>
