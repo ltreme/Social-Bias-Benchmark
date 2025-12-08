@@ -1,5 +1,5 @@
 import { Alert, Badge, Button, Group, Paper, Popover, SimpleGrid, Spoiler, Stack, Text, ThemeIcon, Title, Progress, Tabs, Menu, ActionIcon, Tooltip } from '@mantine/core';
-import { IconDownload, IconChartBar, IconAlertTriangle, IconPlayerPlay, IconCheck, IconX, IconFileTypePdf, IconRefresh } from '@tabler/icons-react';
+import { IconDownload, IconChartBar, IconAlertTriangle, IconPlayerPlay, IconCheck, IconX, IconFileTypePdf, IconRefresh, IconRobot, IconFileCode } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
@@ -334,6 +334,20 @@ export function RunDetailPage() {
             </ActionIcon>
           </Tooltip>
 
+          <Tooltip label="Export Run Data (JSON)">
+            <ActionIcon
+              variant="light"
+              color="violet"
+              size="lg"
+              component="a"
+              href={`${import.meta.env.VITE_API_BASE_URL || ''}/runs/${runId}/export/json`}
+              download={`run_${runId}_data.json`}
+              data-print-hide
+            >
+              <IconDownload size={20} />
+            </ActionIcon>
+          </Tooltip>
+
           <Tooltip label="Logs herunterladen (JSON)">
             <ActionIcon
               variant="light"
@@ -344,7 +358,7 @@ export function RunDetailPage() {
               download={`run_${runId}_logs.json`}
               data-print-hide
             >
-              <IconDownload size={20} />
+              <IconFileCode size={20} />
             </ActionIcon>
           </Tooltip>
         </Group>

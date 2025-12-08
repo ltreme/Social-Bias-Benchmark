@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ActionIcon, Badge, Card, Group, MultiSelect, Select, Text, TextInput, Title, Tooltip, useComputedColorScheme } from '@mantine/core';
-import { useNavigate } from '@tanstack/react-router';
+import { Link } from '@tanstack/react-router';
 import { DataTable } from '../../components/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useRuns } from './hooks';
@@ -22,7 +22,6 @@ function formatCompactNumber(n: number): string {
 }
 
 export function RunsPage() {
-    const navigate = useNavigate();
     const { data: runs = [], isLoading } = useRuns();
     const colorScheme = useComputedColorScheme('light');
     const isDark = colorScheme === 'dark';
@@ -137,7 +136,10 @@ export function RunsPage() {
                 <Tooltip label="Run Details" withArrow>
                     <ActionIcon 
                         variant="light" 
-                        onClick={() => navigate({ to: '/runs/$runId', params: { runId: String(row.original.id) } })}
+                        component={Link}
+                        to="/runs/$runId"
+                        params={{ runId: String(row.original.id) }}
+                        target="_blank"
                     >
                         <IconExternalLink size={16} />
                     </ActionIcon>

@@ -239,6 +239,16 @@ def _get_analysis_service():
     return get_analysis_service()
 
 
+def _get_export_service():
+    """Get export service instance."""
+    from backend.application.services.benchmark_export_service import (
+        BenchmarkExportService,
+    )
+
+    ensure_db()
+    return BenchmarkExportService()
+
+
 @router.get("/runs/{run_id}/analysis")
 def get_analysis_status(run_id: int) -> Dict[str, Any]:
     """Get status of all analyses for a run.
@@ -360,4 +370,20 @@ def download_run_logs(run_id: int) -> StreamingResponse:
         generate(),
         media_type="application/json",
         headers={"Content-Disposition": f"attachment; filename=run_{run_id}_logs.json"},
+    )
+
+
+@router.get("/runs/{run_id}/export/json")
+def export_run_data(run_id: int) -> StreamingResponse:
+    """Export all run data as JSON for LLM analysis."""
+    export_service = _get_export_service()
+    report = export_service.get_export_data(run_id)
+
+    if not report:
+        raise HTTPException(status_code=404, detail="Run not found or export failed")
+
+    return StreamingResponse(
+        iter([json.dumps(report, indent=2, ensure_ascii=False)]),
+        media_type="application/json",
+        headers={"Content-Disposition": f"attachment; filename=run_{run_id}_data.json"},
     )
