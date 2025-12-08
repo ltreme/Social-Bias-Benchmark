@@ -1,4 +1,5 @@
-import { Card, Grid, Paper, Text, Title, Badge, Group, Stack, ThemeIcon, SimpleGrid, Tooltip, ActionIcon } from '@mantine/core';
+import { Card, Grid, Paper, Text, Title, Badge, Group, Stack, ThemeIcon, SimpleGrid, Tooltip, ActionIcon, SegmentedControl } from '@mantine/core';
+import { useState } from 'react';
 import { IconChartBar, IconAlertTriangle, IconArrowsSort, IconTarget, IconInfoCircle } from '@tabler/icons-react';
 import { ChartPanel } from '../../../components/ChartPanel';
 import { AsyncContent } from '../../../components/AsyncContent';
@@ -57,6 +58,7 @@ export function OverviewTab({
 }: OverviewTabProps) {
     const getColor = useThemedColor();
     const orderSample = quickAnalysis?.order_consistency_sample;
+    const [histogramView, setHistogramView] = useState<'all' | 'categories'>('all');
 
     // Histogram bars from metrics
     const histCounts = metrics?.hist?.counts || (metrics ? metrics.hist.shares.map((p) => Math.round(p * (metrics.n || 0))) : []);
@@ -64,7 +66,7 @@ export function OverviewTab({
     const palette = ['#339af0', '#9775fa', '#20c997', '#fcc419'];
     let histBars: Partial<Plotly.Data>[] = [];
     if (metrics) {
-        if (!traitCategoryFilter && metrics.trait_categories?.histograms?.length) {
+        if (histogramView === 'categories' && !traitCategoryFilter && metrics.trait_categories?.histograms?.length) {
             histBars = metrics.trait_categories.histograms.map((h, idx) => ({
                 type: 'bar',
                 name: h.category,
@@ -260,9 +262,22 @@ export function OverviewTab({
 
             {/* Detailed Rating Distribution Chart */}
             <Card withBorder padding="sm">
-                <Group justify="space-between" align="center" mb={4}>
+                <Group justify="space-between" align="center" mb="sm">
                     <Title order={5}>Rating-Verteilung</Title>
-                    <Text size="xs" c="dimmed">1 = gar nicht · 5 = sehr ‹Adjektiv›</Text>
+                    <Group gap="md">
+                        {!traitCategoryFilter && metrics?.trait_categories?.histograms?.length ? (
+                            <SegmentedControl
+                                size="xs"
+                                value={histogramView}
+                                onChange={(value) => setHistogramView(value as 'all' | 'categories')}
+                                data={[
+                                    { label: 'Gesamt', value: 'all' },
+                                    { label: 'Nach Kategorie', value: 'categories' },
+                                ]}
+                            />
+                        ) : null}
+                        <Text size="xs" c="dimmed">1 = gar nicht · 5 = sehr ‹Adjektiv›</Text>
+                    </Group>
                 </Group>
                 <AsyncContent isLoading={isLoadingMetrics} isError={!!metricsError} error={metricsError}>
                     {metrics ? (
