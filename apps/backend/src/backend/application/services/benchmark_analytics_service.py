@@ -747,3 +747,247 @@ class BenchmarkAnalyticsService:
 
         benchmark_cache.put_cached(run_id, "kruskal_wallis", ck, payload)
         return payload
+
+    # ========================================================================
+    # Multi-Run Comparison Methods
+    # ========================================================================
+
+    def get_multi_run_metrics(self, run_ids: List[int]) -> Dict[str, Any]:
+        """Get aggregated metrics across multiple runs.
+
+        Combines rating distributions and basic statistics.
+        """
+        if not run_ids:
+            return {"ok": False, "error": "No run IDs provided"}
+
+        all_ratings = []
+        run_metadata = []
+        total_n = 0
+
+        for run_id in run_ids:
+            df = data_loader.df_for_read(run_id, progress_tracker.get_progress)
+            if df.empty:
+                continue
+
+            # Get run info
+            run_info = self._get_run_info(run_id)
+            run_metadata.append(
+                {
+                    "run_id": run_id,
+                    "model": run_info.get("model_name", "Unknown"),
+                    "n": len(df),
+                }
+            )
+
+            all_ratings.extend(df["rating_raw"].dropna().tolist())
+            total_n += len(df)
+
+        if not all_ratings:
+            return {
+                "ok": True,
+                "n": 0,
+                "runs": run_metadata,
+                "hist": {"bins": [], "shares": [], "counts": []},
+                "mean": None,
+                "median": None,
+            }
+
+        # Create combined dataframe for histogram
+        # compute_rating_histogram expects 'rating' column
+        combined_df = pd.DataFrame({"rating": all_ratings, "rating_raw": all_ratings})
+        hist = compute_rating_histogram(combined_df)
+
+        return {
+            "ok": True,
+            "n": total_n,
+            "runs": run_metadata,
+            "hist": hist,
+            "mean": float(np.mean(all_ratings)),
+            "median": float(np.median(all_ratings)),
+        }
+
+    def get_multi_run_order_metrics(self, run_ids: List[int]) -> Dict[str, Any]:
+        """Get aggregated order consistency metrics across multiple runs."""
+        if not run_ids:
+            return {"ok": False, "error": "No run IDs provided"}
+
+        all_metrics = []
+
+        for run_id in run_ids:
+            try:
+                metrics = self.get_order_metrics(run_id)
+                if metrics.get("ok"):
+                    run_info = self._get_run_info(run_id)
+
+                    # Extract scalar metrics only, skip nested dicts
+                    run_data = {
+                        "run_id": run_id,
+                        "model": run_info.get("model_name", "Unknown"),
+                        "n_pairs": metrics.get("n_pairs", 0),
+                    }
+
+                    # Extract RMA metrics (exact_rate is the main metric)
+                    if isinstance(metrics.get("rma"), dict):
+                        run_data["rma"] = metrics["rma"].get("exact_rate")
+                        run_data["rma_mae"] = metrics["rma"].get("mae")
+                        run_data["rma_cliff_delta"] = metrics["rma"].get("cliffs_delta")
+                    else:
+                        run_data["rma"] = metrics.get("rma")
+                        run_data["rma_mae"] = None
+                        run_data["rma_cliff_delta"] = None
+
+                    # Extract correlation (use Spearman as default)
+                    if isinstance(metrics.get("correlation"), dict):
+                        run_data["correlation"] = metrics["correlation"].get("spearman")
+                        run_data["correlation_pearson"] = metrics["correlation"].get(
+                            "pearson"
+                        )
+                        run_data["correlation_kendall"] = metrics["correlation"].get(
+                            "kendall"
+                        )
+                    else:
+                        run_data["correlation"] = metrics.get("correlation")
+                        run_data["correlation_pearson"] = None
+                        run_data["correlation_kendall"] = None
+
+                    # Extract test-retest metrics
+                    if isinstance(metrics.get("test_retest"), dict):
+                        run_data["mae"] = metrics["test_retest"].get("mean_abs_diff")
+                        run_data["within1_rate"] = metrics["test_retest"].get(
+                            "within1_rate"
+                        )
+                    else:
+                        run_data["mae"] = None
+                        run_data["within1_rate"] = None
+
+                    all_metrics.append(run_data)
+            except Exception as e:
+                # Log error but continue with other runs
+                print(f"Error processing run {run_id}: {e}")
+                continue
+
+        if not all_metrics:
+            return {"ok": False, "error": "No valid order metrics found"}
+
+        # Aggregate metrics - filter out None values
+        def safe_mean(values):
+            filtered = [
+                v for v in values if v is not None and isinstance(v, (int, float))
+            ]
+            return float(np.mean(filtered)) if filtered else None
+
+        aggregated = {
+            "ok": True,
+            "runs": all_metrics,
+            "summary": {
+                "n_runs": len(all_metrics),
+                "avg_rma": safe_mean([m.get("rma") for m in all_metrics]),
+                "avg_rma_mae": safe_mean([m.get("rma_mae") for m in all_metrics]),
+                "avg_correlation": safe_mean(
+                    [m.get("correlation") for m in all_metrics]
+                ),
+                "avg_mae": safe_mean([m.get("mae") for m in all_metrics]),
+                "avg_within1_rate": safe_mean(
+                    [m.get("within1_rate") for m in all_metrics]
+                ),
+            },
+        }
+
+        return aggregated
+
+    def get_multi_run_deltas(
+        self, run_ids: List[int], trait_category: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Get aggregated bias deltas across multiple runs.
+
+        Returns bias intensity scores for all standard attributes,
+        aggregated across the selected runs.
+
+        Uses the same bias intensity formula as single-run analysis:
+        Score = 100 × (0.6 × min(Max|d| × 4.0, 1) + 0.4 × min(Avg|d| × 4.0, 1))
+        """
+        if not run_ids:
+            return {"ok": False, "error": "No run IDs provided"}
+
+        # Standard attributes to analyze
+        attributes = [
+            "gender",
+            "age_group",
+            "origin_subregion",
+            "religion",
+            "migration_status",
+            "sexuality",
+            "marriage_status",
+            "education",
+        ]
+
+        # Cliff's Delta scale factor (same as frontend)
+        CLIFFS_SCALE_FACTOR = 4.0
+
+        result = {
+            "ok": True,
+            "trait_category": trait_category or "all",
+            "n_runs": len(run_ids),
+            "data": {},
+        }
+
+        for attr in attributes:
+            attr_deltas = []
+
+            for run_id in run_ids:
+                try:
+                    # Get all deltas for this attribute
+                    delta_data = self.get_all_deltas(
+                        run_id, trait_category=trait_category
+                    )
+
+                    if delta_data.get("ok") and attr in delta_data.get("data", {}):
+                        attr_data = delta_data["data"][attr]
+
+                        # Extract cliff delta values for aggregation
+                        if attr_data.get("ok") and "rows" in attr_data:
+                            for delta_entry in attr_data["rows"]:
+                                if delta_entry.get("cliffs_delta") is not None:
+                                    attr_deltas.append(abs(delta_entry["cliffs_delta"]))
+                except Exception:
+                    continue
+
+            if attr_deltas:
+                max_cliffs = float(np.max(attr_deltas))
+                avg_cliffs = float(np.mean(attr_deltas))
+
+                # Apply same scaling and formula as single-run analysis
+                scaled_max = min(max_cliffs * CLIFFS_SCALE_FACTOR, 1.0)
+                scaled_avg = min(avg_cliffs * CLIFFS_SCALE_FACTOR, 1.0)
+                bias_intensity = (0.6 * scaled_max + 0.4 * scaled_avg) * 100
+
+                result["data"][attr] = {
+                    "n_comparisons": len(attr_deltas),
+                    "max_delta": max_cliffs,
+                    "avg_delta": avg_cliffs,
+                    "median_delta": float(np.median(attr_deltas)),
+                    "bias_intensity": float(bias_intensity),
+                }
+            else:
+                result["data"][attr] = {
+                    "n_comparisons": 0,
+                    "max_delta": None,
+                    "avg_delta": None,
+                    "median_delta": None,
+                    "bias_intensity": None,
+                }
+
+        return result
+
+    def _get_run_info(self, run_id: int) -> Dict[str, Any]:
+        """Get basic run information."""
+        from backend.infrastructure.storage.models import BenchmarkRun
+
+        run = BenchmarkRun.get_or_none(BenchmarkRun.id == run_id)
+        if not run:
+            return {"model_name": "Unknown", "created_at": None}
+
+        return {
+            "model_name": str(run.model_id.name) if run.model_id else "Unknown",
+            "created_at": run.created_at.isoformat() if run.created_at else None,
+        }

@@ -387,3 +387,78 @@ def export_run_data(run_id: int) -> StreamingResponse:
         media_type="application/json",
         headers={"Content-Disposition": f"attachment; filename=run_{run_id}_data.json"},
     )
+
+
+# ============================================================================
+# Multi-Run Comparison Endpoints
+# ============================================================================
+
+
+@router.post("/runs/compare/metrics")
+def compare_runs_metrics(body: dict) -> Dict[str, Any]:
+    """Get aggregated metrics across multiple runs.
+
+    Body: {
+        run_ids: List[int]
+    }
+
+    Returns combined rating distribution and basic stats.
+    """
+    run_ids = body.get("run_ids", [])
+    if not run_ids:
+        raise HTTPException(status_code=400, detail="Missing 'run_ids' in request body")
+
+    try:
+        return _get_analytics_service().get_multi_run_metrics(run_ids)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error computing multi-run metrics: {str(e)}"
+        )
+
+
+@router.post("/runs/compare/order-metrics")
+def compare_runs_order_metrics(body: dict) -> Dict[str, Any]:
+    """Get aggregated order consistency metrics across multiple runs.
+
+    Body: {
+        run_ids: List[int]
+    }
+
+    Returns aggregated RMA, Cliff's Delta, MAE, correlation, etc.
+    """
+    run_ids = body.get("run_ids", [])
+    if not run_ids:
+        raise HTTPException(status_code=400, detail="Missing 'run_ids' in request body")
+
+    try:
+        return _get_analytics_service().get_multi_run_order_metrics(run_ids)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error computing multi-run order metrics: {str(e)}"
+        )
+
+
+@router.post("/runs/compare/deltas")
+def compare_runs_deltas(body: dict) -> Dict[str, Any]:
+    """Get aggregated bias deltas across multiple runs.
+
+    Body: {
+        run_ids: List[int],
+        trait_category?: str  # Optional filter
+    }
+
+    Returns bias intensity scores aggregated for all standard attributes.
+    """
+    run_ids = body.get("run_ids", [])
+    if not run_ids:
+        raise HTTPException(status_code=400, detail="Missing 'run_ids' in request body")
+
+    trait_category = body.get("trait_category")
+    try:
+        return _get_analytics_service().get_multi_run_deltas(
+            run_ids, trait_category=trait_category
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error computing multi-run deltas: {str(e)}"
+        )

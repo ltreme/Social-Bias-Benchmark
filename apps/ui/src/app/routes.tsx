@@ -4,6 +4,7 @@ import { DatasetsPage } from '../features/datasets/DatasetsPage';
 import { DatasetDetailPage } from '../features/datasets/DatasetDetailPage';
 import { RunsPage } from '../features/runs/RunsPage';
 import { RunDetailPage } from '../features/runs/RunDetailPage';
+import { CompareRunsPage } from '../features/runs/CompareRunsPage';
 import { TraitsPage } from '../features/traits/TraitsPage';
 import { PersonaBrowserPage } from '../features/personas/PersonaBrowserPage';
 import { ModelsPage } from '../features/models/ModelsPage';
@@ -38,6 +39,21 @@ const runsRoute = createRoute({
     component: RunsPage,
 });
 
+const compareRunsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/runs/compare',
+    component: CompareRunsPage,
+    validateSearch: (search: Record<string, unknown>): { runIds?: string[] } => {
+        return {
+            runIds: Array.isArray(search.runIds) 
+                ? search.runIds.map(String) 
+                : typeof search.runIds === 'string' 
+                    ? [search.runIds] 
+                    : undefined
+        };
+    },
+});
+
 const traitsRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/traits',
@@ -62,5 +78,5 @@ const queueRoute = createRoute({
     component: QueuePage,
 });
 
-export const routeTree = rootRoute.addChildren([datasetsRoute, datasetDetailRoute, runsRoute, runDetailRoute, traitsRoute, datasetPersonasRoute, modelsRoute, queueRoute]);
+export const routeTree = rootRoute.addChildren([datasetsRoute, datasetDetailRoute, runsRoute, compareRunsRoute, runDetailRoute, traitsRoute, datasetPersonasRoute, modelsRoute, queueRoute]);
 export const router = createRouter({ routeTree });

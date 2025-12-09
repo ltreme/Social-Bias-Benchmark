@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
-import { ActionIcon, Badge, Card, Group, MultiSelect, Select, Text, TextInput, Title, Tooltip, useComputedColorScheme } from '@mantine/core';
-import { Link } from '@tanstack/react-router';
+import { ActionIcon, Badge, Card, Group, MultiSelect, Select, Text, TextInput, Title, Tooltip, useComputedColorScheme, Button, Checkbox } from '@mantine/core';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { DataTable } from '../../components/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useRuns } from './hooks';
 import type { Run } from './api';
-import { IconExternalLink, IconMessage, IconMessageCog, IconSearch, IconPlayerPlay, IconFilter, IconCpu, IconDatabase, IconMessageCircle, IconSettings } from '@tabler/icons-react';
+import { IconExternalLink, IconMessage, IconMessageCog, IconSearch, IconPlayerPlay, IconFilter, IconCpu, IconDatabase, IconMessageCircle, IconSettings, IconScale } from '@tabler/icons-react';
 
 // Helper to format date nicely
 function formatDate(dateStr?: string | null): string {
@@ -23,8 +23,12 @@ function formatCompactNumber(n: number): string {
 
 export function RunsPage() {
     const { data: runs = [], isLoading } = useRuns();
+    const navigate = useNavigate();
     const colorScheme = useComputedColorScheme('light');
     const isDark = colorScheme === 'dark';
+    
+    // Selection state
+    const [selectedRunIds, setSelectedRunIds] = useState<number[]>([]);
     
     // Filter states
     const [searchQuery, setSearchQuery] = useState('');
@@ -73,6 +77,29 @@ export function RunsPage() {
     }, [runs, searchQuery, selectedModels, selectedDatasets, rationaleFilter, systemPromptFilter]);
 
     const columns: ColumnDef<Run>[] = [
+        {
+            id: 'select',
+            header: ({ table }) => (
+                <Checkbox
+                    checked={table.getIsAllRowsSelected()}
+                    indeterminate={table.getIsSomeRowsSelected()}
+                    onChange={table.getToggleAllRowsSelectedHandler()}
+                />
+            ),
+            cell: ({ row }) => (
+                <Checkbox
+                    checked={selectedRunIds.includes(row.original.id)}
+                    onChange={(e) => {
+                        if (e.currentTarget.checked) {
+                            setSelectedRunIds([...selectedRunIds, row.original.id]);
+                        } else {
+                            setSelectedRunIds(selectedRunIds.filter(id => id !== row.original.id));
+                        }
+                    }}
+                />
+            ),
+            size: 40,
+        },
         { 
             header: 'ID', 
             accessorKey: 'id', 
@@ -158,13 +185,28 @@ export function RunsPage() {
                     <Title order={2}>Benchmark Runs</Title>
                     <Badge variant="light" color="blue" size="lg">{runs.length}</Badge>
                 </Group>
-                <TextInput
-                    placeholder="Modell suchen…"
-                    leftSection={<IconSearch size={16} />}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    style={{ width: 250 }}
-                />
+                <Group gap="md">
+                    <Button
+                        variant="light"
+                        leftSection={<IconScale size={16} />}
+                        size="sm"
+                        disabled={selectedRunIds.length === 0}
+                        onClick={() => {
+                            const params = new URLSearchParams();
+                            selectedRunIds.forEach(id => params.append('runIds', String(id)));
+                            navigate({ to: '/runs/compare', search: { runIds: selectedRunIds.map(String) } as any });
+                        }}
+                    >
+                        Runs vergleichen {selectedRunIds.length > 0 ? `(${selectedRunIds.length})` : ''}
+                    </Button>
+                    <TextInput
+                        placeholder="Modell suchen…"
+                        leftSection={<IconSearch size={16} />}
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        style={{ width: 250 }}
+                    />
+                </Group>
             </Group>
 
             {/* Filter Card */}

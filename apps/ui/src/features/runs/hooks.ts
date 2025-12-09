@@ -175,3 +175,37 @@ export function useRequestAnalysis() {
         },
     });
 }
+
+// ============================================================================
+// Multi-Run Comparison Hooks
+// ============================================================================
+
+export function useMultiRunMetrics(runIds: number[], opts?: { enabled?: boolean }) {
+    const enabled = (opts?.enabled ?? true) && runIds.length > 0;
+    return useQuery({
+        queryKey: ['multi-run-metrics', ...runIds.sort()],
+        queryFn: () => import('./api').then(m => m.fetchMultiRunMetrics(runIds)),
+        enabled,
+        staleTime: 30 * 60 * 1000, // 30 minutes
+    });
+}
+
+export function useMultiRunOrderMetrics(runIds: number[], opts?: { enabled?: boolean }) {
+    const enabled = (opts?.enabled ?? true) && runIds.length > 0;
+    return useQuery({
+        queryKey: ['multi-run-order-metrics', ...runIds.sort()],
+        queryFn: () => import('./api').then(m => m.fetchMultiRunOrderMetrics(runIds)),
+        enabled,
+        staleTime: 30 * 60 * 1000,
+    });
+}
+
+export function useMultiRunDeltas(runIds: number[], traitCategory?: string, opts?: { enabled?: boolean }) {
+    const enabled = (opts?.enabled ?? true) && runIds.length > 0;
+    return useQuery({
+        queryKey: ['multi-run-deltas', ...runIds.sort(), traitCategory ?? '__all'],
+        queryFn: () => import('./api').then(m => m.fetchMultiRunDeltas(runIds, traitCategory)),
+        enabled,
+        staleTime: 30 * 60 * 1000,
+    });
+}

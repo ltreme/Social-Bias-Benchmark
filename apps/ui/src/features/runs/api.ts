@@ -277,3 +277,71 @@ export async function fetchKruskalWallis(runId: number) {
     const res = await api.get<KruskalWallisResponse>(`/runs/${runId}/kruskal`);
     return res.data;
 }
+
+// ============================================================================
+// Multi-Run Comparison API
+// ============================================================================
+
+export type MultiRunMetrics = {
+    ok: boolean;
+    n: number;
+    runs: Array<{ run_id: number; model: string; n: number }>;
+    hist: { bins: string[]; shares: number[]; counts?: number[] };
+    mean: number | null;
+    median: number | null;
+};
+
+export type MultiRunOrderMetrics = {
+    ok: boolean;
+    runs: Array<{
+        run_id: number;
+        model: string;
+        n_pairs: number;
+        rma: number | null;
+        rma_mae: number | null;
+        rma_cliff_delta: number | null;
+        correlation: number | null;
+        correlation_pearson: number | null;
+        correlation_kendall: number | null;
+        mae: number | null;
+        within1_rate: number | null;
+    }>;
+    summary: {
+        n_runs: number;
+        avg_rma: number | null;
+        avg_rma_mae: number | null;
+        avg_correlation: number | null;
+        avg_mae: number | null;
+        avg_within1_rate: number | null;
+    };
+};
+
+export type MultiRunDeltas = {
+    ok: boolean;
+    trait_category: string;
+    n_runs: number;
+    data: Record<string, {
+        n_comparisons: number;
+        max_delta: number | null;
+        avg_delta: number | null;
+        median_delta: number | null;
+        bias_intensity: number | null;
+    }>;
+};
+
+export async function fetchMultiRunMetrics(runIds: number[]) {
+    const res = await api.post<MultiRunMetrics>('/runs/compare/metrics', { run_ids: runIds });
+    return res.data;
+}
+
+export async function fetchMultiRunOrderMetrics(runIds: number[]) {
+    const res = await api.post<MultiRunOrderMetrics>('/runs/compare/order-metrics', { run_ids: runIds });
+    return res.data;
+}
+
+export async function fetchMultiRunDeltas(runIds: number[], traitCategory?: string) {
+    const body: any = { run_ids: runIds };
+    if (traitCategory) body.trait_category = traitCategory;
+    const res = await api.post<MultiRunDeltas>('/runs/compare/deltas', body);
+    return res.data;
+}
