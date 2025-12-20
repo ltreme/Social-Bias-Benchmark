@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Card, Stack, Title, MultiSelect, Text, SimpleGrid, Paper, Group, ThemeIcon, Badge, Tabs, useComputedColorScheme } from '@mantine/core';
-import { IconScale, IconChartBar, IconTarget } from '@tabler/icons-react';
+import { Card, Stack, Title, MultiSelect, Text, SimpleGrid, Paper, Group, ThemeIcon, Badge, Tabs, useComputedColorScheme, Button, Menu } from '@mantine/core';
+import { IconScale, IconChartBar, IconTarget, IconDownload, IconChevronDown } from '@tabler/icons-react';
 import { useSearch } from '@tanstack/react-router';
 import { useRuns, useMultiRunMetrics, useMultiRunOrderMetrics, useMultiRunDeltas } from './hooks';
 import { AsyncContent } from '../../components/AsyncContent';
@@ -61,6 +61,30 @@ function formatRating(value: number | null | undefined): string {
 function formatPercent(value: number | null | undefined): string {
     if (value === null || value === undefined) return '–';
     return `${(value * 100).toFixed(1)}%`;
+}
+
+async function downloadBiasIntensityCSV(runIds: number[], traitCategory?: string) {
+    const response = await fetch('http://localhost:8765/runs/compare/bias-intensity-csv', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            run_ids: runIds,
+            trait_category: traitCategory 
+        }),
+    });
+    
+    if (!response.ok) throw new Error('Failed to download CSV');
+    
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const suffix = traitCategory ? `_${traitCategory}` : '_all';
+    a.download = `bias_intensity_comparison${suffix}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
 }
 
 export function CompareRunsPage() {
@@ -352,7 +376,44 @@ export function CompareRunsPage() {
                         {/* Bias Analysis Tab */}
                         <Tabs.Panel value="bias" pt="md">
                             <Card withBorder padding="sm">
-                                <Title order={5} mb="md">Bias-Intensität pro Merkmal (Aggregiert)</Title>
+                                <Group justify="space-between" mb="md">
+                                    <Title order={5}>Bias-Intensität pro Merkmal (Aggregiert)</Title>
+                                    {hasSelection && (
+                                        <Menu shadow="md" width={220}>
+                                            <Menu.Target>
+                                                <Button 
+                                                    size="xs" 
+                                                    variant="light" 
+                                                    leftSection={<IconDownload size={16} />}
+                                                    rightSection={<IconChevronDown size={14} />}
+                                                >
+                                                    CSV Export
+                                                </Button>
+                                            </Menu.Target>
+                                            <Menu.Dropdown>
+                                                <Menu.Label>Vergleichstabelle exportieren</Menu.Label>
+                                                <Menu.Item 
+                                                    leftSection={<IconDownload size={14} />}
+                                                    onClick={() => downloadBiasIntensityCSV(runIds, undefined)}
+                                                >
+                                                    Alle Traits
+                                                </Menu.Item>
+                                                <Menu.Item 
+                                                    leftSection={<IconDownload size={14} />}
+                                                    onClick={() => downloadBiasIntensityCSV(runIds, 'kompetenz')}
+                                                >
+                                                    Kompetenz-Traits
+                                                </Menu.Item>
+                                                <Menu.Item 
+                                                    leftSection={<IconDownload size={14} />}
+                                                    onClick={() => downloadBiasIntensityCSV(runIds, 'sozial')}
+                                                >
+                                                    Sozial-Traits
+                                                </Menu.Item>
+                                            </Menu.Dropdown>
+                                        </Menu>
+                                    )}
+                                </Group>
                                 <AsyncContent isLoading={loadingDeltasAll}>
                                     {radarScores.length > 0 ? (
                                         <>

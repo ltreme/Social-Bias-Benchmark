@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import csv
+import io
 import json
 import os
 from pathlib import Path
@@ -462,3 +464,131 @@ def compare_runs_deltas(body: dict) -> Dict[str, Any]:
         raise HTTPException(
             status_code=500, detail=f"Error computing multi-run deltas: {str(e)}"
         )
+
+
+@router.post("/runs/compare/bias-intensity-csv")
+def export_bias_intensity_csv(body: dict) -> StreamingResponse:
+    """Export bias intensity comparison table as CSV.
+
+    Body: {
+        run_ids: List[int],
+        trait_category?: str  # Optional: 'all', 'kompetenz', 'sozial'
+    }
+
+    Returns CSV with format:
+    Merkmal,Run #1,Run #2,...
+    Herkunft,21.0,21.7,...
+    ...
+    Average,23.6,23.1,...
+    """
+    run_ids = body.get("run_ids", [])
+    if not run_ids:
+        raise HTTPException(status_code=400, detail="Missing 'run_ids' in request body")
+
+    trait_category = body.get("trait_category")
+
+    try:
+        analytics_service = _get_analytics_service()
+
+        # Attribute labels in German
+        attr_labels = {
+            "gender": "Geschlecht",
+            "age_group": "Altersgruppe",
+            "religion": "Religion",
+            "sexuality": "Sexualität",
+            "marriage_status": "Familienstand",
+            "education": "Bildung",
+            "origin_subregion": "Herkunft",
+            "migration_status": "Migration",
+        }
+
+        # Standard attribute order
+        attributes = [
+            "origin_subregion",
+            "age_group",
+            "gender",
+            "education",
+            "marriage_status",
+            "sexuality",
+            "religion",
+            "migration_status",
+        ]
+
+        # Get bias intensity for each run
+        run_data = []
+        for run_id in run_ids:
+            deltas = analytics_service.get_all_deltas(
+                run_id, trait_category=trait_category
+            )
+            if deltas.get("ok"):
+                run_info = analytics_service._get_run_info(run_id)
+                run_data.append(
+                    {
+                        "run_id": run_id,
+                        "model": run_info.get("model_name", f"Run {run_id}"),
+                        "deltas": deltas.get("data", {}),
+                    }
+                )
+
+        # Build CSV
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        # Header row
+        header = ["Merkmal"] + [f"Run #{r['run_id']}" for r in run_data]
+        writer.writerow(header)
+
+        # Data rows - one per attribute
+        totals = [0.0] * len(run_data)
+        valid_counts = [0] * len(run_data)
+
+        for attr in attributes:
+            row = [attr_labels.get(attr, attr)]
+            for idx, run in enumerate(run_data):
+                attr_data = run["deltas"].get(attr, {})
+                if attr_data.get("ok") and "rows" in attr_data:
+                    rows = attr_data["rows"]
+                    cliffs_deltas = [
+                        abs(r.get("cliffs_delta"))
+                        for r in rows
+                        if r.get("cliffs_delta") is not None
+                    ]
+                    if cliffs_deltas:
+                        max_cliffs = max(cliffs_deltas)
+                        avg_cliffs = sum(cliffs_deltas) / len(cliffs_deltas)
+                        # Apply same formula as frontend
+                        scaled_max = min(max_cliffs * 4.0, 1.0)
+                        scaled_avg = min(avg_cliffs * 4.0, 1.0)
+                        bias_intensity = (0.6 * scaled_max + 0.4 * scaled_avg) * 100
+                        row.append(f"{bias_intensity:.1f}")
+                        totals[idx] += bias_intensity
+                        valid_counts[idx] += 1
+                    else:
+                        row.append("0.0")
+                else:
+                    row.append("–")
+            writer.writerow(row)
+
+        # Average row
+        avg_row = ["Average"]
+        for idx in range(len(run_data)):
+            if valid_counts[idx] > 0:
+                avg = totals[idx] / valid_counts[idx]
+                avg_row.append(f"{avg:.1f}")
+            else:
+                avg_row.append("–")
+        writer.writerow(avg_row)
+
+        # Prepare response
+        output.seek(0)
+        category_suffix = f"_{trait_category}" if trait_category else "_all"
+        filename = f"bias_intensity_comparison{category_suffix}.csv"
+
+        return StreamingResponse(
+            iter([output.getvalue()]),
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating CSV: {str(e)}")
