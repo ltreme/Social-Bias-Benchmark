@@ -216,6 +216,262 @@ def run_kruskal_wallis_by_trait_category(run_id: int) -> Dict[str, Any]:
     return _get_analytics_service().get_kruskal_wallis_by_trait_category(run_id)
 
 
+@router.get("/runs/{run_id}/kruskal/csv")
+def export_kruskal_wallis_csv(run_id: int) -> StreamingResponse:
+    """Export Kruskal-Wallis omnibus test results as CSV."""
+    try:
+        data = _get_analytics_service().get_kruskal_wallis(run_id)
+
+        attr_labels = {
+            "gender": "Geschlecht",
+            "age_group": "Altersgruppe",
+            "religion": "Religion",
+            "sexuality": "Sexualität",
+            "marriage_status": "Familienstand",
+            "education": "Bildung",
+            "origin_subregion": "Herkunft",
+            "migration_status": "Migration",
+        }
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        # Header
+        writer.writerow(
+            [
+                "Attribut",
+                "H-Statistik",
+                "p-Wert",
+                "η² (Eta-Quadrat)",
+                "Effektgröße",
+                "Signifikant (p < 0.05)",
+                "Anzahl Gruppen",
+                "n Total",
+            ]
+        )
+
+        # Data rows
+        for attr_data in data.get("attributes", []):
+            writer.writerow(
+                [
+                    attr_labels.get(attr_data["attribute"], attr_data["attribute"]),
+                    f"{attr_data.get('h_stat', 0):.3f}",
+                    f"{attr_data.get('p_value', 1):.6f}",
+                    f"{attr_data.get('eta_squared', 0):.4f}",
+                    attr_data.get("effect_interpretation", "vernachlässigbar"),
+                    "Ja" if attr_data.get("significant") else "Nein",
+                    attr_data.get("n_groups", 0),
+                    attr_data.get("n_total", 0),
+                ]
+            )
+
+        output.seek(0)
+        filename = f"kruskal_wallis_run_{run_id}.csv"
+
+        return StreamingResponse(
+            iter([output.getvalue()]),
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating CSV: {str(e)}")
+
+
+@router.get("/runs/{run_id}/kruskal-by-category/csv")
+def export_kruskal_by_category_csv(
+    run_id: int,
+    trait_category: Optional[str] = Query(None, description="Filter by trait category"),
+) -> StreamingResponse:
+    """Export Kruskal-Wallis per trait category results as CSV."""
+    try:
+        data = _get_analytics_service().get_kruskal_wallis_by_trait_category(run_id)
+
+        attr_labels = {
+            "gender": "Geschlecht",
+            "age_group": "Altersgruppe",
+            "religion": "Religion",
+            "sexuality": "Sexualität",
+            "marriage_status": "Familienstand",
+            "education": "Bildung",
+            "origin_subregion": "Herkunft",
+            "migration_status": "Migration",
+        }
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        # Header
+        writer.writerow(
+            [
+                "Trait-Kategorie",
+                "Attribut",
+                "H-Statistik",
+                "p-Wert",
+                "η² (Eta-Quadrat)",
+                "Effektgröße",
+                "Signifikant (p < 0.05)",
+                "Anzahl Gruppen",
+                "n Total",
+            ]
+        )
+
+        # Data rows
+        categories = data.get("categories", {})
+
+        # Filter by trait_category if specified
+        if trait_category and trait_category in categories:
+            categories = {trait_category: categories[trait_category]}
+
+        for cat_name, cat_data in sorted(categories.items()):
+            for attr_data in cat_data.get("attributes", []):
+                writer.writerow(
+                    [
+                        cat_name,
+                        attr_labels.get(attr_data["attribute"], attr_data["attribute"]),
+                        f"{attr_data.get('h_stat', 0):.3f}",
+                        f"{attr_data.get('p_value', 1):.6f}",
+                        f"{attr_data.get('eta_squared', 0):.4f}",
+                        attr_data.get("effect_interpretation", "vernachlässigbar"),
+                        "Ja" if attr_data.get("significant") else "Nein",
+                        attr_data.get("n_groups", 0),
+                        attr_data.get("n_total", 0),
+                    ]
+                )
+
+        output.seek(0)
+        category_suffix = f"_{trait_category}" if trait_category else "_all"
+        filename = f"kruskal_by_category_run_{run_id}{category_suffix}.csv"
+
+        return StreamingResponse(
+            iter([output.getvalue()]),
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating CSV: {str(e)}")
+
+
+@router.get("/runs/{run_id}/deltas/{attribute}/csv")
+def export_deltas_csv(
+    run_id: int,
+    attribute: str,
+    baseline: Optional[str] = Query(None),
+    trait_category: Optional[str] = Query(None),
+) -> StreamingResponse:
+    """Export significance table (deltas) as CSV."""
+    try:
+        data = _get_analytics_service().get_deltas(
+            run_id, attribute, baseline=baseline, trait_category=trait_category
+        )
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        # Header
+        writer.writerow(
+            [
+                "Kategorie",
+                "n",
+                "Mittelwert",
+                "Delta (vs. Baseline)",
+                "p-Wert",
+                "q-Wert (FDR)",
+                "Cliff's δ",
+                "Signifikant (q < 0.05)",
+                "n Baseline",
+                "Mittelwert Baseline",
+                "SD Baseline",
+                "n Kategorie",
+                "Mittelwert Kategorie",
+                "SD Kategorie",
+                "SE Delta",
+                "95% CI niedrig",
+                "95% CI hoch",
+            ]
+        )
+
+        # Data rows
+        for row in data.get("rows", []):
+            writer.writerow(
+                [
+                    row.get("category", ""),
+                    row.get("count", ""),
+                    f"{row.get('mean', 0):.3f}" if row.get("mean") is not None else "",
+                    (
+                        f"{row.get('delta', 0):.3f}"
+                        if row.get("delta") is not None
+                        else ""
+                    ),
+                    (
+                        f"{row.get('p_value', 1):.6f}"
+                        if row.get("p_value") is not None
+                        else ""
+                    ),
+                    (
+                        f"{row.get('q_value', 1):.6f}"
+                        if row.get("q_value") is not None
+                        else ""
+                    ),
+                    (
+                        f"{row.get('cliffs_delta', 0):.3f}"
+                        if row.get("cliffs_delta") is not None
+                        else ""
+                    ),
+                    "Ja" if row.get("significant") else "Nein",
+                    row.get("n_base", ""),
+                    (
+                        f"{row.get('mean_base', 0):.3f}"
+                        if row.get("mean_base") is not None
+                        else ""
+                    ),
+                    (
+                        f"{row.get('sd_base', 0):.3f}"
+                        if row.get("sd_base") is not None
+                        else ""
+                    ),
+                    row.get("n_cat", ""),
+                    (
+                        f"{row.get('mean_cat', 0):.3f}"
+                        if row.get("mean_cat") is not None
+                        else ""
+                    ),
+                    (
+                        f"{row.get('sd_cat', 0):.3f}"
+                        if row.get("sd_cat") is not None
+                        else ""
+                    ),
+                    (
+                        f"{row.get('se_delta', 0):.3f}"
+                        if row.get("se_delta") is not None
+                        else ""
+                    ),
+                    (
+                        f"{row.get('ci_low', 0):.3f}"
+                        if row.get("ci_low") is not None
+                        else ""
+                    ),
+                    (
+                        f"{row.get('ci_high', 0):.3f}"
+                        if row.get("ci_high") is not None
+                        else ""
+                    ),
+                ]
+            )
+
+        output.seek(0)
+        trait_suffix = f"_{trait_category}" if trait_category else ""
+        baseline_suffix = f"_vs_{baseline}" if baseline else ""
+        filename = f"deltas_{attribute}_run_{run_id}{trait_suffix}{baseline_suffix}.csv"
+
+        return StreamingResponse(
+            iter([output.getvalue()]),
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating CSV: {str(e)}")
+
+
 @router.post("/runs/{run_id}/warm-cache")
 def warm_run_cache(run_id: int) -> Dict[str, Any]:
     """Start asynchronous cache warming job for a run."""

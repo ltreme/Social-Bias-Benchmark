@@ -1,6 +1,6 @@
 import { useState, Fragment } from 'react';
-import { Table, Group, ActionIcon, Collapse, Text, Badge } from '@mantine/core';
-import { IconChevronDown, IconChevronRight } from '@tabler/icons-react';
+import { Table, Group, ActionIcon, Collapse, Text, Badge, Button, Tooltip } from '@mantine/core';
+import { IconChevronDown, IconChevronRight, IconDownload } from '@tabler/icons-react';
 
 type Row = {
   category: string;
@@ -22,12 +22,52 @@ function fmt(num: number | null | undefined, digits = 2) {
   return Number.isFinite(num as number) ? (num as number).toFixed(digits) : '—';
 }
 
-export function SignificanceTable({ rows }: { rows: Row[] }) {
+export function SignificanceTable({ 
+  rows, 
+  runId, 
+  attribute, 
+  baseline, 
+  traitCategory 
+}: { 
+  rows: Row[];
+  runId?: number;
+  attribute?: string;
+  baseline?: string;
+  traitCategory?: string;
+}) {
   const [open, setOpen] = useState<Record<string, boolean>>({});
+  
+  const handleDownloadCSV = () => {
+    if (!runId || !attribute) return;
+    
+    const params = new URLSearchParams();
+    if (baseline) params.append('baseline', baseline);
+    if (traitCategory) params.append('trait_category', traitCategory);
+    
+    const queryString = params.toString();
+    const url = `${import.meta.env.VITE_API_BASE_URL || ''}/runs/${runId}/deltas/${attribute}/csv${queryString ? '?' + queryString : ''}`;
+    window.open(url, '_blank');
+  };
+  
   if (!rows || rows.length === 0) return <div>—</div>;
 
   return (
-    <Table striped withTableBorder withColumnBorders highlightOnHover>
+    <div>
+      {runId && attribute && (
+        <Group justify="flex-end" mb="xs">
+          <Tooltip label="Als CSV herunterladen" withArrow>
+            <Button
+              variant="subtle"
+              size="xs"
+              leftSection={<IconDownload size={14} />}
+              onClick={handleDownloadCSV}
+            >
+              CSV
+            </Button>
+          </Tooltip>
+        </Group>
+      )}
+      <Table striped withTableBorder withColumnBorders highlightOnHover>
       <Table.Thead>
         <Table.Tr>
           <Table.Th style={{ width: 340 }}>Kategorie</Table.Th>
@@ -101,5 +141,6 @@ export function SignificanceTable({ rows }: { rows: Row[] }) {
         })}
       </Table.Tbody>
     </Table>
+    </div>
   );
 }

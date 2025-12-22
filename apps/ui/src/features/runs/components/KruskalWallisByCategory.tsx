@@ -1,5 +1,5 @@
-import { Card, Table, Badge, Text, Group, Stack, ThemeIcon, Tooltip, Paper, Skeleton, Title, Tabs } from '@mantine/core';
-import { IconChartBar, IconInfoCircle } from '@tabler/icons-react';
+import { Card, Table, Badge, Text, Group, Stack, ThemeIcon, Tooltip, Paper, Skeleton, Title, Tabs, Button, Menu } from '@mantine/core';
+import { IconChartBar, IconInfoCircle, IconDownload, IconChevronDown } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchKruskalWallisByCategory, type KruskalWallisByCategoryResponse } from '../api';
 import { useThemedColor } from '../../../lib/useThemeColors';
@@ -214,6 +214,12 @@ export function KruskalWallisByCategory({ runId }: KruskalWallisByCategoryProps)
     0
   );
 
+  const handleDownloadCSV = (traitCategory?: string) => {
+    const categoryParam = traitCategory ? `?trait_category=${traitCategory}` : '';
+    const url = `${import.meta.env.VITE_API_BASE_URL || ''}/runs/${runId}/kruskal-by-category/csv${categoryParam}`;
+    window.open(url, '_blank');
+  };
+
   return (
     <Card shadow="sm" radius="md" withBorder>
       <Stack gap="md">
@@ -230,16 +236,49 @@ export function KruskalWallisByCategory({ runId }: KruskalWallisByCategoryProps)
               </Text>
             </div>
           </Group>
-          <Tooltip 
-            label="Zeigt Kruskal-Wallis Tests für jede Trait-Kategorie separat. So können Sie sehen, ob demografische Unterschiede nur bei bestimmten Trait-Typen auftreten."
-            withArrow 
-            multiline 
-            w={300}
-          >
-            <ThemeIcon variant="subtle" color="gray" size="sm">
-              <IconInfoCircle size={16} />
-            </ThemeIcon>
-          </Tooltip>
+          <Group gap="xs">
+            <Menu shadow="md" width={220}>
+              <Menu.Target>
+                <Button
+                  variant="light"
+                  size="xs"
+                  leftSection={<IconDownload size={16} />}
+                  rightSection={<IconChevronDown size={14} />}
+                >
+                  CSV
+                </Button>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Label>CSV Export</Menu.Label>
+                <Menu.Item
+                  leftSection={<IconDownload size={14} />}
+                  onClick={() => handleDownloadCSV()}
+                >
+                  Alle Kategorien
+                </Menu.Item>
+                <Menu.Divider />
+                {categoryKeys.map((catKey) => (
+                  <Menu.Item
+                    key={catKey}
+                    leftSection={<IconDownload size={14} />}
+                    onClick={() => handleDownloadCSV(catKey)}
+                  >
+                    {CATEGORY_LABELS[catKey] || catKey}
+                  </Menu.Item>
+                ))}
+              </Menu.Dropdown>
+            </Menu>
+            <Tooltip 
+              label="Zeigt Kruskal-Wallis Tests für jede Trait-Kategorie separat. So können Sie sehen, ob demografische Unterschiede nur bei bestimmten Trait-Typen auftreten."
+              withArrow 
+              multiline 
+              w={300}
+            >
+              <ThemeIcon variant="subtle" color="gray" size="sm">
+                <IconInfoCircle size={16} />
+              </ThemeIcon>
+            </Tooltip>
+          </Group>
         </Group>
 
         {/* Overall Summary Badge */}

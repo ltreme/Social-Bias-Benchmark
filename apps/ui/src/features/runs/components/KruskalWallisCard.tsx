@@ -1,5 +1,5 @@
-import { Card, Table, Badge, Text, Group, Stack, ThemeIcon, Tooltip, Paper, Skeleton, Title } from '@mantine/core';
-import { IconChartBar, IconInfoCircle } from '@tabler/icons-react';
+import { Card, Table, Badge, Text, Group, Stack, ThemeIcon, Tooltip, Paper, Skeleton, Title, Button } from '@mantine/core';
+import { IconChartBar, IconInfoCircle, IconDownload } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchKruskalWallis, type KruskalWallisResponse } from '../api';
 import { useThemedColor } from '../../../lib/useThemeColors';
@@ -80,6 +80,11 @@ export function KruskalWallisCard({ runId }: KruskalWallisCardProps) {
 
   const { attributes, summary } = data;
 
+  const handleDownloadCSV = () => {
+    const url = `${import.meta.env.VITE_API_BASE_URL || ''}/runs/${runId}/kruskal/csv`;
+    window.open(url, '_blank');
+  };
+
   return (
     <Card shadow="sm" radius="md" withBorder>
       <Stack gap="md">
@@ -96,16 +101,28 @@ export function KruskalWallisCard({ runId }: KruskalWallisCardProps) {
               </Text>
             </div>
           </Group>
-          <Tooltip 
-            label="Der Kruskal-Wallis H-Test prüft, ob sich die Antwortverteilungen zwischen den Gruppen eines Attributs signifikant unterscheiden. η² gibt die Effektstärke an."
-            withArrow 
-            multiline 
-            w={300}
-          >
-            <ThemeIcon variant="subtle" color="gray" size="sm">
-              <IconInfoCircle size={16} />
-            </ThemeIcon>
-          </Tooltip>
+          <Group gap="xs">
+            <Tooltip label="Als CSV herunterladen" withArrow>
+              <Button
+                variant="light"
+                size="xs"
+                leftSection={<IconDownload size={16} />}
+                onClick={handleDownloadCSV}
+              >
+                CSV
+              </Button>
+            </Tooltip>
+            <Tooltip 
+              label="Der Kruskal-Wallis H-Test prüft, ob sich die Antwortverteilungen zwischen den Gruppen eines Attributs signifikant unterscheiden. η² gibt die Effektstärke an."
+              withArrow 
+              multiline 
+              w={300}
+            >
+              <ThemeIcon variant="subtle" color="gray" size="sm">
+                <IconInfoCircle size={16} />
+              </ThemeIcon>
+            </Tooltip>
+          </Group>
         </Group>
 
         {/* Summary Badge */}

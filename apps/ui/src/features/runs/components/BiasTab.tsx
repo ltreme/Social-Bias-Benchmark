@@ -293,7 +293,13 @@ export function BiasTab({
                     <div key={a} style={{ marginTop: 12 }}>
                         <b>{ATTRS.find(x => x.value === a)?.label || a}</b>
                         <AsyncContent isLoading={q.isLoading} isError={q.isError} error={q.error}>
-                            <SignificanceTable rows={q.data?.rows || []} />
+                            <SignificanceTable 
+                                rows={q.data?.rows || []} 
+                                runId={runId}
+                                attribute={a}
+                                baseline={q.data?.baseline}
+                                traitCategory={traitCategory}
+                            />
                         </AsyncContent>
                     </div>
                 ))}
