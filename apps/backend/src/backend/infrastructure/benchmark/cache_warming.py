@@ -79,6 +79,8 @@ def start_warm_cache_job(
     means_fn: Callable,
     deltas_fn: Callable,
     forest_fn: Callable,
+    kruskal_fn: Optional[Callable] = None,
+    kruskal_by_cat_fn: Optional[Callable] = None,
 ) -> Dict[str, Any]:
     """Start an asynchronous warm cache job.
 
@@ -90,6 +92,8 @@ def start_warm_cache_job(
         means_fn: Function to compute means
         deltas_fn: Function to compute deltas
         forest_fn: Function to compute forest plot data
+        kruskal_fn: Function to compute Kruskal-Wallis omnibus test (optional)
+        kruskal_by_cat_fn: Function to compute Kruskal-Wallis per category (optional)
 
     Returns:
         Job status dict
@@ -122,6 +126,8 @@ def start_warm_cache_job(
             means_fn,
             deltas_fn,
             forest_fn,
+            kruskal_fn,
+            kruskal_by_cat_fn,
         ),
         daemon=True,
         name=f"warm-cache-{run_id}",
@@ -139,6 +145,8 @@ def _warm_cache_worker(
     means_fn: Callable,
     deltas_fn: Callable,
     forest_fn: Callable,
+    kruskal_fn: Optional[Callable] = None,
+    kruskal_by_cat_fn: Optional[Callable] = None,
 ) -> None:
     """Background worker that warms the cache.
 
@@ -151,6 +159,8 @@ def _warm_cache_worker(
         means_fn: Function to compute means
         deltas_fn: Function to compute deltas
         forest_fn: Function to compute forest plot data
+        kruskal_fn: Function to compute Kruskal-Wallis omnibus test (optional)
+        kruskal_by_cat_fn: Function to compute Kruskal-Wallis per category (optional)
     """
     started = time.time()
     _LOG.info("[warm-cache:%s] worker started", run_id)
@@ -202,6 +212,13 @@ def _warm_cache_worker(
                 focus_target,
                 1,
             )
+
+            # Warm Kruskal-Wallis tests
+            if kruskal_fn:
+                _run_warm_step(job, "kruskal_wallis", kruskal_fn, run_id)
+            if kruskal_by_cat_fn:
+                _run_warm_step(job, "kruskal_by_category", kruskal_by_cat_fn, run_id)
+
     except Exception as exc:  # pragma: no cover - best-effort diagnostics
         job["status"] = "error"
         job["error"] = str(exc)

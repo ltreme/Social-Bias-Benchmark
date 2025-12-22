@@ -205,6 +205,17 @@ def run_kruskal_wallis(run_id: int) -> Dict[str, Any]:
     return _get_analytics_service().get_kruskal_wallis(run_id)
 
 
+@router.get("/runs/{run_id}/kruskal-by-category")
+def run_kruskal_wallis_by_trait_category(run_id: int) -> Dict[str, Any]:
+    """Get Kruskal-Wallis test results per trait category.
+
+    Tests whether response distributions differ significantly across groups
+    within each demographic attribute, separately for each trait category
+    (e.g., Kompetenz, Wärme, Moral).
+    """
+    return _get_analytics_service().get_kruskal_wallis_by_trait_category(run_id)
+
+
 @router.post("/runs/{run_id}/warm-cache")
 def warm_run_cache(run_id: int) -> Dict[str, Any]:
     """Start asynchronous cache warming job for a run."""

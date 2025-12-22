@@ -5,6 +5,7 @@ import { ChartPanel } from '../../../components/ChartPanel';
 import { AsyncContent } from '../../../components/AsyncContent';
 import { BiasRadarGrid } from './BiasRadarChart';
 import { KruskalWallisCard } from './KruskalWallisCard';
+import { KruskalWallisByCategory } from './KruskalWallisByCategory';
 import { useThemedColor } from '../../../lib/useThemeColors';
 import type { QuickAnalysis, RunMetrics, RunDeltas } from '../api';
 
@@ -322,7 +323,10 @@ export function OverviewTab({
 
             {/* Kruskal-Wallis Statistical Test */}
             {runId && (
-                <KruskalWallisCard runId={runId} />
+                <>
+                    <KruskalWallisCard runId={runId} />
+                    <KruskalWallisByCategory runId={runId} />
+                </>
             )}
         </Stack>
     );

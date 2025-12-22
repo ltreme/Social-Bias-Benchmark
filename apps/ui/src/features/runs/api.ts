@@ -273,8 +273,23 @@ export type KruskalWallisResponse = {
     };
 };
 
+export type KruskalWallisByCategoryResponse = {
+    categories: Record<string, {
+        attributes: KruskalResult[];
+        summary: {
+            significant_count: number;
+            total: number;
+        };
+    }>;
+};
+
 export async function fetchKruskalWallis(runId: number) {
     const res = await api.get<KruskalWallisResponse>(`/runs/${runId}/kruskal`);
+    return res.data;
+}
+
+export async function fetchKruskalWallisByCategory(runId: number) {
+    const res = await api.get<KruskalWallisByCategoryResponse>(`/runs/${runId}/kruskal-by-category`);
     return res.data;
 }
 

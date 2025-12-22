@@ -963,6 +963,66 @@ def kruskal_wallis_all_attributes(
     return results
 
 
+def kruskal_wallis_by_trait_category(
+    df: pd.DataFrame,
+    attributes: list[str] | None = None,
+    min_group_size: int = 10,
+) -> dict[str, dict[str, dict[str, Any]]]:
+    """
+    Run Kruskal-Wallis test for all demographic attributes per trait category.
+
+    Args:
+        df: DataFrame with rating, attribute columns, and 'trait_category' column
+        attributes: List of attribute columns to test (default: common demographic attrs)
+        min_group_size: Minimum observations per group
+
+    Returns:
+        Dict mapping trait_category -> attribute -> Kruskal-Wallis result dict
+    """
+    from backend.domain.analytics.benchmarks.metrics import UNKNOWN_TRAIT_CATEGORY
+
+    if attributes is None:
+        # Default demographic attributes
+        attributes = [
+            "gender",
+            "age_group",
+            "religion",
+            "sexuality",
+            "marriage_status",
+            "education",
+            "origin_subregion",
+            "migration_status",
+        ]
+
+    work = df.copy()
+
+    # Ensure trait_category column exists
+    if "trait_category" not in work.columns:
+        return {}
+
+    work["trait_category"] = (
+        work["trait_category"].fillna(UNKNOWN_TRAIT_CATEGORY).astype(str)
+    )
+
+    results_by_category = {}
+
+    for trait_cat, cat_df in work.groupby("trait_category"):
+        if cat_df.empty:
+            continue
+
+        trait_cat_str = str(trait_cat)
+        results_by_category[trait_cat_str] = {}
+
+        for attr in attributes:
+            if attr in cat_df.columns:
+                result = kruskal_wallis_by_attribute(cat_df, attr, min_group_size)
+                # Only include if we got valid results
+                if result.get("h_statistic") is not None:
+                    results_by_category[trait_cat_str][attr] = result
+
+    return results_by_category
+
+
 # ---------- Report helpers ----------
 
 

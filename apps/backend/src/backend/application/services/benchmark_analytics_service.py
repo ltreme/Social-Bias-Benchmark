@@ -630,6 +630,8 @@ class BenchmarkAnalyticsService:
             self.get_means,
             self.get_deltas,
             self.get_forest,
+            self.get_kruskal_wallis,
+            self.get_kruskal_wallis_by_trait_category,
         )
         return {"ok": True, **job}
 
@@ -745,6 +747,203 @@ class BenchmarkAnalyticsService:
             },
         }
 
+        benchmark_cache.put_cached(run_id, "kruskal_wallis", ck, payload)
+        return payload
+
+    def get_kruskal_wallis_by_trait_category(self, run_id: int) -> Dict[str, Any]:
+        """Kruskal-Wallis H-Test pro Trait-Kategorie.
+
+        Führt den Omnibus-Test separat für jede Trait-Kategorie durch
+        (z.B. Kompetenz, Wärme, Moral, etc.).
+
+        Returns:
+            Dict mit:
+            - categories: Dict mapping trait_category -> results
+                - attributes: Liste der Testergebnisse pro Attribut
+                - summary: Übersicht für diese Kategorie
+        """
+        from backend.domain.analytics.benchmarks.analytics import (
+            kruskal_wallis_by_trait_category,
+        )
+
+        # Check cache first
+        ck = "all"
+        cached = benchmark_cache.get_cached(run_id, "kruskal_wallis", ck)
+        if cached is not None:
+            return cached
+
+        # Load data using the same loader as other methods
+        df = data_loader.df_for_read(run_id, progress_tracker.get_progress)
+        if df is None or df.empty:
+            return {"attributes": [], "summary": {"significant_count": 0, "total": 0}}
+
+        # Ensure rating column exists (used by kruskal_wallis_by_attribute)
+        if "rating" not in df.columns and "rating_pre_valence" not in df.columns:
+            return {"attributes": [], "summary": {"significant_count": 0, "total": 0}}
+
+        # Run Kruskal-Wallis test for all attributes
+        results = kruskal_wallis_all_attributes(df)
+
+        # Interpret effect sizes
+        def interpret_eta_squared(eta_sq: float) -> str:
+            """Cohen's benchmarks for η²."""
+            if eta_sq < 0.01:
+                return "vernachlässigbar"
+            elif eta_sq < 0.06:
+                return "klein"
+            elif eta_sq < 0.14:
+                return "mittel"
+            else:
+                return "groß"
+
+        attributes = []
+        significant_count = 0
+
+        for attr, data in results.items():
+            # Skip entries with errors
+            if "error" in data:
+                continue
+
+            p_val = data.get("p_value")
+            if p_val is None:
+                continue
+
+            is_sig = p_val < 0.05
+            if is_sig:
+                significant_count += 1
+
+            h_stat = data.get("h_statistic", 0.0)
+            eta_sq = data.get("effect_size_eta2", 0.0)
+
+            attributes.append(
+                {
+                    "attribute": attr,
+                    "h_stat": round(h_stat, 3) if h_stat else 0.0,
+                    "p_value": p_val,
+                    "eta_squared": round(eta_sq, 4) if eta_sq else 0.0,
+                    "n_groups": data.get("n_groups", 0),
+                    "n_total": data.get("n_total", 0),
+                    "significant": is_sig,
+                    "effect_interpretation": (
+                        interpret_eta_squared(eta_sq) if eta_sq else "vernachlässigbar"
+                    ),
+                }
+            )
+
+        # Sort by effect size descending
+        attributes.sort(key=lambda x: x["eta_squared"], reverse=True)
+
+        payload = {
+            "attributes": attributes,
+            "summary": {
+                "significant_count": significant_count,
+                "total": len(attributes),
+            },
+        }
+
+        benchmark_cache.put_cached(run_id, "kruskal_wallis", ck, payload)
+        return payload
+
+    def get_kruskal_wallis_by_trait_category(self, run_id: int) -> Dict[str, Any]:
+        """Kruskal-Wallis H-Test pro Trait-Kategorie.
+
+        Führt den Omnibus-Test separat für jede Trait-Kategorie durch
+        (z.B. Kompetenz, Wärme, Moral, etc.).
+
+        Returns:
+            Dict mit:
+            - categories: Dict mapping trait_category -> results
+                - attributes: Liste der Testergebnisse pro Attribut
+                - summary: Übersicht für diese Kategorie
+        """
+        from backend.domain.analytics.benchmarks.analytics import (
+            kruskal_wallis_by_trait_category,
+        )
+
+        # Check cache first
+        ck = "by_trait_category"
+        cached = benchmark_cache.get_cached(run_id, "kruskal_wallis", ck)
+        if cached is not None:
+            return cached
+
+        # Load data
+        df = data_loader.df_for_read(run_id, progress_tracker.get_progress)
+        if df is None or df.empty:
+            return {"categories": {}}
+
+        # Ensure required columns exist
+        if "rating" not in df.columns and "rating_pre_valence" not in df.columns:
+            return {"categories": {}}
+        if "trait_category" not in df.columns:
+            return {"categories": {}}
+
+        # Run Kruskal-Wallis test per trait category
+        results_by_cat = kruskal_wallis_by_trait_category(df)
+
+        # Interpret effect sizes
+        def interpret_eta_squared(eta_sq: float) -> str:
+            """Cohen's benchmarks for η²."""
+            if eta_sq < 0.01:
+                return "vernachlässigbar"
+            elif eta_sq < 0.06:
+                return "klein"
+            elif eta_sq < 0.14:
+                return "mittel"
+            else:
+                return "groß"
+
+        # Format results
+        categories_output = {}
+
+        for trait_cat, attr_results in results_by_cat.items():
+            attributes = []
+            significant_count = 0
+
+            for attr, data in attr_results.items():
+                # Skip entries with errors
+                if "error" in data:
+                    continue
+
+                p_val = data.get("p_value")
+                if p_val is None:
+                    continue
+
+                is_sig = p_val < 0.05
+                if is_sig:
+                    significant_count += 1
+
+                h_stat = data.get("h_statistic", 0.0)
+                eta_sq = data.get("effect_size_eta2", 0.0)
+
+                attributes.append(
+                    {
+                        "attribute": attr,
+                        "h_stat": round(h_stat, 3) if h_stat else 0.0,
+                        "p_value": p_val,
+                        "eta_squared": round(eta_sq, 4) if eta_sq else 0.0,
+                        "n_groups": data.get("n_groups", 0),
+                        "n_total": data.get("n_total", 0),
+                        "significant": is_sig,
+                        "effect_interpretation": (
+                            interpret_eta_squared(eta_sq)
+                            if eta_sq
+                            else "vernachlässigbar"
+                        ),
+                    }
+                )
+
+            # Sort by effect size descending
+            attributes.sort(key=lambda x: x["eta_squared"], reverse=True)
+
+            categories_output[trait_cat] = {
+                "attributes": attributes,
+                "summary": {
+                    "significant_count": significant_count,
+                    "total": len(attributes),
+                },
+            }
+
+        payload = {"categories": categories_output}
         benchmark_cache.put_cached(run_id, "kruskal_wallis", ck, payload)
         return payload
 
