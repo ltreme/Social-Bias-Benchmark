@@ -1,8 +1,9 @@
 import { Card, Table, Badge, Text, Group, Stack, ThemeIcon, Tooltip, Paper, Skeleton, Title, Tabs, Button, Menu } from '@mantine/core';
-import { IconChartBar, IconInfoCircle, IconDownload, IconChevronDown } from '@tabler/icons-react';
+import { IconChartBar, IconInfoCircle, IconDownload, IconChevronDown, IconCopy } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchKruskalWallisByCategory, type KruskalWallisByCategoryResponse } from '../api';
+import { fetchKruskalWallisByCategory, fetchKruskalWallisByCategoryLatex, type KruskalWallisByCategoryResponse } from '../api';
 import { useThemedColor } from '../../../lib/useThemeColors';
+import { notifications } from '@mantine/notifications';
 
 const ATTR_LABELS: Record<string, string> = {
   gender: 'Geschlecht',
@@ -61,11 +62,11 @@ type KruskalWallisByCategoryProps = {
 type CategoryResults = {
   attributes: Array<{
     attribute: string;
-    h_stat: number;
-    p_value: number;
-    eta_squared: number;
-    n_groups: number;
-    n_total: number;
+    h_stat: number | null;
+    p_value: number | null;
+    eta_squared: number | null;
+    n_groups: number | null;
+    n_total: number | null;
     significant: boolean;
     effect_interpretation: string;
   }>;
@@ -220,6 +221,24 @@ export function KruskalWallisByCategory({ runId }: KruskalWallisByCategoryProps)
     window.open(url, '_blank');
   };
 
+  const handleCopyLatex = async (traitCategory?: string) => {
+    try {
+      const latex = await fetchKruskalWallisByCategoryLatex(runId, traitCategory);
+      await navigator.clipboard.writeText(latex);
+      notifications.show({
+        title: 'LaTeX kopiert',
+        message: 'Die LaTeX-Tabelle wurde in die Zwischenablage kopiert.',
+        color: 'green',
+      });
+    } catch (error) {
+      notifications.show({
+        title: 'Fehler',
+        message: 'LaTeX konnte nicht in die Zwischenablage kopiert werden.',
+        color: 'red',
+      });
+    }
+  };
+
   return (
     <Card shadow="sm" radius="md" withBorder>
       <Stack gap="md">
@@ -262,6 +281,37 @@ export function KruskalWallisByCategory({ runId }: KruskalWallisByCategoryProps)
                     key={catKey}
                     leftSection={<IconDownload size={14} />}
                     onClick={() => handleDownloadCSV(catKey)}
+                  >
+                    {CATEGORY_LABELS[catKey] || catKey}
+                  </Menu.Item>
+                ))}
+              </Menu.Dropdown>
+            </Menu>
+            <Menu shadow="md" width={220}>
+              <Menu.Target>
+                <Button
+                  variant="light"
+                  size="xs"
+                  leftSection={<IconCopy size={16} />}
+                  rightSection={<IconChevronDown size={14} />}
+                >
+                  LaTeX
+                </Button>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Label>LaTeX Export</Menu.Label>
+                <Menu.Item
+                  leftSection={<IconCopy size={14} />}
+                  onClick={() => handleCopyLatex()}
+                >
+                  Alle Kategorien
+                </Menu.Item>
+                <Menu.Divider />
+                {categoryKeys.map((catKey) => (
+                  <Menu.Item
+                    key={catKey}
+                    leftSection={<IconCopy size={14} />}
+                    onClick={() => handleCopyLatex(catKey)}
                   >
                     {CATEGORY_LABELS[catKey] || catKey}
                   </Menu.Item>

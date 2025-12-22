@@ -472,6 +472,206 @@ def export_deltas_csv(
         raise HTTPException(status_code=500, detail=f"Error generating CSV: {str(e)}")
 
 
+# ============================================================================
+# LaTeX Export Endpoints
+# ============================================================================
+
+
+@router.get("/runs/{run_id}/kruskal/latex")
+def export_kruskal_wallis_latex(run_id: int) -> Dict[str, str]:
+    """Export Kruskal-Wallis omnibus test results as LaTeX table."""
+    try:
+        data = _get_analytics_service().get_kruskal_wallis(run_id)
+
+        attr_labels = {
+            "gender": "Geschlecht",
+            "age_group": "Altersgruppe",
+            "religion": "Religion",
+            "sexuality": "Sexualität",
+            "marriage_status": "Familienstand",
+            "education": "Bildung",
+            "origin_subregion": "Herkunft",
+            "migration_status": "Migration",
+        }
+
+        # Build LaTeX table
+        latex_lines = [
+            "\\begin{table}[htbp]",
+            "\\centering",
+            f"\\caption{{Kruskal-Wallis H-Test Ergebnisse (Run {run_id})}}",
+            f"\\label{{tab:kruskal_run_{run_id}}}",
+            "\\begin{tabular}{lrrrrrrr}",
+            "\\toprule",
+            "Attribut & H-Statistik & p-Wert & $\\eta^2$ & Effektgröße & Signifikant & n Gruppen & n Total \\\\",
+            "\\midrule",
+        ]
+
+        for attr_data in data.get("attributes", []):
+            latex_lines.append(
+                f"{attr_labels.get(attr_data['attribute'], attr_data['attribute'])} & "
+                f"{attr_data.get('h_stat', 0):.3f} & "
+                f"{attr_data.get('p_value', 1):.6f} & "
+                f"{attr_data.get('eta_squared', 0):.4f} & "
+                f"{attr_data.get('effect_interpretation', 'vernachlässigbar')} & "
+                f"{'Ja' if attr_data.get('significant') else 'Nein'} & "
+                f"{attr_data.get('n_groups', 0)} & "
+                f"{attr_data.get('n_total', 0)} \\\\"
+            )
+
+        latex_lines.extend(
+            [
+                "\\bottomrule",
+                "\\end{tabular}",
+                "\\end{table}",
+            ]
+        )
+
+        return {"latex": "\n".join(latex_lines)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating LaTeX: {str(e)}")
+
+
+@router.get("/runs/{run_id}/kruskal-by-category/latex")
+def export_kruskal_by_category_latex(
+    run_id: int, trait_category: Optional[str] = Query(None)
+) -> Dict[str, str]:
+    """Export Kruskal-Wallis by trait category as LaTeX table."""
+    try:
+        data = _get_analytics_service().get_kruskal_wallis_by_trait_category(run_id)
+
+        attr_labels = {
+            "gender": "Geschlecht",
+            "age_group": "Altersgruppe",
+            "religion": "Religion",
+            "sexuality": "Sexualität",
+            "marriage_status": "Familienstand",
+            "education": "Bildung",
+            "origin_subregion": "Herkunft",
+            "migration_status": "Migration",
+        }
+
+        category_labels = {
+            "kompetenz": "Kompetenz",
+            "waerme": "Wärme",
+            "sozial": "Sozial",
+            "moralitaet": "Moralität",
+        }
+
+        # Filter by category if specified
+        categories_data = data.get("categories", {})
+        if trait_category:
+            categories_data = {trait_category: categories_data.get(trait_category, {})}
+
+        if not categories_data:
+            raise HTTPException(status_code=404, detail="No data found for category")
+
+        # Build LaTeX for each category
+        all_latex = []
+        for cat_key, cat_data in categories_data.items():
+            cat_label = category_labels.get(cat_key, cat_key)
+
+            latex_lines = [
+                "\\begin{table}[htbp]",
+                "\\centering",
+                f"\\caption{{Kruskal-Wallis H-Test für {cat_label} (Run {run_id})}}",
+                f"\\label{{tab:kruskal_{cat_key}_run_{run_id}}}",
+                "\\begin{tabular}{lrrrrrrr}",
+                "\\toprule",
+                "Attribut & H-Statistik & p-Wert & $\\eta^2$ & Effektgröße & Signifikant & n Gruppen & n Total \\\\",
+                "\\midrule",
+            ]
+
+            for attr_data in cat_data.get("attributes", []):
+                latex_lines.append(
+                    f"{attr_labels.get(attr_data['attribute'], attr_data['attribute'])} & "
+                    f"{attr_data.get('h_stat', 0):.3f} & "
+                    f"{attr_data.get('p_value', 1):.6f} & "
+                    f"{attr_data.get('eta_squared', 0):.4f} & "
+                    f"{attr_data.get('effect_interpretation', 'vernachlässigbar')} & "
+                    f"{'Ja' if attr_data.get('significant') else 'Nein'} & "
+                    f"{attr_data.get('n_groups', 0)} & "
+                    f"{attr_data.get('n_total', 0)} \\\\"
+                )
+
+            latex_lines.extend(
+                [
+                    "\\bottomrule",
+                    "\\end{tabular}",
+                    "\\end{table}",
+                ]
+            )
+
+            all_latex.append("\n".join(latex_lines))
+
+        return {"latex": "\n\n".join(all_latex)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating LaTeX: {str(e)}")
+
+
+@router.get("/runs/{run_id}/deltas/{attribute}/latex")
+def export_deltas_latex(
+    run_id: int,
+    attribute: str,
+    trait_category: Optional[str] = Query(None),
+    baseline: Optional[str] = Query(None),
+) -> Dict[str, str]:
+    """Export significance table (deltas) as LaTeX table."""
+    try:
+        analytics_service = _get_analytics_service()
+        data = analytics_service.get_deltas(
+            run_id, attribute, trait_category=trait_category, baseline=baseline
+        )
+
+        attr_labels = {
+            "gender": "Geschlecht",
+            "age_group": "Altersgruppe",
+            "religion": "Religion",
+            "sexuality": "Sexualität",
+            "marriage_status": "Familienstand",
+            "education": "Bildung",
+            "origin_subregion": "Herkunft",
+            "migration_status": "Migration",
+        }
+
+        # Build LaTeX table
+        attr_label = attr_labels.get(attribute, attribute)
+        trait_suffix = f" ({trait_category})" if trait_category else ""
+        baseline_suffix = f" vs. {baseline}" if baseline else ""
+
+        latex_lines = [
+            "\\begin{table}[htbp]",
+            "\\centering",
+            f"\\caption{{Signifikanztabelle: {attr_label}{trait_suffix}{baseline_suffix} (Run {run_id})}}",
+            f"\\label{{tab:deltas_{attribute}_run_{run_id}}}",
+            "\\begin{tabular}{lrrrrl}",
+            "\\toprule",
+            "Kategorie & $\\Delta$ & p-Wert & q-Wert & Cliff's $\\delta$ & Signifikant \\\\",
+            "\\midrule",
+        ]
+
+        for row in data.get("rows", []):
+            latex_lines.append(
+                f"{row.get('category', '')} & "
+                f"{row.get('delta', 0):.3f} & "
+                f"{row.get('p_value', 1):.6f} & "
+                f"{row.get('q_value', 1):.6f} & "
+                f"{row.get('cliffs_delta', 0):.3f} & "
+                f"{'Ja' if row.get('significant') else 'Nein'} \\\\"
+            )
+
+        latex_lines.extend(
+            [
+                "\\bottomrule",
+                "\\end{tabular}",
+                "\\end{table}",
+            ]
+        )
+
+        return {"latex": "\n".join(latex_lines)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating LaTeX: {str(e)}")
+
+
 @router.post("/runs/{run_id}/warm-cache")
 def warm_run_cache(run_id: int) -> Dict[str, Any]:
     """Start asynchronous cache warming job for a run."""

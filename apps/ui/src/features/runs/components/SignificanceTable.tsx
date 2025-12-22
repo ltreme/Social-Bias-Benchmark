@@ -1,6 +1,8 @@
 import { useState, Fragment } from 'react';
 import { Table, Group, ActionIcon, Collapse, Text, Badge, Button, Tooltip } from '@mantine/core';
-import { IconChevronDown, IconChevronRight, IconDownload } from '@tabler/icons-react';
+import { IconChevronDown, IconChevronRight, IconDownload, IconCopy } from '@tabler/icons-react';
+import { fetchDeltasLatex } from '../api';
+import { notifications } from '@mantine/notifications';
 
 type Row = {
   category: string;
@@ -48,6 +50,26 @@ export function SignificanceTable({
     const url = `${import.meta.env.VITE_API_BASE_URL || ''}/runs/${runId}/deltas/${attribute}/csv${queryString ? '?' + queryString : ''}`;
     window.open(url, '_blank');
   };
+
+  const handleCopyLatex = async () => {
+    if (!runId || !attribute) return;
+    
+    try {
+      const latex = await fetchDeltasLatex(runId, attribute, traitCategory, baseline);
+      await navigator.clipboard.writeText(latex);
+      notifications.show({
+        title: 'LaTeX kopiert',
+        message: 'Die LaTeX-Tabelle wurde in die Zwischenablage kopiert.',
+        color: 'green',
+      });
+    } catch (error) {
+      notifications.show({
+        title: 'Fehler',
+        message: 'LaTeX konnte nicht in die Zwischenablage kopiert werden.',
+        color: 'red',
+      });
+    }
+  };
   
   if (!rows || rows.length === 0) return <div>—</div>;
 
@@ -63,6 +85,16 @@ export function SignificanceTable({
               onClick={handleDownloadCSV}
             >
               CSV
+            </Button>
+          </Tooltip>
+          <Tooltip label="LaTeX-Tabelle in Zwischenablage kopieren" withArrow>
+            <Button
+              variant="subtle"
+              size="xs"
+              leftSection={<IconCopy size={14} />}
+              onClick={handleCopyLatex}
+            >
+              LaTeX
             </Button>
           </Tooltip>
         </Group>

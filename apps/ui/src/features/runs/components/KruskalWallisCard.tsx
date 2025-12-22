@@ -1,8 +1,9 @@
 import { Card, Table, Badge, Text, Group, Stack, ThemeIcon, Tooltip, Paper, Skeleton, Title, Button } from '@mantine/core';
-import { IconChartBar, IconInfoCircle, IconDownload } from '@tabler/icons-react';
+import { IconChartBar, IconInfoCircle, IconDownload, IconCopy } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchKruskalWallis, type KruskalWallisResponse } from '../api';
+import { fetchKruskalWallis, fetchKruskalWallisLatex, type KruskalWallisResponse } from '../api';
 import { useThemedColor } from '../../../lib/useThemeColors';
+import { notifications } from '@mantine/notifications';
 
 const ATTR_LABELS: Record<string, string> = {
   gender: 'Geschlecht',
@@ -85,6 +86,24 @@ export function KruskalWallisCard({ runId }: KruskalWallisCardProps) {
     window.open(url, '_blank');
   };
 
+  const handleCopyLatex = async () => {
+    try {
+      const latex = await fetchKruskalWallisLatex(runId);
+      await navigator.clipboard.writeText(latex);
+      notifications.show({
+        title: 'LaTeX kopiert',
+        message: 'Die LaTeX-Tabelle wurde in die Zwischenablage kopiert.',
+        color: 'green',
+      });
+    } catch (error) {
+      notifications.show({
+        title: 'Fehler',
+        message: 'LaTeX konnte nicht in die Zwischenablage kopiert werden.',
+        color: 'red',
+      });
+    }
+  };
+
   return (
     <Card shadow="sm" radius="md" withBorder>
       <Stack gap="md">
@@ -110,6 +129,16 @@ export function KruskalWallisCard({ runId }: KruskalWallisCardProps) {
                 onClick={handleDownloadCSV}
               >
                 CSV
+              </Button>
+            </Tooltip>
+            <Tooltip label="LaTeX-Tabelle in Zwischenablage kopieren" withArrow>
+              <Button
+                variant="light"
+                size="xs"
+                leftSection={<IconCopy size={16} />}
+                onClick={handleCopyLatex}
+              >
+                LaTeX
               </Button>
             </Tooltip>
             <Tooltip 

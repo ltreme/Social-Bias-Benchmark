@@ -360,3 +360,31 @@ export async function fetchMultiRunDeltas(runIds: number[], traitCategory?: stri
     const res = await api.post<MultiRunDeltas>('/runs/compare/deltas', body);
     return res.data;
 }
+
+// ============================================================================
+// LaTeX Export API
+// ============================================================================
+
+export async function fetchKruskalWallisLatex(runId: number): Promise<string> {
+    const res = await api.get<{ latex: string }>(`/runs/${runId}/kruskal/latex`);
+    return res.data.latex;
+}
+
+export async function fetchKruskalWallisByCategoryLatex(runId: number, traitCategory?: string): Promise<string> {
+    const params = traitCategory ? { trait_category: traitCategory } : {};
+    const res = await api.get<{ latex: string }>(`/runs/${runId}/kruskal-by-category/latex`, { params });
+    return res.data.latex;
+}
+
+export async function fetchDeltasLatex(
+    runId: number,
+    attribute: string,
+    traitCategory?: string,
+    baseline?: string
+): Promise<string> {
+    const params: Record<string, string> = {};
+    if (traitCategory) params.trait_category = traitCategory;
+    if (baseline) params.baseline = baseline;
+    const res = await api.get<{ latex: string }>(`/runs/${runId}/deltas/${attribute}/latex`, { params });
+    return res.data.latex;
+}
