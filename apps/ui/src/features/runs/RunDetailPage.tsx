@@ -158,6 +158,18 @@ export function RunDetailPage() {
   const defaultBaseline = metrics?.attributes?.[attr]?.baseline || undefined;
   const [baseline, setBaseline] = useState<string | undefined>(defaultBaseline);
   const [targets, setTargets] = useState<string[]>([]);
+
+  // Build availableCategories map for all attributes (for SignificanceTableWithFilters)
+  const allAttributesCategories: Record<string, Array<{ category: string; count: number; mean: number }>> = {
+    gender: metrics?.attributes?.gender?.categories || [],
+    age_group: metrics?.attributes?.age_group?.categories || [],
+    origin_subregion: metrics?.attributes?.origin_subregion?.categories || [],
+    religion: metrics?.attributes?.religion?.categories || [],
+    migration_status: metrics?.attributes?.migration_status?.categories || [],
+    sexuality: metrics?.attributes?.sexuality?.categories || [],
+    marriage_status: metrics?.attributes?.marriage_status?.categories || [],
+    education: metrics?.attributes?.education?.categories || [],
+  };
   const traitCategorySummary = metrics?.trait_categories?.summary || [];
   const traitCategoryOptions = traitCategorySummary.map((c) => c.category);
   const [traitCategory, setTraitCategory] = useState<string>('__all');
@@ -217,14 +229,14 @@ export function RunDetailPage() {
 
   // Helper to build deltasData array from raw API response
   const buildDeltasData = (data: typeof radarDeltasAll, isLoading: boolean) => [
-    { a: 'gender', q: { data: data?.data?.gender, isLoading, isError: false } },
-    { a: 'age_group', q: { data: data?.data?.age_group, isLoading, isError: false } },
-    { a: 'origin_subregion', q: { data: data?.data?.origin_subregion, isLoading, isError: false } },
-    { a: 'religion', q: { data: data?.data?.religion, isLoading, isError: false } },
-    { a: 'migration_status', q: { data: data?.data?.migration_status, isLoading, isError: false } },
-    { a: 'sexuality', q: { data: data?.data?.sexuality, isLoading, isError: false } },
-    { a: 'marriage_status', q: { data: data?.data?.marriage_status, isLoading, isError: false } },
-    { a: 'education', q: { data: data?.data?.education, isLoading, isError: false } },
+    { a: 'gender', q: { data: data?.data?.gender, isLoading, isError: false, error: null } },
+    { a: 'age_group', q: { data: data?.data?.age_group, isLoading, isError: false, error: null } },
+    { a: 'origin_subregion', q: { data: data?.data?.origin_subregion, isLoading, isError: false, error: null } },
+    { a: 'religion', q: { data: data?.data?.religion, isLoading, isError: false, error: null } },
+    { a: 'migration_status', q: { data: data?.data?.migration_status, isLoading, isError: false, error: null } },
+    { a: 'sexuality', q: { data: data?.data?.sexuality, isLoading, isError: false, error: null } },
+    { a: 'marriage_status', q: { data: data?.data?.marriage_status, isLoading, isError: false, error: null } },
+    { a: 'education', q: { data: data?.data?.education, isLoading, isError: false, error: null } },
   ];
 
   // Radar chart category map for grid display
@@ -540,6 +552,7 @@ export function RunDetailPage() {
               deltasError={deltasError}
               forestsQueries={forestsQueries}
               deltasData={deltasData}
+              allAttributesCategories={allAttributesCategories}
             />
           </Tabs.Panel>
         </Tabs>

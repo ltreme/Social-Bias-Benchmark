@@ -4,7 +4,7 @@ import { AsyncContent } from '../../../components/AsyncContent';
 import { DeltaBarsPanel } from './DeltaBarsPanel';
 import { ImprovedForestPlot } from './ImprovedForestPlot';
 import { translateCategory } from './GroupComparisonHeatmap';
-import { SignificanceTable } from './SignificanceTable';
+import { SignificanceTableWithFilters } from './SignificanceTableWithFilters';
 import { useThemedColor } from '../../../lib/useThemeColors';
 import type { RunDeltas } from '../api';
 
@@ -42,6 +42,8 @@ type BiasTabProps = {
     forestsQueries: Array<{ data?: any; isLoading: boolean; isError: boolean; error?: any }>;
     // All means & deltas for summary
     deltasData: Array<{ a: string; q: { data?: RunDeltas; isLoading: boolean; isError: boolean; error?: any } }>;
+    // Categories for all attributes
+    allAttributesCategories: Record<string, Array<{ category: string; count: number; mean: number }>>;
 };
 
 export function BiasTab({
@@ -60,6 +62,7 @@ export function BiasTab({
     deltas,
     isLoadingDeltas,
     deltasError,
+    allAttributesCategories,
     forestsQueries,
     deltasData,
 }: BiasTabProps) {
@@ -289,18 +292,19 @@ export function BiasTab({
             {/* Significance Tables */}
             <Card withBorder padding="md">
                 <Title order={4} mb="md">Signifikanz-Tabellen (p, q, Cliff's δ)</Title>
-                {deltasData.map(({ a, q }) => (
-                    <div key={a} style={{ marginTop: 12 }}>
-                        <b>{ATTRS.find(x => x.value === a)?.label || a}</b>
-                        <AsyncContent isLoading={q.isLoading} isError={q.isError} error={q.error}>
-                            <SignificanceTable 
-                                rows={q.data?.rows || []} 
-                                runId={runId}
-                                attribute={a}
-                                baseline={q.data?.baseline}
-                                traitCategory={traitCategory}
-                            />
-                        </AsyncContent>
+                <Text size="sm" c="dimmed" mb="md">
+                    Für jede Tabelle kannst du individuell die Trait-Kategorie und Baseline-Gruppe anpassen.
+                </Text>
+                {deltasData.map(({ a }) => (
+                    <div key={a} style={{ marginTop: 16, marginBottom: 16 }}>
+                        <Title order={5} mb="xs">{ATTRS.find(x => x.value === a)?.label || a}</Title>
+                        <SignificanceTableWithFilters
+                            runId={runId}
+                            attribute={a}
+                            availableCategories={allAttributesCategories[a] || []}
+                            traitCategoryOptions={traitCategoryOptions}
+                            initialTraitCategory={traitCategory}
+                        />
                     </div>
                 ))}
             </Card>
