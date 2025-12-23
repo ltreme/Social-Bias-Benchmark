@@ -1,9 +1,10 @@
-import { Card, Table, Badge, Text, Group, Stack, ThemeIcon, Tooltip, Paper, Skeleton, Title, Button } from '@mantine/core';
+import { Card, Table, Badge, Text, Group, Stack, ThemeIcon, Tooltip, Paper, Skeleton, Title, Button, Checkbox } from '@mantine/core';
 import { IconChartBar, IconInfoCircle, IconDownload, IconCopy } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchKruskalWallis, fetchKruskalWallisLatex, type KruskalWallisResponse } from '../api';
+import { fetchKruskalWallis, type KruskalWallisResponse } from '../api';
 import { useThemedColor } from '../../../lib/useThemeColors';
 import { notifications } from '@mantine/notifications';
+import { useState } from 'react';
 
 const ATTR_LABELS: Record<string, string> = {
   gender: 'Geschlecht',
@@ -51,8 +52,24 @@ type KruskalWallisCardProps = {
   runId: number;
 };
 
+type ColumnKey = 'attribute' | 'h_stat' | 'p_value' | 'sig' | 'eta_squared' | 'effect' | 'n_groups' | 'n_total';
+
 export function KruskalWallisCard({ runId }: KruskalWallisCardProps) {
   const getColor = useThemedColor();
+
+  const [selectedColumns, setSelectedColumns] = useState<Set<ColumnKey>>(
+    new Set(['attribute', 'h_stat', 'p_value', 'sig', 'eta_squared', 'effect', 'n_groups', 'n_total'])
+  );
+
+  const toggleColumn = (col: ColumnKey) => {
+    const newSet = new Set(selectedColumns);
+    if (newSet.has(col)) {
+      newSet.delete(col);
+    } else {
+      newSet.add(col);
+    }
+    setSelectedColumns(newSet);
+  };
 
   const { data, isLoading, error } = useQuery<KruskalWallisResponse>({
     queryKey: ['run', runId, 'kruskal'],
@@ -81,14 +98,121 @@ export function KruskalWallisCard({ runId }: KruskalWallisCardProps) {
 
   const { attributes, summary } = data;
 
+  const attr_labels = {
+    gender: 'Geschlecht',
+    age_group: 'Altersgruppe',
+    religion: 'Religion',
+    sexuality: 'Sexualität',
+    marriage_status: 'Familienstand',
+    education: 'Bildung',
+    origin_subregion: 'Herkunft',
+    migration_status: 'Migration',
+  };
+
   const handleDownloadCSV = () => {
-    const url = `${import.meta.env.VITE_API_BASE_URL || ''}/runs/${runId}/kruskal/csv`;
-    window.open(url, '_blank');
+    // Build CSV with selected columns
+    const rows: string[][] = [];
+    
+    // Header row
+    const header: string[] = [];
+    if (selectedColumns.has('attribute')) header.push('Attribut');
+    if (selectedColumns.has('h_stat')) header.push('H-Statistik');
+    if (selectedColumns.has('p_value')) header.push('p-Wert');
+    if (selectedColumns.has('eta_squared')) header.push('η² (Eta-Quadrat)');
+    if (selectedColumns.has('effect')) header.push('Effektgröße');
+    if (selectedColumns.has('sig')) header.push('Signifikant (p < 0.05)');
+    if (selectedColumns.has('n_groups')) header.push('Anzahl Gruppen');
+    if (selectedColumns.has('n_total')) header.push('n Total');
+    rows.push(header);
+
+    // Data rows
+    attributes.forEach(attr => {
+      const row: string[] = [];
+      if (selectedColumns.has('attribute')) row.push(attr_labels[attr.attribute as keyof typeof attr_labels] || attr.attribute);
+      if (selectedColumns.has('h_stat')) row.push((attr.h_stat?.toFixed(3) || ''));
+      if (selectedColumns.has('p_value')) row.push((attr.p_value?.toFixed(6) || ''));
+      if (selectedColumns.has('eta_squared')) row.push((attr.eta_squared?.toFixed(4) || ''));
+      if (selectedColumns.has('effect')) row.push(attr.effect_interpretation || '');
+      if (selectedColumns.has('sig')) row.push(attr.significant ? 'Ja' : 'Nein');
+      if (selectedColumns.has('n_groups')) row.push(String(attr.n_groups || ''));
+      if (selectedColumns.has('n_total')) row.push(String(attr.n_total || ''));
+      rows.push(row);
+    });
+
+    // Generate CSV
+    const csvContent = rows.map(row => row.map(cell => {
+      // Escape quotes and wrap in quotes if contains comma or quote
+      if (cell.includes(',') || cell.includes('"') || cell.includes('\n')) {
+        return `"${cell.replace(/"/g, '""')}"`;
+      }
+      return cell;
+    }).join(',')).join('\n');
+
+    // Download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `kruskal_wallis_run_${runId}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
   };
 
   const handleCopyLatex = async () => {
     try {
-      const latex = await fetchKruskalWallisLatex(runId);
+      // Build LaTeX table with selected columns
+      const lines: string[] = [
+        '\\begin{table}[htbp]',
+        '\\centering',
+        `\\caption{Kruskal-Wallis H-Test Ergebnisse (Run ${runId})}`,
+        `\\label{tab:kruskal_run_${runId}}`,
+      ];
+
+      // Determine column spec
+      const colSpec: string[] = [];
+      if (selectedColumns.has('attribute')) colSpec.push('l');
+      if (selectedColumns.has('h_stat')) colSpec.push('r');
+      if (selectedColumns.has('p_value')) colSpec.push('r');
+      if (selectedColumns.has('eta_squared')) colSpec.push('r');
+      if (selectedColumns.has('effect')) colSpec.push('l');
+      if (selectedColumns.has('sig')) colSpec.push('l');
+      if (selectedColumns.has('n_groups')) colSpec.push('r');
+      if (selectedColumns.has('n_total')) colSpec.push('r');
+      
+      lines.push(`\\begin{tabular}{${colSpec.join('')}}`);
+      lines.push('\\toprule');
+
+      // Header row
+      const headerCols: string[] = [];
+      if (selectedColumns.has('attribute')) headerCols.push('Attribut');
+      if (selectedColumns.has('h_stat')) headerCols.push('H-Statistik');
+      if (selectedColumns.has('p_value')) headerCols.push('p-Wert');
+      if (selectedColumns.has('eta_squared')) headerCols.push('$\\eta^2$');
+      if (selectedColumns.has('effect')) headerCols.push('Effektgröße');
+      if (selectedColumns.has('sig')) headerCols.push('Signifikant');
+      if (selectedColumns.has('n_groups')) headerCols.push('n Gruppen');
+      if (selectedColumns.has('n_total')) headerCols.push('n Total');
+      lines.push(headerCols.join(' & ') + ' \\\\');
+      lines.push('\\midrule');
+
+      // Data rows
+      attributes.forEach(attr => {
+        const cols: string[] = [];
+        if (selectedColumns.has('attribute')) cols.push(attr_labels[attr.attribute as keyof typeof attr_labels] || attr.attribute);
+        if (selectedColumns.has('h_stat')) cols.push(attr.h_stat?.toFixed(3) || '—');
+        if (selectedColumns.has('p_value')) cols.push(attr.p_value?.toFixed(6) || '—');
+        if (selectedColumns.has('eta_squared')) cols.push(attr.eta_squared?.toFixed(4) || '—');
+        if (selectedColumns.has('effect')) cols.push(attr.effect_interpretation || 'vernachlässigbar');
+        if (selectedColumns.has('sig')) cols.push(attr.significant ? 'Ja' : 'Nein');
+        if (selectedColumns.has('n_groups')) cols.push(String(attr.n_groups || 0));
+        if (selectedColumns.has('n_total')) cols.push(String(attr.n_total || 0));
+        lines.push(cols.join(' & ') + ' \\\\');
+      });
+
+      lines.push('\\bottomrule');
+      lines.push('\\end{tabular}');
+      lines.push('\\end{table}');
+
+      const latex = lines.join('\n');
       await navigator.clipboard.writeText(latex);
       notifications.show({
         title: 'LaTeX kopiert',
@@ -168,6 +292,13 @@ export function KruskalWallisCard({ runId }: KruskalWallisCardProps) {
           </Text>
         </Group>
 
+        {/* Column Selection Hint */}
+        <Paper p="xs" bg={getColor('blue').bg} radius="sm">
+          <Text size="xs" c="dimmed">
+            💡 Tipp: Klicke auf die Checkboxen in den Spaltenüberschriften, um Spalten für den CSV/LaTeX-Export auszuwählen.
+          </Text>
+        </Paper>
+
         {/* Results Table */}
         {attributes.length === 0 ? (
           <Text c="dimmed" ta="center" py="md">
@@ -177,18 +308,96 @@ export function KruskalWallisCard({ runId }: KruskalWallisCardProps) {
           <Table striped withTableBorder withColumnBorders highlightOnHover>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>Attribut</Table.Th>
-                <Table.Th style={{ textAlign: 'right' }}>H-Statistik</Table.Th>
-                <Table.Th style={{ textAlign: 'right' }}>p-Wert</Table.Th>
-                <Table.Th style={{ textAlign: 'center' }}>Sig.</Table.Th>
-                <Table.Th style={{ textAlign: 'right' }}>
-                  <Tooltip label="Eta-Quadrat Effektstärke (klein ≥ 0.01, mittel ≥ 0.06, groß ≥ 0.14)" withArrow>
-                    <span>η²</span>
-                  </Tooltip>
+                <Table.Th>
+                  <Group gap={4}>
+                    <Checkbox 
+                      size="xs" 
+                      checked={selectedColumns.has('attribute')}
+                      onChange={() => toggleColumn('attribute')}
+                      aria-label="Spalte Attribut für Export auswählen"
+                    />
+                    <span>Attribut</span>
+                  </Group>
                 </Table.Th>
-                <Table.Th>Effekt</Table.Th>
-                <Table.Th style={{ textAlign: 'right' }}>n Gruppen</Table.Th>
-                <Table.Th style={{ textAlign: 'right' }}>n Total</Table.Th>
+                <Table.Th style={{ textAlign: 'right' }}>
+                  <Group gap={4} justify="flex-end">
+                    <Checkbox 
+                      size="xs" 
+                      checked={selectedColumns.has('h_stat')}
+                      onChange={() => toggleColumn('h_stat')}
+                      aria-label="Spalte H-Statistik für Export auswählen"
+                    />
+                    <span>H-Statistik</span>
+                  </Group>
+                </Table.Th>
+                <Table.Th style={{ textAlign: 'right' }}>
+                  <Group gap={4} justify="flex-end">
+                    <Checkbox 
+                      size="xs" 
+                      checked={selectedColumns.has('p_value')}
+                      onChange={() => toggleColumn('p_value')}
+                      aria-label="Spalte p-Wert für Export auswählen"
+                    />
+                    <span>p-Wert</span>
+                  </Group>
+                </Table.Th>
+                <Table.Th style={{ textAlign: 'center' }}>
+                  <Group gap={4} justify="center">
+                    <Checkbox 
+                      size="xs" 
+                      checked={selectedColumns.has('sig')}
+                      onChange={() => toggleColumn('sig')}
+                      aria-label="Spalte Signifikanz für Export auswählen"
+                    />
+                    <span>Sig.</span>
+                  </Group>
+                </Table.Th>
+                <Table.Th style={{ textAlign: 'right' }}>
+                  <Group gap={4} justify="flex-end">
+                    <Checkbox 
+                      size="xs" 
+                      checked={selectedColumns.has('eta_squared')}
+                      onChange={() => toggleColumn('eta_squared')}
+                      aria-label="Spalte Eta-Quadrat für Export auswählen"
+                    />
+                    <Tooltip label="Eta-Quadrat Effektstärke (klein ≥ 0.01, mittel ≥ 0.06, groß ≥ 0.14)" withArrow>
+                      <span>η²</span>
+                    </Tooltip>
+                  </Group>
+                </Table.Th>
+                <Table.Th>
+                  <Group gap={4}>
+                    <Checkbox 
+                      size="xs" 
+                      checked={selectedColumns.has('effect')}
+                      onChange={() => toggleColumn('effect')}
+                      aria-label="Spalte Effekt für Export auswählen"
+                    />
+                    <span>Effekt</span>
+                  </Group>
+                </Table.Th>
+                <Table.Th style={{ textAlign: 'right' }}>
+                  <Group gap={4} justify="flex-end">
+                    <Checkbox 
+                      size="xs" 
+                      checked={selectedColumns.has('n_groups')}
+                      onChange={() => toggleColumn('n_groups')}
+                      aria-label="Spalte n Gruppen für Export auswählen"
+                    />
+                    <span>n Gruppen</span>
+                  </Group>
+                </Table.Th>
+                <Table.Th style={{ textAlign: 'right' }}>
+                  <Group gap={4} justify="flex-end">
+                    <Checkbox 
+                      size="xs" 
+                      checked={selectedColumns.has('n_total')}
+                      onChange={() => toggleColumn('n_total')}
+                      aria-label="Spalte n Total für Export auswählen"
+                    />
+                    <span>n Total</span>
+                  </Group>
+                </Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
