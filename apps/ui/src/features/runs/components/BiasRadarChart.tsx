@@ -832,6 +832,7 @@ export function BiasRadarGrid({ traitCategories, categoryDeltasMap, loadingState
   const [showMethodology, setShowMethodology] = useState(false);
   const [showTableModal, setShowTableModal] = useState(false);
   const [selectedColumns, setSelectedColumns] = useState(new Set(['attribute', 'maxAbsCliffsD', 'avgAbsCliffsD', 'significantCount', 'biasScore', 'maxDeltaCategory']));
+  const [selectedCategories, setSelectedCategories] = useState(new Set(['__all', ...traitCategories.slice(0, 2)]));
   
   // Categories to show (all + individual categories)
   const categoriesToShow = ['__all', ...traitCategories.slice(0, 2)]; // Show max 3: All + 2 categories
@@ -852,12 +853,24 @@ export function BiasRadarGrid({ traitCategories, categoryDeltasMap, loadingState
   const handleDownloadCSV = () => {
     const rows: string[] = [];
     
+    // Filter categories for export
+    const categoriesToExport = categoriesToShow.filter(cat => selectedCategories.has(cat));
+    
+    if (categoriesToExport.length === 0) {
+      notifications.show({
+        title: 'Keine Kategorien ausgewählt',
+        message: 'Bitte wählen Sie mindestens eine Kategorie für den Export aus',
+        color: 'orange',
+      });
+      return;
+    }
+    
     // Header
     const headers: string[] = [];
     if (selectedColumns.has('attribute')) headers.push('Merkmal');
     
     // Add category columns based on selection
-    categoriesToShow.forEach(cat => {
+    categoriesToExport.forEach(cat => {
       const label = getCategoryLabel(cat);
       if (selectedColumns.has('maxAbsCliffsD')) headers.push(`${label} - Max |d|`);
       if (selectedColumns.has('avgAbsCliffsD')) headers.push(`${label} - Avg |d|`);
@@ -869,7 +882,7 @@ export function BiasRadarGrid({ traitCategories, categoryDeltasMap, loadingState
     rows.push(headers.join(','));
     
     // Get all attributes (from first category)
-    const firstCat = categoriesToShow[0];
+    const firstCat = categoriesToExport[0];
     const attributes = allScoresByCategory[firstCat] || [];
     
     // Data rows
@@ -880,7 +893,7 @@ export function BiasRadarGrid({ traitCategories, categoryDeltasMap, loadingState
         cols.push(attributes[idx].label);
       }
       
-      categoriesToShow.forEach(cat => {
+      categoriesToExport.forEach(cat => {
         const scores = allScoresByCategory[cat] || [];
         const score = scores[idx];
         
@@ -924,9 +937,21 @@ export function BiasRadarGrid({ traitCategories, categoryDeltasMap, loadingState
   const handleCopyLatex = async () => {
     const lines: string[] = [];
     
+    // Filter categories for export
+    const categoriesToExport = categoriesToShow.filter(cat => selectedCategories.has(cat));
+    
+    if (categoriesToExport.length === 0) {
+      notifications.show({
+        title: 'Keine Kategorien ausgewählt',
+        message: 'Bitte wählen Sie mindestens eine Kategorie für den Export aus',
+        color: 'orange',
+      });
+      return;
+    }
+    
     // Count columns for table format
     let colCount = selectedColumns.has('attribute') ? 1 : 0;
-    colCount += categoriesToShow.length * (
+    colCount += categoriesToExport.length * (
       (selectedColumns.has('maxAbsCliffsD') ? 1 : 0) +
       (selectedColumns.has('avgAbsCliffsD') ? 1 : 0) +
       (selectedColumns.has('significantCount') ? 1 : 0) +
@@ -947,7 +972,7 @@ export function BiasRadarGrid({ traitCategories, categoryDeltasMap, loadingState
     const headers: string[] = [];
     if (selectedColumns.has('attribute')) headers.push('Merkmal');
     
-    categoriesToShow.forEach(cat => {
+    categoriesToExport.forEach(cat => {
       const label = getCategoryLabel(cat);
       if (selectedColumns.has('maxAbsCliffsD')) headers.push(`${label} - Max $|d|$`);
       if (selectedColumns.has('avgAbsCliffsD')) headers.push(`${label} - Avg $|d|$`);
@@ -960,7 +985,7 @@ export function BiasRadarGrid({ traitCategories, categoryDeltasMap, loadingState
     lines.push('\\midrule');
     
     // Data rows
-    const firstCat = categoriesToShow[0];
+    const firstCat = categoriesToExport[0];
     const attributes = allScoresByCategory[firstCat] || [];
     
     attributes.forEach((_, idx) => {
@@ -970,7 +995,7 @@ export function BiasRadarGrid({ traitCategories, categoryDeltasMap, loadingState
         cols.push(attributes[idx].label);
       }
       
-      categoriesToShow.forEach(cat => {
+      categoriesToExport.forEach(cat => {
         const scores = allScoresByCategory[cat] || [];
         const score = scores[idx];
         
@@ -1025,6 +1050,18 @@ export function BiasRadarGrid({ traitCategories, categoryDeltasMap, loadingState
         newSet.delete(col);
       } else {
         newSet.add(col);
+      }
+      return newSet;
+    });
+  };
+  
+  const toggleCategory = (cat: string) => {
+    setSelectedCategories(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(cat)) {
+        newSet.delete(cat);
+      } else {
+        newSet.add(cat);
       }
       return newSet;
     });
@@ -1247,41 +1284,57 @@ export function BiasRadarGrid({ traitCategories, categoryDeltasMap, loadingState
         <Stack gap="md">
           {/* Export Controls */}
           <Paper p="sm" withBorder radius="sm">
-            <Group justify="space-between" wrap="wrap">
-              <Text size="sm" fw={500}>Spaltenauswahl für Export:</Text>
-              <Group gap="xs">
-                <Checkbox
-                  label="Max |d|"
-                  size="xs"
-                  checked={selectedColumns.has('maxAbsCliffsD')}
-                  onChange={() => toggleColumn('maxAbsCliffsD')}
-                />
-                <Checkbox
-                  label="Avg |d|"
-                  size="xs"
-                  checked={selectedColumns.has('avgAbsCliffsD')}
-                  onChange={() => toggleColumn('avgAbsCliffsD')}
-                />
-                <Checkbox
-                  label="Sig."
-                  size="xs"
-                  checked={selectedColumns.has('significantCount')}
-                  onChange={() => toggleColumn('significantCount')}
-                />
-                <Checkbox
-                  label="Score"
-                  size="xs"
-                  checked={selectedColumns.has('biasScore')}
-                  onChange={() => toggleColumn('biasScore')}
-                />
-                <Checkbox
-                  label="Max Kategorie"
-                  size="xs"
-                  checked={selectedColumns.has('maxDeltaCategory')}
-                  onChange={() => toggleColumn('maxDeltaCategory')}
-                />
-              </Group>
-            </Group>
+            <Stack gap="sm">
+              <div>
+                <Text size="sm" fw={500} mb="xs">Kategorien für Export:</Text>
+                <Group gap="xs">
+                  {categoriesToShow.map(cat => (
+                    <Checkbox
+                      key={cat}
+                      label={getCategoryLabel(cat)}
+                      size="xs"
+                      checked={selectedCategories.has(cat)}
+                      onChange={() => toggleCategory(cat)}
+                    />
+                  ))}
+                </Group>
+              </div>
+              <div>
+                <Text size="sm" fw={500} mb="xs">Spalten für Export:</Text>
+                <Group gap="xs">
+                  <Checkbox
+                    label="Max |d|"
+                    size="xs"
+                    checked={selectedColumns.has('maxAbsCliffsD')}
+                    onChange={() => toggleColumn('maxAbsCliffsD')}
+                  />
+                  <Checkbox
+                    label="Avg |d|"
+                    size="xs"
+                    checked={selectedColumns.has('avgAbsCliffsD')}
+                    onChange={() => toggleColumn('avgAbsCliffsD')}
+                  />
+                  <Checkbox
+                    label="Sig."
+                    size="xs"
+                    checked={selectedColumns.has('significantCount')}
+                    onChange={() => toggleColumn('significantCount')}
+                  />
+                  <Checkbox
+                    label="Score"
+                    size="xs"
+                    checked={selectedColumns.has('biasScore')}
+                    onChange={() => toggleColumn('biasScore')}
+                  />
+                  <Checkbox
+                    label="Max Kategorie"
+                    size="xs"
+                    checked={selectedColumns.has('maxDeltaCategory')}
+                    onChange={() => toggleColumn('maxDeltaCategory')}
+                  />
+                </Group>
+              </div>
+            </Stack>
             <Group gap="xs" mt="sm">
               <Button
                 leftSection={<IconDownload size={16} />}
@@ -1302,71 +1355,36 @@ export function BiasRadarGrid({ traitCategories, categoryDeltasMap, loadingState
             </Group>
           </Paper>
           
-          {/* Data Table */}
-          <Box style={{ overflowX: 'auto' }}>
-            <Table striped withTableBorder withColumnBorders highlightOnHover>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th rowSpan={2} style={{ verticalAlign: 'middle' }}>Merkmal</Table.Th>
-                  {categoriesToShow.map(cat => {
-                    const numCols = 
-                      (selectedColumns.has('maxAbsCliffsD') ? 1 : 0) +
-                      (selectedColumns.has('avgAbsCliffsD') ? 1 : 0) +
-                      (selectedColumns.has('significantCount') ? 1 : 0) +
-                      (selectedColumns.has('biasScore') ? 1 : 0) +
-                      (selectedColumns.has('maxDeltaCategory') ? 1 : 0);
-                    return (
-                      <Table.Th key={cat} colSpan={numCols} style={{ textAlign: 'center' }}>
-                        {getCategoryLabel(cat)}
-                      </Table.Th>
-                    );
-                  })}
-                </Table.Tr>
-                <Table.Tr>
-                  {categoriesToShow.map(cat => (
-                    <React.Fragment key={cat}>
-                      {selectedColumns.has('maxAbsCliffsD') && <Table.Th style={{ textAlign: 'right' }}>Max |d|</Table.Th>}
-                      {selectedColumns.has('avgAbsCliffsD') && <Table.Th style={{ textAlign: 'right' }}>Avg |d|</Table.Th>}
-                      {selectedColumns.has('significantCount') && <Table.Th style={{ textAlign: 'right' }}>Sig.</Table.Th>}
-                      {selectedColumns.has('biasScore') && <Table.Th style={{ textAlign: 'right' }}>Score</Table.Th>}
-                      {selectedColumns.has('maxDeltaCategory') && <Table.Th>Max Kategorie</Table.Th>}
-                    </React.Fragment>
-                  ))}
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {(() => {
-                  const firstCat = categoriesToShow[0];
-                  const attributes = allScoresByCategory[firstCat] || [];
-                  
-                  // Find max values for each metric per category
-                  const maxValuesByCategory: Record<string, {
-                    maxAbsCliffsD: number;
-                    avgAbsCliffsD: number;
-                    significantCount: number;
-                    biasScore: number;
-                  }> = {};
-                  
-                  categoriesToShow.forEach(cat => {
-                    const scores = allScoresByCategory[cat] || [];
-                    const validScores = scores.filter(s => s.hasData);
-                    
-                    maxValuesByCategory[cat] = {
-                      maxAbsCliffsD: validScores.length > 0 ? Math.max(...validScores.map(s => s.maxAbsCliffsD)) : 0,
-                      avgAbsCliffsD: validScores.length > 0 ? Math.max(...validScores.map(s => s.avgAbsCliffsD)) : 0,
-                      significantCount: validScores.length > 0 ? Math.max(...validScores.map(s => s.significantCount)) : 0,
-                      biasScore: validScores.length > 0 ? Math.max(...validScores.map(s => s.biasScore)) : 0,
-                    };
-                  });
-                  
-                  return attributes.map((attr, idx) => (
-                    <Table.Tr key={attr.attribute}>
-                      <Table.Td fw={500}>{attr.label}</Table.Td>
-                      {categoriesToShow.map(cat => {
-                        const scores = allScoresByCategory[cat] || [];
-                        const score = scores[idx];
-                        const maxVals = maxValuesByCategory[cat];
-                        
+          {/* Individual Tables for each Category */}
+          {categoriesToShow.map(cat => {
+            const scores = allScoresByCategory[cat] || [];
+            const validScores = scores.filter(s => s.hasData);
+            
+            // Find max values for this category
+            const maxVals = {
+              maxAbsCliffsD: validScores.length > 0 ? Math.max(...validScores.map(s => s.maxAbsCliffsD)) : 0,
+              avgAbsCliffsD: validScores.length > 0 ? Math.max(...validScores.map(s => s.avgAbsCliffsD)) : 0,
+              significantCount: validScores.length > 0 ? Math.max(...validScores.map(s => s.significantCount)) : 0,
+              biasScore: validScores.length > 0 ? Math.max(...validScores.map(s => s.biasScore)) : 0,
+            };
+            
+            return (
+              <Box key={cat}>
+                <Title order={5} mb="xs">{getCategoryLabel(cat)}</Title>
+                <Box style={{ overflowX: 'auto' }}>
+                  <Table striped withTableBorder withColumnBorders highlightOnHover>
+                    <Table.Thead>
+                      <Table.Tr>
+                        <Table.Th>Merkmal</Table.Th>
+                        {selectedColumns.has('maxAbsCliffsD') && <Table.Th style={{ textAlign: 'right' }}>Max |d|</Table.Th>}
+                        {selectedColumns.has('avgAbsCliffsD') && <Table.Th style={{ textAlign: 'right' }}>Avg |d|</Table.Th>}
+                        {selectedColumns.has('significantCount') && <Table.Th style={{ textAlign: 'right' }}>Sig.</Table.Th>}
+                        {selectedColumns.has('biasScore') && <Table.Th style={{ textAlign: 'right' }}>Score</Table.Th>}
+                        {selectedColumns.has('maxDeltaCategory') && <Table.Th>Max Kategorie</Table.Th>}
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {scores.map(score => {
                         // Check if this row has the max value for each metric
                         const isMaxAbsCliffsD = score?.hasData && score.maxAbsCliffsD === maxVals.maxAbsCliffsD && maxVals.maxAbsCliffsD > 0;
                         const isMaxAvgCliffsD = score?.hasData && score.avgAbsCliffsD === maxVals.avgAbsCliffsD && maxVals.avgAbsCliffsD > 0;
@@ -1374,7 +1392,8 @@ export function BiasRadarGrid({ traitCategories, categoryDeltasMap, loadingState
                         const isMaxScore = score?.hasData && score.biasScore === maxVals.biasScore && maxVals.biasScore > 0;
                         
                         return (
-                          <React.Fragment key={cat}>
+                          <Table.Tr key={score.attribute}>
+                            <Table.Td fw={500}>{score.label}</Table.Td>
                             {selectedColumns.has('maxAbsCliffsD') && (
                               <Table.Td style={{ textAlign: 'right' }} fw={isMaxAbsCliffsD ? 700 : undefined}>
                                 {score?.hasData ? score.maxAbsCliffsD.toFixed(3) : '–'}
@@ -1409,15 +1428,15 @@ export function BiasRadarGrid({ traitCategories, categoryDeltasMap, loadingState
                                 {score?.hasData ? translateCategory(score.maxDeltaCategory) : '–'}
                               </Table.Td>
                             )}
-                          </React.Fragment>
+                          </Table.Tr>
                         );
                       })}
-                    </Table.Tr>
-                  ));
-                })()}
-              </Table.Tbody>
-            </Table>
-          </Box>
+                    </Table.Tbody>
+                  </Table>
+                </Box>
+              </Box>
+            );
+          })}
           
           <Text size="xs" c="dimmed">
             <b>Legende:</b> Max |d| = Maximale Cliff's Delta Effektgröße, Avg |d| = Durchschnittliche Effektgröße, 

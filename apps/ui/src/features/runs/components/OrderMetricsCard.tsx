@@ -1,8 +1,7 @@
-import { Divider, Text, Title, Paper, Group, Stack, ThemeIcon, SimpleGrid, Tooltip, ActionIcon, Progress, Badge } from '@mantine/core';
-import { IconArrowsSort, IconScale, IconChartLine, IconRepeat, IconInfoCircle, IconTarget, IconChartBar } from '@tabler/icons-react';
+import { Divider, Text, Title, Paper, Group, Stack, ThemeIcon, SimpleGrid, Tooltip, ActionIcon, Progress, Badge, Button } from '@mantine/core';
+import { IconArrowsSort, IconScale, IconChartLine, IconRepeat, IconInfoCircle, IconTarget, IconChartBar, IconCopy } from '@tabler/icons-react';
 import { gradeCliffs, gradeCorr, gradeObe, gradeRmaExact, gradeWithin1 } from './Grades';
-import { useThemedColor } from '../../../lib/useThemeColors';
-
+import { useThemedColor } from '../../../lib/useThemeColors';import { notifications } from '@mantine/notifications';
 type OrderMetricsCardProps = {
   data: any | undefined;
 };
@@ -59,26 +58,94 @@ export function OrderMetricsCard({ data }: OrderMetricsCardProps) {
   const cliffsValue = data.rma?.cliffs_delta;
   const within1Value = data.test_retest?.within1_rate ?? 0;
   const spearmanValue = data.correlation?.spearman ?? 0;
+  const pearsonValue = data.correlation?.pearson ?? 0;
 
   const getRmaColor = (v: number) => v >= 0.8 ? 'teal' : v >= 0.6 ? 'yellow' : 'red';
   const getMaeColor = (v: number) => v <= 0.3 ? 'teal' : v <= 0.6 ? 'yellow' : 'red';
   const getWithin1Color = (v: number) => v >= 0.9 ? 'teal' : v >= 0.75 ? 'yellow' : 'red';
   const getCorrColor = (v: number) => Math.abs(v) >= 0.8 ? 'teal' : Math.abs(v) >= 0.6 ? 'yellow' : 'red';
 
+  const handleCopyLatex = async () => {
+    const lines: string[] = [];
+    
+    lines.push('\\begin{table}[htbp]');
+    lines.push('\\centering');
+    lines.push('\\caption{Order-Consistency Metriken}');
+    lines.push('\\label{tab:order_consistency}');
+    lines.push('\\begin{tabular}{lr}');
+    lines.push('\\toprule');
+    lines.push('Metrik & Wert \\\\');
+    lines.push('\\midrule');
+    
+    // Add metrics
+    lines.push(`RMA & ${rmaValue.toFixed(3)} \\\\`);
+    lines.push(`MAE & ${maeValue.toFixed(3)} \\\\`);
+    
+    if (Number.isFinite(cliffsValue)) {
+      lines.push(`Cliff's $\\delta$ & ${cliffsValue.toFixed(3)} \\\\`);
+    }
+    
+    const obeMean = data.obe?.mean_diff ?? 0;
+    const obeCiLow = data.obe?.ci_low ?? 0;
+    const obeCiHigh = data.obe?.ci_high ?? 0;
+    lines.push(`Order-Bias ($\\Delta$) & ${obeMean.toFixed(3)} \\\\`);
+    lines.push(`Order-Bias CI & [${obeCiLow.toFixed(2)}, ${obeCiHigh.toFixed(2)}] \\\\`);
+    
+    lines.push(`Test-Retest & ${(within1Value * 100).toFixed(1)}\\% \\\\`);
+    lines.push(`Spearman $\\rho$ & ${spearmanValue.toFixed(3)} \\\\`);
+    lines.push(`Pearson $r$ & ${pearsonValue.toFixed(3)} \\\\`);
+    
+    const kendallValue = data.correlation?.kendall;
+    if (Number.isFinite(kendallValue)) {
+      lines.push(`Kendall $\\tau$ & ${kendallValue.toFixed(3)} \\\\`);
+    }
+    
+    lines.push('\\bottomrule');
+    lines.push('\\end{tabular}');
+    lines.push('\\end{table}');
+    
+    const latex = lines.join('\n');
+    
+    try {
+      await navigator.clipboard.writeText(latex);
+      notifications.show({
+        title: 'LaTeX kopiert',
+        message: 'Tabelle wurde in die Zwischenablage kopiert',
+        color: 'green',
+      });
+    } catch (err) {
+      notifications.show({
+        title: 'Fehler',
+        message: 'Konnte nicht in die Zwischenablage kopieren',
+        color: 'red',
+      });
+    }
+  };
+
   return (
     <Stack gap="md">
       {/* Header */}
       <Paper p="md" withBorder radius="md">
-        <Group gap="sm" mb="xs">
-          <ThemeIcon size="lg" radius="md" variant="light" color="indigo">
-            <IconArrowsSort size={20} />
-          </ThemeIcon>
-          <div>
-            <Title order={4}>Order-Consistency</Title>
-            <Text size="sm" c="dimmed">
-              {data.n_pairs?.toLocaleString('de-DE')} Dual-Paare (in vs. reversed)
-            </Text>
-          </div>
+        <Group justify="space-between" align="flex-start">
+          <Group gap="sm">
+            <ThemeIcon size="lg" radius="md" variant="light" color="indigo">
+              <IconArrowsSort size={20} />
+            </ThemeIcon>
+            <div>
+              <Title order={4}>Order-Consistency</Title>
+              <Text size="sm" c="dimmed">
+                {data.n_pairs?.toLocaleString('de-DE')} Dual-Paare (in vs. reversed)
+              </Text>
+            </div>
+          </Group>
+          <Button
+            leftSection={<IconCopy size={16} />}
+            variant="light"
+            size="sm"
+            onClick={handleCopyLatex}
+          >
+            LaTeX kopieren
+          </Button>
         </Group>
       </Paper>
 
@@ -136,11 +203,20 @@ export function OrderMetricsCard({ data }: OrderMetricsCardProps) {
 
         <MetricValueWithProgress
           icon={IconChartLine}
-          label="Korrelation"
+          label="Spearman ρ"
           value={spearmanValue.toFixed(3)}
           progressValue={Math.abs(spearmanValue) * 100}
           color={`${getCorrColor(spearmanValue)}.7`}
           tooltip="Spearman ρ für Rangfolge-Übereinstimmung. Ziel: ≥ 0.80"
+        />
+
+        <MetricValueWithProgress
+          icon={IconChartLine}
+          label="Pearson r"
+          value={pearsonValue.toFixed(3)}
+          progressValue={Math.abs(pearsonValue) * 100}
+          color={`${getCorrColor(pearsonValue)}.7`}
+          tooltip="Pearson r für lineare Korrelation. Ziel: ≥ 0.80"
         />
 
         <Paper p="sm" withBorder radius="md">
