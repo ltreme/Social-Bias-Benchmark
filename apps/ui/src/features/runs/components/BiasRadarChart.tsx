@@ -1339,26 +1339,54 @@ export function BiasRadarGrid({ traitCategories, categoryDeltasMap, loadingState
                   const firstCat = categoriesToShow[0];
                   const attributes = allScoresByCategory[firstCat] || [];
                   
+                  // Find max values for each metric per category
+                  const maxValuesByCategory: Record<string, {
+                    maxAbsCliffsD: number;
+                    avgAbsCliffsD: number;
+                    significantCount: number;
+                    biasScore: number;
+                  }> = {};
+                  
+                  categoriesToShow.forEach(cat => {
+                    const scores = allScoresByCategory[cat] || [];
+                    const validScores = scores.filter(s => s.hasData);
+                    
+                    maxValuesByCategory[cat] = {
+                      maxAbsCliffsD: validScores.length > 0 ? Math.max(...validScores.map(s => s.maxAbsCliffsD)) : 0,
+                      avgAbsCliffsD: validScores.length > 0 ? Math.max(...validScores.map(s => s.avgAbsCliffsD)) : 0,
+                      significantCount: validScores.length > 0 ? Math.max(...validScores.map(s => s.significantCount)) : 0,
+                      biasScore: validScores.length > 0 ? Math.max(...validScores.map(s => s.biasScore)) : 0,
+                    };
+                  });
+                  
                   return attributes.map((attr, idx) => (
                     <Table.Tr key={attr.attribute}>
                       <Table.Td fw={500}>{attr.label}</Table.Td>
                       {categoriesToShow.map(cat => {
                         const scores = allScoresByCategory[cat] || [];
                         const score = scores[idx];
+                        const maxVals = maxValuesByCategory[cat];
+                        
+                        // Check if this row has the max value for each metric
+                        const isMaxAbsCliffsD = score?.hasData && score.maxAbsCliffsD === maxVals.maxAbsCliffsD && maxVals.maxAbsCliffsD > 0;
+                        const isMaxAvgCliffsD = score?.hasData && score.avgAbsCliffsD === maxVals.avgAbsCliffsD && maxVals.avgAbsCliffsD > 0;
+                        const isMaxSigCount = score?.hasData && score.significantCount === maxVals.significantCount && maxVals.significantCount > 0;
+                        const isMaxScore = score?.hasData && score.biasScore === maxVals.biasScore && maxVals.biasScore > 0;
+                        
                         return (
                           <React.Fragment key={cat}>
                             {selectedColumns.has('maxAbsCliffsD') && (
-                              <Table.Td style={{ textAlign: 'right' }}>
+                              <Table.Td style={{ textAlign: 'right' }} fw={isMaxAbsCliffsD ? 700 : undefined}>
                                 {score?.hasData ? score.maxAbsCliffsD.toFixed(3) : '–'}
                               </Table.Td>
                             )}
                             {selectedColumns.has('avgAbsCliffsD') && (
-                              <Table.Td style={{ textAlign: 'right' }}>
+                              <Table.Td style={{ textAlign: 'right' }} fw={isMaxAvgCliffsD ? 700 : undefined}>
                                 {score?.hasData ? score.avgAbsCliffsD.toFixed(3) : '–'}
                               </Table.Td>
                             )}
                             {selectedColumns.has('significantCount') && (
-                              <Table.Td style={{ textAlign: 'right' }}>
+                              <Table.Td style={{ textAlign: 'right' }} fw={isMaxSigCount ? 700 : undefined}>
                                 {score?.hasData ? `${score.significantCount}/${score.totalCategories}` : '–'}
                               </Table.Td>
                             )}
@@ -1369,6 +1397,7 @@ export function BiasRadarGrid({ traitCategories, categoryDeltasMap, loadingState
                                     size="sm"
                                     variant="filled"
                                     color={getBiasColorName(score.biasScore)}
+                                    fw={isMaxScore ? 700 : 500}
                                   >
                                     {score.biasScore.toFixed(0)}
                                   </Badge>
