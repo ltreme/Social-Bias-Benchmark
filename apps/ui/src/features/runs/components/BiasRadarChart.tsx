@@ -1,9 +1,11 @@
-import { Paper, Text, Title, Group, ThemeIcon, Tooltip, ActionIcon, Badge, Stack, Table, Collapse, Button, Alert, Box, SimpleGrid, Skeleton, useComputedColorScheme, SegmentedControl } from '@mantine/core';
-import { IconRadar2, IconInfoCircle, IconChevronDown, IconChevronUp, IconAlertCircle, IconFilter } from '@tabler/icons-react';
+import { Paper, Text, Title, Group, ThemeIcon, Tooltip, ActionIcon, Badge, Stack, Table, Collapse, Button, Alert, Box, SimpleGrid, Skeleton, useComputedColorScheme, SegmentedControl, Modal, Checkbox } from '@mantine/core';
+import { IconRadar2, IconInfoCircle, IconChevronDown, IconChevronUp, IconAlertCircle, IconFilter, IconTable, IconDownload, IconCopy } from '@tabler/icons-react';
 import { useState } from 'react';
+import React from 'react';
 import { ChartPanel } from '../../../components/ChartPanel';
 import { translateCategory } from './GroupComparisonHeatmap';
 import { InlineMath, BlockMath } from 'react-katex';
+import { notifications } from '@mantine/notifications';
 
 // Dark/Light mode chart colors
 const chartColors = {
@@ -828,6 +830,8 @@ type BiasRadarGridProps = {
 
 export function BiasRadarGrid({ traitCategories, categoryDeltasMap, loadingStates }: BiasRadarGridProps) {
   const [showMethodology, setShowMethodology] = useState(false);
+  const [showTableModal, setShowTableModal] = useState(false);
+  const [selectedColumns, setSelectedColumns] = useState(new Set(['attribute', 'maxAbsCliffsD', 'avgAbsCliffsD', 'significantCount', 'biasScore', 'maxDeltaCategory']));
   
   // Categories to show (all + individual categories)
   const categoriesToShow = ['__all', ...traitCategories.slice(0, 2)]; // Show max 3: All + 2 categories
@@ -835,6 +839,195 @@ export function BiasRadarGrid({ traitCategories, categoryDeltasMap, loadingState
   const getCategoryLabel = (cat: string) => {
     if (cat === '__all') return '🔍 Alle Traits';
     return cat.charAt(0).toUpperCase() + cat.slice(1);
+  };
+  
+  // Calculate scores for all categories for table display
+  const allScoresByCategory = categoriesToShow.reduce((acc, cat) => {
+    const deltasData = categoryDeltasMap[cat] || [];
+    acc[cat] = calculateAttributeScores(deltasData);
+    return acc;
+  }, {} as Record<string, AttributeScore[]>);
+  
+  // Generate CSV export
+  const handleDownloadCSV = () => {
+    const rows: string[] = [];
+    
+    // Header
+    const headers: string[] = [];
+    if (selectedColumns.has('attribute')) headers.push('Merkmal');
+    
+    // Add category columns based on selection
+    categoriesToShow.forEach(cat => {
+      const label = getCategoryLabel(cat);
+      if (selectedColumns.has('maxAbsCliffsD')) headers.push(`${label} - Max |d|`);
+      if (selectedColumns.has('avgAbsCliffsD')) headers.push(`${label} - Avg |d|`);
+      if (selectedColumns.has('significantCount')) headers.push(`${label} - Sig.`);
+      if (selectedColumns.has('biasScore')) headers.push(`${label} - Score`);
+      if (selectedColumns.has('maxDeltaCategory')) headers.push(`${label} - Max Kategorie`);
+    });
+    
+    rows.push(headers.join(','));
+    
+    // Get all attributes (from first category)
+    const firstCat = categoriesToShow[0];
+    const attributes = allScoresByCategory[firstCat] || [];
+    
+    // Data rows
+    attributes.forEach((_, idx) => {
+      const cols: string[] = [];
+      
+      if (selectedColumns.has('attribute')) {
+        cols.push(attributes[idx].label);
+      }
+      
+      categoriesToShow.forEach(cat => {
+        const scores = allScoresByCategory[cat] || [];
+        const score = scores[idx];
+        
+        if (score) {
+          if (selectedColumns.has('maxAbsCliffsD')) {
+            cols.push(score.hasData ? score.maxAbsCliffsD.toFixed(3) : '–');
+          }
+          if (selectedColumns.has('avgAbsCliffsD')) {
+            cols.push(score.hasData ? score.avgAbsCliffsD.toFixed(3) : '–');
+          }
+          if (selectedColumns.has('significantCount')) {
+            cols.push(score.hasData ? `${score.significantCount}/${score.totalCategories}` : '–');
+          }
+          if (selectedColumns.has('biasScore')) {
+            cols.push(score.hasData ? score.biasScore.toFixed(0) : '–');
+          }
+          if (selectedColumns.has('maxDeltaCategory')) {
+            cols.push(score.hasData ? `"${translateCategory(score.maxDeltaCategory)}"` : '–');
+          }
+        }
+      });
+      
+      rows.push(cols.join(','));
+    });
+    
+    const csv = rows.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'bias_intensity.csv';
+    link.click();
+    
+    notifications.show({
+      title: 'Export erfolgreich',
+      message: 'CSV-Datei wurde heruntergeladen',
+      color: 'green',
+    });
+  };
+  
+  // Generate LaTeX export and copy to clipboard
+  const handleCopyLatex = async () => {
+    const lines: string[] = [];
+    
+    // Count columns for table format
+    let colCount = selectedColumns.has('attribute') ? 1 : 0;
+    colCount += categoriesToShow.length * (
+      (selectedColumns.has('maxAbsCliffsD') ? 1 : 0) +
+      (selectedColumns.has('avgAbsCliffsD') ? 1 : 0) +
+      (selectedColumns.has('significantCount') ? 1 : 0) +
+      (selectedColumns.has('biasScore') ? 1 : 0) +
+      (selectedColumns.has('maxDeltaCategory') ? 1 : 0)
+    );
+    
+    // LaTeX table start
+    const colSpec = 'l' + 'r'.repeat(colCount - 1);
+    lines.push('\\begin{table}[htbp]');
+    lines.push('\\centering');
+    lines.push('\\caption{Bias-Intensität pro Merkmal}');
+    lines.push('\\label{tab:bias_intensity}');
+    lines.push(`\\begin{tabular}{${colSpec}}`);
+    lines.push('\\toprule');
+    
+    // Header
+    const headers: string[] = [];
+    if (selectedColumns.has('attribute')) headers.push('Merkmal');
+    
+    categoriesToShow.forEach(cat => {
+      const label = getCategoryLabel(cat);
+      if (selectedColumns.has('maxAbsCliffsD')) headers.push(`${label} - Max $|d|$`);
+      if (selectedColumns.has('avgAbsCliffsD')) headers.push(`${label} - Avg $|d|$`);
+      if (selectedColumns.has('significantCount')) headers.push(`${label} - Sig.`);
+      if (selectedColumns.has('biasScore')) headers.push(`${label} - Score`);
+      if (selectedColumns.has('maxDeltaCategory')) headers.push(`${label} - Max Kategorie`);
+    });
+    
+    lines.push(headers.join(' & ') + ' \\\\');
+    lines.push('\\midrule');
+    
+    // Data rows
+    const firstCat = categoriesToShow[0];
+    const attributes = allScoresByCategory[firstCat] || [];
+    
+    attributes.forEach((_, idx) => {
+      const cols: string[] = [];
+      
+      if (selectedColumns.has('attribute')) {
+        cols.push(attributes[idx].label);
+      }
+      
+      categoriesToShow.forEach(cat => {
+        const scores = allScoresByCategory[cat] || [];
+        const score = scores[idx];
+        
+        if (score) {
+          if (selectedColumns.has('maxAbsCliffsD')) {
+            cols.push(score.hasData ? score.maxAbsCliffsD.toFixed(3) : '–');
+          }
+          if (selectedColumns.has('avgAbsCliffsD')) {
+            cols.push(score.hasData ? score.avgAbsCliffsD.toFixed(3) : '–');
+          }
+          if (selectedColumns.has('significantCount')) {
+            cols.push(score.hasData ? `${score.significantCount}/${score.totalCategories}` : '–');
+          }
+          if (selectedColumns.has('biasScore')) {
+            cols.push(score.hasData ? score.biasScore.toFixed(0) : '–');
+          }
+          if (selectedColumns.has('maxDeltaCategory')) {
+            cols.push(score.hasData ? translateCategory(score.maxDeltaCategory) : '–');
+          }
+        }
+      });
+      
+      lines.push(cols.join(' & ') + ' \\\\');
+    });
+    
+    lines.push('\\bottomrule');
+    lines.push('\\end{tabular}');
+    lines.push('\\end{table}');
+    
+    const latex = lines.join('\n');
+    
+    try {
+      await navigator.clipboard.writeText(latex);
+      notifications.show({
+        title: 'LaTeX kopiert',
+        message: 'Tabelle wurde in die Zwischenablage kopiert',
+        color: 'green',
+      });
+    } catch (err) {
+      notifications.show({
+        title: 'Fehler',
+        message: 'Konnte nicht in die Zwischenablage kopieren',
+        color: 'red',
+      });
+    }
+  };
+  
+  const toggleColumn = (col: string) => {
+    setSelectedColumns(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(col)) {
+        newSet.delete(col);
+      } else {
+        newSet.add(col);
+      }
+      return newSet;
+    });
   };
   
   return (
@@ -861,6 +1054,14 @@ export function BiasRadarGrid({ traitCategories, categoryDeltasMap, loadingState
             <Text size="sm" c="dimmed">Vergleich nach Trait-Kategorien (Cliff's Delta)</Text>
           </div>
         </Group>
+        <Button
+          leftSection={<IconTable size={16} />}
+          variant="light"
+          size="sm"
+          onClick={() => setShowTableModal(true)}
+        >
+          Tabelle anzeigen
+        </Button>
       </Group>
       
       {/* Grid of Mini Radar Charts */}
@@ -1030,6 +1231,171 @@ export function BiasRadarGrid({ traitCategories, categoryDeltasMap, loadingState
           </Paper>
         </Collapse>
       </Stack>
+      
+      {/* Table Modal */}
+      <Modal
+        opened={showTableModal}
+        onClose={() => setShowTableModal(false)}
+        size="xl"
+        title={
+          <Group gap="xs">
+            <IconTable size={20} />
+            <Text fw={600}>Bias-Intensität Tabelle</Text>
+          </Group>
+        }
+      >
+        <Stack gap="md">
+          {/* Export Controls */}
+          <Paper p="sm" withBorder radius="sm">
+            <Group justify="space-between" wrap="wrap">
+              <Text size="sm" fw={500}>Spaltenauswahl für Export:</Text>
+              <Group gap="xs">
+                <Checkbox
+                  label="Max |d|"
+                  size="xs"
+                  checked={selectedColumns.has('maxAbsCliffsD')}
+                  onChange={() => toggleColumn('maxAbsCliffsD')}
+                />
+                <Checkbox
+                  label="Avg |d|"
+                  size="xs"
+                  checked={selectedColumns.has('avgAbsCliffsD')}
+                  onChange={() => toggleColumn('avgAbsCliffsD')}
+                />
+                <Checkbox
+                  label="Sig."
+                  size="xs"
+                  checked={selectedColumns.has('significantCount')}
+                  onChange={() => toggleColumn('significantCount')}
+                />
+                <Checkbox
+                  label="Score"
+                  size="xs"
+                  checked={selectedColumns.has('biasScore')}
+                  onChange={() => toggleColumn('biasScore')}
+                />
+                <Checkbox
+                  label="Max Kategorie"
+                  size="xs"
+                  checked={selectedColumns.has('maxDeltaCategory')}
+                  onChange={() => toggleColumn('maxDeltaCategory')}
+                />
+              </Group>
+            </Group>
+            <Group gap="xs" mt="sm">
+              <Button
+                leftSection={<IconDownload size={16} />}
+                variant="light"
+                size="sm"
+                onClick={handleDownloadCSV}
+              >
+                CSV Download
+              </Button>
+              <Button
+                leftSection={<IconCopy size={16} />}
+                variant="light"
+                size="sm"
+                onClick={handleCopyLatex}
+              >
+                LaTeX kopieren
+              </Button>
+            </Group>
+          </Paper>
+          
+          {/* Data Table */}
+          <Box style={{ overflowX: 'auto' }}>
+            <Table striped withTableBorder withColumnBorders highlightOnHover>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th rowSpan={2} style={{ verticalAlign: 'middle' }}>Merkmal</Table.Th>
+                  {categoriesToShow.map(cat => {
+                    const numCols = 
+                      (selectedColumns.has('maxAbsCliffsD') ? 1 : 0) +
+                      (selectedColumns.has('avgAbsCliffsD') ? 1 : 0) +
+                      (selectedColumns.has('significantCount') ? 1 : 0) +
+                      (selectedColumns.has('biasScore') ? 1 : 0) +
+                      (selectedColumns.has('maxDeltaCategory') ? 1 : 0);
+                    return (
+                      <Table.Th key={cat} colSpan={numCols} style={{ textAlign: 'center' }}>
+                        {getCategoryLabel(cat)}
+                      </Table.Th>
+                    );
+                  })}
+                </Table.Tr>
+                <Table.Tr>
+                  {categoriesToShow.map(cat => (
+                    <React.Fragment key={cat}>
+                      {selectedColumns.has('maxAbsCliffsD') && <Table.Th style={{ textAlign: 'right' }}>Max |d|</Table.Th>}
+                      {selectedColumns.has('avgAbsCliffsD') && <Table.Th style={{ textAlign: 'right' }}>Avg |d|</Table.Th>}
+                      {selectedColumns.has('significantCount') && <Table.Th style={{ textAlign: 'right' }}>Sig.</Table.Th>}
+                      {selectedColumns.has('biasScore') && <Table.Th style={{ textAlign: 'right' }}>Score</Table.Th>}
+                      {selectedColumns.has('maxDeltaCategory') && <Table.Th>Max Kategorie</Table.Th>}
+                    </React.Fragment>
+                  ))}
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {(() => {
+                  const firstCat = categoriesToShow[0];
+                  const attributes = allScoresByCategory[firstCat] || [];
+                  
+                  return attributes.map((attr, idx) => (
+                    <Table.Tr key={attr.attribute}>
+                      <Table.Td fw={500}>{attr.label}</Table.Td>
+                      {categoriesToShow.map(cat => {
+                        const scores = allScoresByCategory[cat] || [];
+                        const score = scores[idx];
+                        return (
+                          <React.Fragment key={cat}>
+                            {selectedColumns.has('maxAbsCliffsD') && (
+                              <Table.Td style={{ textAlign: 'right' }}>
+                                {score?.hasData ? score.maxAbsCliffsD.toFixed(3) : '–'}
+                              </Table.Td>
+                            )}
+                            {selectedColumns.has('avgAbsCliffsD') && (
+                              <Table.Td style={{ textAlign: 'right' }}>
+                                {score?.hasData ? score.avgAbsCliffsD.toFixed(3) : '–'}
+                              </Table.Td>
+                            )}
+                            {selectedColumns.has('significantCount') && (
+                              <Table.Td style={{ textAlign: 'right' }}>
+                                {score?.hasData ? `${score.significantCount}/${score.totalCategories}` : '–'}
+                              </Table.Td>
+                            )}
+                            {selectedColumns.has('biasScore') && (
+                              <Table.Td style={{ textAlign: 'right' }}>
+                                {score?.hasData ? (
+                                  <Badge
+                                    size="sm"
+                                    variant="filled"
+                                    color={getBiasColorName(score.biasScore)}
+                                  >
+                                    {score.biasScore.toFixed(0)}
+                                  </Badge>
+                                ) : '–'}
+                              </Table.Td>
+                            )}
+                            {selectedColumns.has('maxDeltaCategory') && (
+                              <Table.Td>
+                                {score?.hasData ? translateCategory(score.maxDeltaCategory) : '–'}
+                              </Table.Td>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
+                    </Table.Tr>
+                  ));
+                })()}
+              </Table.Tbody>
+            </Table>
+          </Box>
+          
+          <Text size="xs" c="dimmed">
+            <b>Legende:</b> Max |d| = Maximale Cliff's Delta Effektgröße, Avg |d| = Durchschnittliche Effektgröße, 
+            Sig. = Anzahl signifikanter Kategorien (p &lt; 0.05), Score = Bias-Intensität Score (0-100)
+          </Text>
+        </Stack>
+      </Modal>
     </Paper>
   );
 }
