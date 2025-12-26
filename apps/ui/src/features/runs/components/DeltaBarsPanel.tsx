@@ -1,8 +1,11 @@
-import { Paper, Text, Title, Group, ThemeIcon, SimpleGrid, Tooltip, useMantineColorScheme, useMantineTheme } from '@mantine/core';
-import { IconArrowUp, IconArrowDown, IconMinus, IconInfoCircle } from '@tabler/icons-react';
+import { Paper, Text, Title, Group, ThemeIcon, SimpleGrid, Tooltip, useMantineColorScheme, useMantineTheme, Button } from '@mantine/core';
+import { IconArrowUp, IconArrowDown, IconMinus, IconInfoCircle, IconDownload } from '@tabler/icons-react';
+import { useRef } from 'react';
 import { ChartPanel } from '../../../components/ChartPanel';
 import { translateCategory } from './GroupComparisonHeatmap';
 import { useThemedColor } from '../../../lib/useThemeColors';
+import html2canvas from 'html2canvas-pro';
+import { notifications } from '@mantine/notifications';
 
 type DeltaRow = {
   category: string;
@@ -56,6 +59,54 @@ export function DeltaBarsPanel({ deltas, title, baseline }: { deltas?: Deltas; t
   const { colorScheme } = useMantineColorScheme();
   const theme = useMantineTheme();
   const isDark = colorScheme === 'dark';
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  const handleExportImage = async () => {
+    if (!containerRef.current) return;
+    
+    try {
+      // Hide any Plotly controls temporarily
+      const plotlyModebar = containerRef.current.querySelector('.modebar');
+      const modebarDisplay = plotlyModebar ? (plotlyModebar as HTMLElement).style.display : null;
+      if (plotlyModebar) {
+        (plotlyModebar as HTMLElement).style.display = 'none';
+      }
+      
+      const canvas = await html2canvas(containerRef.current, {
+        backgroundColor: isDark ? '#1a1b1e' : '#ffffff',
+        scale: 2,
+        logging: false,
+        useCORS: true,
+      });
+      
+      // Restore Plotly controls
+      if (plotlyModebar && modebarDisplay !== null) {
+        (plotlyModebar as HTMLElement).style.display = modebarDisplay;
+      }
+      
+      canvas.toBlob((blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `lollipop_chart_${title.replace(/\s+/g, '_')}.png`;
+        link.click();
+        URL.revokeObjectURL(url);
+      });
+      
+      notifications.show({
+        title: 'Export erfolgreich',
+        message: 'Lollipop Chart wurde als PNG heruntergeladen',
+        color: 'green',
+      });
+    } catch (error) {
+      notifications.show({
+        title: 'Export fehlgeschlagen',
+        message: 'Konnte das Bild nicht exportieren',
+        color: 'red',
+      });
+    }
+  };
 
   if (!deltas || !deltas.rows || deltas.rows.length === 0) {
     return (
@@ -172,17 +223,30 @@ export function DeltaBarsPanel({ deltas, title, baseline }: { deltas?: Deltas; t
             Mittelwertdifferenz zur Baseline{baseline ? ` (${baseline})` : ''} mit Konfidenzintervallen
           </Text>
         </div>
-        <Tooltip 
-          label="Lollipop-Chart zeigt Delta-Werte mit 95%-Konfidenzintervallen (horizontale Fehlerbalken). Ergänzt die Gruppen-Cards um statistische Unsicherheit. Grün = signifikant höher, Rot = signifikant niedriger, Grau = nicht signifikant."
-          multiline
-          w={320}
-          withArrow
-        >
-          <ThemeIcon variant="subtle" color="gray" size="sm">
-            <IconInfoCircle size={16} />
-          </ThemeIcon>
-        </Tooltip>
+        <Group gap="xs">
+          <Tooltip 
+            label="Lollipop-Chart zeigt Delta-Werte mit 95%-Konfidenzintervallen (horizontale Fehlerbalken). Ergänzt die Gruppen-Cards um statistische Unsicherheit. Grün = signifikant höher, Rot = signifikant niedriger, Grau = nicht signifikant."
+            multiline
+            w={320}
+            withArrow
+          >
+            <ThemeIcon variant="subtle" color="gray" size="sm">
+              <IconInfoCircle size={16} />
+            </ThemeIcon>
+          </Tooltip>
+          <Button
+            leftSection={<IconDownload size={16} />}
+            variant="light"
+            size="sm"
+            onClick={handleExportImage}
+          >
+            PNG Export
+          </Button>
+        </Group>
       </Group>
+      
+      {/* Exportable Content */}
+      <div ref={containerRef} style={{ padding: '8px' }}>
 
       {/* Summary Cards */}
       <SimpleGrid cols={3} spacing="xs" mb="md">
@@ -264,7 +328,11 @@ export function DeltaBarsPanel({ deltas, title, baseline }: { deltas?: Deltas; t
               font: { size: 11, color: annotationColor },
             },
           ],
-        }} 
+        }}
+        config={{
+          displayModeBar: false,
+          responsive: true,
+        }}
       />
 
       {/* Legend */}
@@ -286,6 +354,7 @@ export function DeltaBarsPanel({ deltas, title, baseline }: { deltas?: Deltas; t
       <Text size="xs" c="dimmed" mt="sm" ta="center">
         Fehlerbalken: 95%-Konfidenzintervall | Sortiert nach Effektgröße
       </Text>
+      </div>
     </Paper>
   );
 }

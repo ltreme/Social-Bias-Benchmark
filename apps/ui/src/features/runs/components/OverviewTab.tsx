@@ -1,10 +1,9 @@
-import { Card, Grid, Paper, Text, Title, Badge, Group, Stack, ThemeIcon, SimpleGrid, Tooltip, ActionIcon, SegmentedControl } from '@mantine/core';
+import { Card, Paper, Text, Title, Badge, Group, Stack, ThemeIcon, SimpleGrid, Tooltip, ActionIcon, SegmentedControl } from '@mantine/core';
 import { useState } from 'react';
 import { IconChartBar, IconAlertTriangle, IconArrowsSort, IconTarget, IconInfoCircle } from '@tabler/icons-react';
 import { ChartPanel } from '../../../components/ChartPanel';
 import { AsyncContent } from '../../../components/AsyncContent';
 import { BiasRadarGrid } from './BiasRadarChart';
-import { KruskalWallisCard } from './KruskalWallisCard';
 import { KruskalWallisByCategory } from './KruskalWallisByCategory';
 import { useThemedColor } from '../../../lib/useThemeColors';
 import type { QuickAnalysis, RunMetrics, RunDeltas } from '../api';
@@ -323,10 +322,7 @@ export function OverviewTab({
 
             {/* Kruskal-Wallis Statistical Test */}
             {runId && (
-                <>
-                    <KruskalWallisCard runId={runId} />
-                    <KruskalWallisByCategory runId={runId} />
-                </>
+                <KruskalWallisByCategory runId={runId} />
             )}
         </Stack>
     );

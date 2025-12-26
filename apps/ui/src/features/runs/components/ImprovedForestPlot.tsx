@@ -1,8 +1,10 @@
-import { Paper, Text, Title, Group, ThemeIcon, Badge, Tooltip, ActionIcon, Stack, SegmentedControl } from '@mantine/core';
-import { IconChartDots3, IconInfoCircle } from '@tabler/icons-react';
-import { useState, useMemo } from 'react';
+import { Paper, Text, Title, Group, ThemeIcon, Badge, Tooltip, ActionIcon, Stack, SegmentedControl, Button } from '@mantine/core';
+import { IconChartDots3, IconInfoCircle, IconDownload } from '@tabler/icons-react';
+import { useState, useMemo, useRef } from 'react';
 import { ChartPanel } from '../../../components/ChartPanel';
 import { translateCategory } from './GroupComparisonHeatmap';
+import html2canvas from 'html2canvas-pro';
+import { notifications } from '@mantine/notifications';
 
 type ForestRow = {
   case_id: string | number;
@@ -78,6 +80,54 @@ export function ImprovedForestPlot({
   heightPerRow?: number;
 }) {
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  const handleExportImage = async () => {
+    if (!containerRef.current) return;
+    
+    try {
+      // Hide any remaining Plotly controls temporarily
+      const plotlyModebar = containerRef.current.querySelector('.modebar');
+      const modebarDisplay = plotlyModebar ? (plotlyModebar as HTMLElement).style.display : null;
+      if (plotlyModebar) {
+        (plotlyModebar as HTMLElement).style.display = 'none';
+      }
+      
+      const canvas = await html2canvas(containerRef.current, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+        logging: false,
+        useCORS: true,
+      });
+      
+      // Restore Plotly controls
+      if (plotlyModebar && modebarDisplay !== null) {
+        (plotlyModebar as HTMLElement).style.display = modebarDisplay;
+      }
+      
+      canvas.toBlob((blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `forest_plot_${attr}.png`;
+        link.click();
+        URL.revokeObjectURL(url);
+      });
+      
+      notifications.show({
+        title: 'Export erfolgreich',
+        message: 'Forest Plot wurde als PNG heruntergeladen',
+        color: 'green',
+      });
+    } catch (error) {
+      notifications.show({
+        title: 'Export fehlgeschlagen',
+        message: 'Konnte das Bild nicht exportieren',
+        color: 'red',
+      });
+    }
+  };
   
   const primary = datasets[0];
   
@@ -290,161 +340,181 @@ export function ImprovedForestPlot({
 
   return (
     <Paper p="md" withBorder radius="md">
-      <Group justify="space-between" align="flex-start" mb="md">
-        <Group gap="xs">
-          <ThemeIcon size="lg" radius="md" variant="light" color="blue">
-            <IconChartDots3 size={20} />
-          </ThemeIcon>
-          <div>
-            <Group gap="xs">
-              <Title order={4}>Forest Plot – {attr}</Title>
-              <Tooltip 
-                label="Zeigt Effektgrößen (Delta) mit Konfidenzintervallen. Punkte außerhalb der grauen Zone (±0.1) sind praktisch bedeutsam."
-                withArrow
-                multiline
-                w={280}
-              >
-                <ActionIcon variant="subtle" color="gray" size="sm">
-                  <IconInfoCircle size={16} />
-                </ActionIcon>
-              </Tooltip>
-            </Group>
-            <Text size="sm" c="dimmed">
-              Delta vs. Baseline ({translateCategory(baseline || defaultBaseline || 'Auto')})
-            </Text>
-          </div>
+      <Stack gap="md">
+        {/* Header with Export Button */}
+        <Group justify="space-between" align="flex-start">
+          <Group gap="xs">
+            <ThemeIcon size="lg" radius="md" variant="light" color="blue">
+              <IconChartDots3 size={20} />
+            </ThemeIcon>
+            <div>
+              <Group gap="xs">
+                <Title order={4}>Forest Plot – {attr}</Title>
+                <Tooltip 
+                  label="Zeigt Effektgrößen (Delta) mit Konfidenzintervallen. Punkte außerhalb der grauen Zone (±0.1) sind praktisch bedeutsam."
+                  withArrow
+                  multiline
+                  w={280}
+                >
+                  <ActionIcon variant="subtle" color="gray" size="sm">
+                    <IconInfoCircle size={16} />
+                  </ActionIcon>
+                </Tooltip>
+              </Group>
+              <Text size="sm" c="dimmed">
+                Delta vs. Baseline ({translateCategory(baseline || defaultBaseline || 'Auto')})
+              </Text>
+            </div>
+          </Group>
+          
+          <Group gap="xs" align="flex-start">
+            <Stack gap="xs" align="flex-end">
+              <SegmentedControl
+                size="xs"
+                value={filterMode}
+                onChange={(v) => setFilterMode(v as FilterMode)}
+                data={[
+                  { value: 'all', label: 'Alle' },
+                  { value: 'significant', label: 'Nur Sig.' },
+                  { value: 'top10', label: 'Top 10' },
+                ]}
+              />
+              <Group gap="xs">
+                <Badge size="xs" variant="light" color="gray">
+                  {displayedCount} / {totalCount} Traits
+                </Badge>
+                <Tooltip label={`${significantUncorrectedCount} unkorrigiert signifikant`} withArrow>
+                  <Badge size="xs" variant="light" color="green">
+                    {significantCount} sig. (FDR)
+                  </Badge>
+                </Tooltip>
+              </Group>
+            </Stack>
+            <Button
+              leftSection={<IconDownload size={16} />}
+              variant="light"
+              size="sm"
+              onClick={handleExportImage}
+            >
+              PNG Export
+            </Button>
+          </Group>
         </Group>
         
-        <Stack gap="xs" align="flex-end">
-          <SegmentedControl
-            size="xs"
-            value={filterMode}
-            onChange={(v) => setFilterMode(v as FilterMode)}
-            data={[
-              { value: 'all', label: 'Alle' },
-              { value: 'significant', label: 'Nur Sig.' },
-              { value: 'top10', label: 'Top 10' },
-            ]}
-          />
-          <Group gap="xs">
-            <Badge size="xs" variant="light" color="gray">
-              {displayedCount} / {totalCount} Traits
-            </Badge>
-            <Tooltip label={`${significantUncorrectedCount} unkorrigiert signifikant`} withArrow>
-              <Badge size="xs" variant="light" color="green">
-                {significantCount} sig. (FDR)
-              </Badge>
-            </Tooltip>
+        {/* Exportable Content */}
+        <div ref={containerRef} style={{ padding: '16px', backgroundColor: 'var(--mantine-color-body)' }}>
+          {haveData ? (
+            <ChartPanel
+              data={traces}
+              height={height}
+              layout={{
+                shapes,
+                margin: { l: 200, r: 40, t: 10, b: 60 },
+                yaxis: { 
+                  title: { text: '' }, 
+                  automargin: true, 
+                  categoryorder: 'array', 
+                  categoryarray: [...forestLabels.slice().reverse(), '◆ OVERALL'],
+                  tickfont: { size: 11 },
+                  gridcolor: '#f1f3f5',
+                },
+                xaxis: { 
+                  title: { text: 'Delta (Effektgröße)', standoff: 10 }, 
+                  range: [-(maxAbs + pad), (maxAbs + pad)],
+                  zeroline: false,
+                  gridcolor: '#e9ecef',
+                  tickformat: '+.2f',
+                },
+                showlegend: datasets.length > 1,
+                legend: { 
+                  orientation: 'h', 
+                  y: -0.15,
+                  xanchor: 'center',
+                  x: 0.5,
+                },
+                plot_bgcolor: '#fff',
+                paper_bgcolor: '#fff',
+              }}
+              config={{
+                displayModeBar: false,
+                responsive: true,
+              }}
+            />
+          ) : (
+            <Text c="dimmed" ta="center" py="xl">
+              Keine Daten für Forest-Plot verfügbar.
+              {filterMode === 'significant' && ' Versuche "Alle" anzuzeigen.'}
+            </Text>
+          )}
+          
+          {/* Legend */}
+          <Group gap="lg" mt="md" justify="center" wrap="wrap">
+            <Group gap="xs">
+              <Text size="xs" fw={600}>⊕</Text>
+              <Text size="xs" c="dimmed">positiver Trait</Text>
+            </Group>
+            <Group gap="xs">
+              <Text size="xs" fw={600}>⊖</Text>
+              <Text size="xs" c="dimmed">negativer Trait</Text>
+            </Group>
+            <Group gap="xs">
+              <div style={{ 
+                width: 12, height: 12, 
+                backgroundColor: '#2f9e44', 
+                borderRadius: '50%',
+                border: '1px solid #fff',
+                boxShadow: '0 0 0 1px #2f9e44',
+              }} />
+              <Text size="xs" c="dimmed">Signifikant höher</Text>
+            </Group>
+            <Group gap="xs">
+              <div style={{ 
+                width: 12, height: 12, 
+                backgroundColor: '#e03131', 
+                borderRadius: '50%',
+                border: '1px solid #fff',
+                boxShadow: '0 0 0 1px #e03131',
+              }} />
+              <Text size="xs" c="dimmed">Signifikant niedriger</Text>
+            </Group>
+            <Group gap="xs">
+              <div style={{ 
+                width: 12, height: 12, 
+                backgroundColor: '#adb5bd', 
+                borderRadius: '50%',
+                border: '1px solid #fff',
+                boxShadow: '0 0 0 1px #adb5bd',
+              }} />
+              <Text size="xs" c="dimmed">Nicht signifikant</Text>
+            </Group>
+            <Group gap="xs">
+              <div style={{ 
+                width: 14, height: 14, 
+                backgroundColor: 'rgba(206, 212, 218, 0.5)', 
+                border: '1px solid #ced4da',
+              }} />
+              <Text size="xs" c="dimmed">±0.1 Zone</Text>
+            </Group>
+            {filteredPrimary?.overall?.mean != null && (
+              <Group gap="xs">
+                <div style={{ 
+                  width: 12, height: 12, 
+                  backgroundColor: '#1c7ed6', 
+                  transform: 'rotate(45deg)',
+                }} />
+                <Text size="xs" c="dimmed">Overall Effect</Text>
+              </Group>
+            )}
           </Group>
-        </Stack>
-      </Group>
-      
-      {haveData ? (
-        <ChartPanel
-          data={traces}
-          height={height}
-          layout={{
-            shapes,
-            margin: { l: 200, r: 40, t: 10, b: 60 },
-            yaxis: { 
-              title: { text: '' }, 
-              automargin: true, 
-              categoryorder: 'array', 
-              categoryarray: [...forestLabels.slice().reverse(), '◆ OVERALL'],
-              tickfont: { size: 11 },
-              gridcolor: '#f1f3f5',
-            },
-            xaxis: { 
-              title: { text: 'Delta (Effektgröße)', standoff: 10 }, 
-              range: [-(maxAbs + pad), (maxAbs + pad)],
-              zeroline: false,
-              gridcolor: '#e9ecef',
-              tickformat: '+.2f',
-            },
-            showlegend: datasets.length > 1,
-            legend: { 
-              orientation: 'h', 
-              y: -0.15,
-              xanchor: 'center',
-              x: 0.5,
-            },
-            plot_bgcolor: '#fff',
-            paper_bgcolor: '#fff',
-          }}
-        />
-      ) : (
-        <Text c="dimmed" ta="center" py="xl">
-          Keine Daten für Forest-Plot verfügbar.
-          {filterMode === 'significant' && ' Versuche "Alle" anzuzeigen.'}
-        </Text>
-      )}
-      
-      {/* Legend */}
-      <Group gap="lg" mt="md" justify="center" wrap="wrap">
-        <Group gap="xs">
-          <Text size="xs" fw={600}>⊕</Text>
-          <Text size="xs" c="dimmed">positiver Trait</Text>
-        </Group>
-        <Group gap="xs">
-          <Text size="xs" fw={600}>⊖</Text>
-          <Text size="xs" c="dimmed">negativer Trait</Text>
-        </Group>
-        <Group gap="xs">
-          <div style={{ 
-            width: 12, height: 12, 
-            backgroundColor: '#2f9e44', 
-            borderRadius: '50%',
-            border: '1px solid #fff',
-            boxShadow: '0 0 0 1px #2f9e44',
-          }} />
-          <Text size="xs" c="dimmed">Signifikant höher</Text>
-        </Group>
-        <Group gap="xs">
-          <div style={{ 
-            width: 12, height: 12, 
-            backgroundColor: '#e03131', 
-            borderRadius: '50%',
-            border: '1px solid #fff',
-            boxShadow: '0 0 0 1px #e03131',
-          }} />
-          <Text size="xs" c="dimmed">Signifikant niedriger</Text>
-        </Group>
-        <Group gap="xs">
-          <div style={{ 
-            width: 12, height: 12, 
-            backgroundColor: '#adb5bd', 
-            borderRadius: '50%',
-            border: '1px solid #fff',
-            boxShadow: '0 0 0 1px #adb5bd',
-          }} />
-          <Text size="xs" c="dimmed">Nicht signifikant</Text>
-        </Group>
-        <Group gap="xs">
-          <div style={{ 
-            width: 14, height: 14, 
-            backgroundColor: 'rgba(206, 212, 218, 0.5)', 
-            border: '1px solid #ced4da',
-          }} />
-          <Text size="xs" c="dimmed">±0.1 Zone</Text>
-        </Group>
-        {filteredPrimary?.overall?.mean != null && (
-          <Group gap="xs">
-            <div style={{ 
-              width: 12, height: 12, 
-              backgroundColor: '#1c7ed6', 
-              transform: 'rotate(45deg)',
-            }} />
-            <Text size="xs" c="dimmed">Overall Effect</Text>
+          
+          {/* Significance notation */}
+          <Group gap="md" mt="xs" justify="center">
+            <Text size="xs" c="dimmed">
+              <b>Signifikanz:</b> * p &lt; 0.05, ** p &lt; 0.01, *** p &lt; 0.001 (FDR-korrigiert) | † p &lt; 0.05 (unkorrigiert)
+            </Text>
           </Group>
-        )}
-      </Group>
-      
-      {/* Significance notation */}
-      <Group gap="md" mt="xs" justify="center">
-        <Text size="xs" c="dimmed">
-          <b>Signifikanz:</b> * p &lt; 0.05, ** p &lt; 0.01, *** p &lt; 0.001 (FDR-korrigiert) | † p &lt; 0.05 (unkorrigiert)
-        </Text>
-      </Group>
+        </div>
+      </Stack>
     </Paper>
   );
 }

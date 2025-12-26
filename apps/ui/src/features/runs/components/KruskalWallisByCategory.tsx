@@ -1,58 +1,33 @@
-import { Card, Table, Badge, Text, Group, Stack, ThemeIcon, Tooltip, Paper, Skeleton, Title, Tabs, Button, Menu } from '@mantine/core';
-import { IconChartBar, IconInfoCircle, IconDownload, IconChevronDown, IconCopy } from '@tabler/icons-react';
+import { Card, Table, Badge, Text, Group, Stack, ThemeIcon, Tooltip, Paper, Skeleton, Title, Tabs, Button, Checkbox } from '@mantine/core';
+import { IconChartBar, IconInfoCircle, IconDownload, IconCopy } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchKruskalWallisByCategory, fetchKruskalWallisByCategoryLatex, type KruskalWallisByCategoryResponse } from '../api';
+import { 
+  fetchKruskalWallisByCategory, 
+  fetchKruskalWallis,
+  type KruskalWallisByCategoryResponse,
+  type KruskalWallisResponse 
+} from '../api';
 import { useThemedColor } from '../../../lib/useThemeColors';
 import { notifications } from '@mantine/notifications';
-
-const ATTR_LABELS: Record<string, string> = {
-  gender: 'Geschlecht',
-  age_group: 'Altersgruppe',
-  religion: 'Religion',
-  sexuality: 'Sexualität',
-  marriage_status: 'Familienstand',
-  education: 'Bildung',
-  origin_subregion: 'Herkunft',
-  migration_status: 'Migration',
-};
+import { useState } from 'react';
+import { 
+  ATTR_LABELS, 
+  formatPValue,
+  formatPValueForLatex, 
+  getSignificanceStars, 
+  getEffectColor,
+  type ColumnKey,
+  LATEX_COLUMN_DEFS,
+  LATEX_COLUMN_HEADERS
+} from '../utils/kruskalWallisHelpers';
 
 const CATEGORY_LABELS: Record<string, string> = {
+  alle: 'Alle',
   kompetenz: 'Kompetenz',
   waerme: 'Wärme',
   moral: 'Moral',
   gesellschaftlich: 'Gesellschaftlich',
   Unbekannt: 'Unbekannt',
-};
-
-/**
- * Format p-value with scientific notation for very small values.
- */
-function formatPValue(p: number | null | undefined): string {
-  if (p == null) return '—';
-  if (p < 0.001) return p.toExponential(2);
-  return p.toFixed(4);
-}
-
-/**
- * Get significance stars based on p-value.
- */
-function getSignificanceStars(p: number | null | undefined): string {
-  if (p == null) return '';
-  if (p < 0.001) return '***';
-  if (p < 0.01) return '**';
-  if (p < 0.05) return '*';
-  return '';
-}
-
-/**
- * Get effect size color based on eta_squared.
- */
-function getEffectColor(eta_squared: number | null | undefined): string {
-  if (eta_squared == null) return 'gray';
-  if (eta_squared >= 0.14) return 'red';
-  if (eta_squared >= 0.06) return 'orange';
-  if (eta_squared >= 0.01) return 'yellow';
-  return 'gray';
 }
 
 type KruskalWallisByCategoryProps = {
@@ -76,7 +51,15 @@ type CategoryResults = {
   };
 };
 
-function KruskalTable({ data }: { data: CategoryResults }) {
+function KruskalTable({ 
+  data, 
+  selectedColumns, 
+  onToggleColumn 
+}: { 
+  data: CategoryResults;
+  selectedColumns: Set<ColumnKey>;
+  onToggleColumn: (col: ColumnKey) => void;
+}) {
   const { attributes } = data;
 
   if (attributes.length === 0) {
@@ -91,18 +74,96 @@ function KruskalTable({ data }: { data: CategoryResults }) {
     <Table striped withTableBorder withColumnBorders highlightOnHover>
       <Table.Thead>
         <Table.Tr>
-          <Table.Th>Attribut</Table.Th>
-          <Table.Th style={{ textAlign: 'right' }}>H-Statistik</Table.Th>
-          <Table.Th style={{ textAlign: 'right' }}>p-Wert</Table.Th>
-          <Table.Th style={{ textAlign: 'center' }}>Sig.</Table.Th>
-          <Table.Th style={{ textAlign: 'right' }}>
-            <Tooltip label="Eta-Quadrat Effektstärke (klein ≥ 0.01, mittel ≥ 0.06, groß ≥ 0.14)" withArrow>
-              <span>η²</span>
-            </Tooltip>
+          <Table.Th>
+            <Group gap={4}>
+              <Checkbox 
+                size="xs" 
+                checked={selectedColumns.has('attribute')}
+                onChange={() => onToggleColumn('attribute')}
+                aria-label="Spalte Attribut für Export auswählen"
+              />
+              <span>Attribut</span>
+            </Group>
           </Table.Th>
-          <Table.Th>Effekt</Table.Th>
-          <Table.Th style={{ textAlign: 'right' }}>n Gruppen</Table.Th>
-          <Table.Th style={{ textAlign: 'right' }}>n Total</Table.Th>
+          <Table.Th style={{ textAlign: 'right' }}>
+            <Group gap={4} justify="flex-end">
+              <Checkbox 
+                size="xs" 
+                checked={selectedColumns.has('h_stat')}
+                onChange={() => onToggleColumn('h_stat')}
+                aria-label="Spalte H-Statistik für Export auswählen"
+              />
+              <span>H-Statistik</span>
+            </Group>
+          </Table.Th>
+          <Table.Th style={{ textAlign: 'right' }}>
+            <Group gap={4} justify="flex-end">
+              <Checkbox 
+                size="xs" 
+                checked={selectedColumns.has('p_value')}
+                onChange={() => onToggleColumn('p_value')}
+                aria-label="Spalte p-Wert für Export auswählen"
+              />
+              <span>p-Wert</span>
+            </Group>
+          </Table.Th>
+          <Table.Th style={{ textAlign: 'center' }}>
+            <Group gap={4} justify="center">
+              <Checkbox 
+                size="xs" 
+                checked={selectedColumns.has('sig')}
+                onChange={() => onToggleColumn('sig')}
+                aria-label="Spalte Signifikanz für Export auswählen"
+              />
+              <span>Sig.</span>
+            </Group>
+          </Table.Th>
+          <Table.Th style={{ textAlign: 'right' }}>
+            <Group gap={4} justify="flex-end">
+              <Checkbox 
+                size="xs" 
+                checked={selectedColumns.has('eta_squared')}
+                onChange={() => onToggleColumn('eta_squared')}
+                aria-label="Spalte Eta-Quadrat für Export auswählen"
+              />
+              <Tooltip label="Eta-Quadrat Effektstärke (klein ≥ 0.01, mittel ≥ 0.06, groß ≥ 0.14)" withArrow>
+                <span>η²</span>
+              </Tooltip>
+            </Group>
+          </Table.Th>
+          <Table.Th>
+            <Group gap={4}>
+              <Checkbox 
+                size="xs" 
+                checked={selectedColumns.has('effect')}
+                onChange={() => onToggleColumn('effect')}
+                aria-label="Spalte Effekt für Export auswählen"
+              />
+              <span>Effekt</span>
+            </Group>
+          </Table.Th>
+          <Table.Th style={{ textAlign: 'right' }}>
+            <Group gap={4} justify="flex-end">
+              <Checkbox 
+                size="xs" 
+                checked={selectedColumns.has('n_groups')}
+                onChange={() => onToggleColumn('n_groups')}
+                aria-label="Spalte n Gruppen für Export auswählen"
+              />
+              <span>n Gruppen</span>
+            </Group>
+          </Table.Th>
+          <Table.Th style={{ textAlign: 'right' }}>
+            <Group gap={4} justify="flex-end">
+              <Checkbox 
+                size="xs" 
+                checked={selectedColumns.has('n_total')}
+                onChange={() => onToggleColumn('n_total')}
+                aria-label="Spalte n Total für Export auswählen"
+              />
+              <span>n Total</span>
+            </Group>
+          </Table.Th>
         </Table.Tr>
       </Table.Thead>
       <Table.Tbody>
@@ -167,14 +228,37 @@ function KruskalTable({ data }: { data: CategoryResults }) {
 
 export function KruskalWallisByCategory({ runId }: KruskalWallisByCategoryProps) {
   const getColor = useThemedColor();
+  const [activeTab, setActiveTab] = useState<string | null>('alle');
+  
+  // Column selection state - all enabled by default
+  const [selectedColumns, setSelectedColumns] = useState<Set<ColumnKey>>(
+    new Set<ColumnKey>(['attribute', 'h_stat', 'p_value', 'sig', 'eta_squared', 'effect', 'n_groups', 'n_total'])
+  );
 
-  const { data, isLoading, error } = useQuery<KruskalWallisByCategoryResponse>({
+  const toggleColumn = (col: ColumnKey) => {
+    const newSet = new Set(selectedColumns);
+    if (newSet.has(col)) {
+      newSet.delete(col);
+    } else {
+      newSet.add(col);
+    }
+    setSelectedColumns(newSet);
+  };
+
+  // Fetch both omnibus and by-category data
+  const { data: omnibusData, isLoading: omnibusLoading, error: omnibusError } = useQuery<KruskalWallisResponse>({
+    queryKey: ['run', runId, 'kruskal'],
+    queryFn: () => fetchKruskalWallis(runId),
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const { data, isLoading, error} = useQuery<KruskalWallisByCategoryResponse>({
     queryKey: ['run', runId, 'kruskal-by-category'],
     queryFn: () => fetchKruskalWallisByCategory(runId),
     staleTime: 1000 * 60 * 5, // 5 min
   });
 
-  if (isLoading) {
+  if (isLoading || omnibusLoading) {
     return (
       <Card shadow="sm" radius="md" withBorder>
         <Stack gap="md">
@@ -186,18 +270,28 @@ export function KruskalWallisByCategory({ runId }: KruskalWallisByCategoryProps)
     );
   }
 
-  if (error || !data || !data.categories) {
+  if (error || !data || !data.categories || omnibusError || !omnibusData) {
     return (
       <Card shadow="sm" radius="md" withBorder>
-        <Text c="dimmed">Fehler beim Laden der Kruskal-Wallis-Daten pro Trait-Kategorie</Text>
+        <Text c="dimmed">Fehler beim Laden der Kruskal-Wallis-Daten</Text>
       </Card>
     );
   }
 
   const { categories } = data;
-  const categoryKeys = Object.keys(categories).sort();
+  
+  // Combine omnibus data with category data
+  const allCategories: Record<string, CategoryResults> = {
+    alle: {
+      attributes: omnibusData.attributes,
+      summary: omnibusData.summary,
+    },
+    ...categories,
+  };
+  
+  const categoryKeys = ['alle', ...Object.keys(categories).sort()];
 
-  if (categoryKeys.length === 0) {
+  if (categoryKeys.length === 1) { // Only 'alle' tab
     return (
       <Card shadow="sm" radius="md" withBorder>
         <Text c="dimmed" ta="center">Keine Trait-Kategorien verfügbar</Text>
@@ -205,29 +299,140 @@ export function KruskalWallisByCategory({ runId }: KruskalWallisByCategoryProps)
     );
   }
 
-  // Calculate overall stats
-  const totalSignificant = Object.values(categories).reduce(
-    (sum, cat) => sum + cat.summary.significant_count, 
-    0
-  );
-  const totalTests = Object.values(categories).reduce(
-    (sum, cat) => sum + cat.summary.total, 
-    0
-  );
+  // Calculate overall stats (from omnibus data)
+  const totalSignificant = omnibusData.summary.significant_count;
+  const totalTests = omnibusData.summary.total;
 
-  const handleDownloadCSV = (traitCategory?: string) => {
-    const categoryParam = traitCategory ? `?trait_category=${traitCategory}` : '';
-    const url = `${import.meta.env.VITE_API_BASE_URL || ''}/runs/${runId}/kruskal-by-category/csv${categoryParam}`;
-    window.open(url, '_blank');
+  const handleDownloadCSV = () => {
+    if (!activeTab) return;
+    
+    const catData = allCategories[activeTab];
+    if (!catData) return;
+    
+    // Build CSV rows
+    const rows: string[][] = [];
+    
+    // Header row
+    const header: string[] = [];
+    if (selectedColumns.has('attribute')) header.push('Attribut');
+    if (selectedColumns.has('h_stat')) header.push('H-Statistik');
+    if (selectedColumns.has('p_value')) header.push('p-Wert');
+    if (selectedColumns.has('sig')) header.push('Signifikanz');
+    if (selectedColumns.has('eta_squared')) header.push('η²');
+    if (selectedColumns.has('effect')) header.push('Effekt');
+    if (selectedColumns.has('n_groups')) header.push('n Gruppen');
+    if (selectedColumns.has('n_total')) header.push('n Total');
+    
+    if (header.length === 0) {
+      notifications.show({
+        title: 'Keine Spalten ausgewählt',
+        message: 'Bitte wählen Sie mindestens eine Spalte für den Export aus.',
+        color: 'orange',
+      });
+      return;
+    }
+    
+    rows.push(header);
+
+    // Data rows
+    catData.attributes.forEach(attr => {
+      const row: string[] = [];
+      if (selectedColumns.has('attribute')) row.push(ATTR_LABELS[attr.attribute] || attr.attribute);
+      if (selectedColumns.has('h_stat')) row.push(attr.h_stat?.toFixed(2) ?? '—');
+      if (selectedColumns.has('p_value')) row.push(formatPValue(attr.p_value));
+      if (selectedColumns.has('sig')) row.push(attr.significant ? getSignificanceStars(attr.p_value) : 'n.s.');
+      if (selectedColumns.has('eta_squared')) row.push(attr.eta_squared?.toFixed(4) ?? '—');
+      if (selectedColumns.has('effect')) row.push(attr.effect_interpretation);
+      if (selectedColumns.has('n_groups')) row.push(String(attr.n_groups ?? '—'));
+      if (selectedColumns.has('n_total')) row.push(String(attr.n_total ?? '—'));
+      rows.push(row);
+    });
+
+    // Generate CSV
+    const csvContent = rows.map(row => row.map(cell => {
+      if (cell.includes(',') || cell.includes('"') || cell.includes('\n')) {
+        return `"${cell.replace(/"/g, '""')}"`
+;
+      }
+      return cell;
+    }).join(',')).join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    const categoryLabel = CATEGORY_LABELS[activeTab] || activeTab;
+    link.download = `kruskal_${categoryLabel}_run_${runId}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    
+    notifications.show({
+      title: 'CSV heruntergeladen',
+      message: `Die Kruskal-Wallis Tabelle für ${categoryLabel} wurde heruntergeladen.`,
+      color: 'green',
+    });
   };
 
-  const handleCopyLatex = async (traitCategory?: string) => {
+  const handleCopyLatex = async () => {
+    if (!activeTab) return;
+    
+    const catData = allCategories[activeTab];
+    if (!catData) return;
+    
+    const selectedCols = Array.from(selectedColumns);
+    
+    if (selectedCols.length === 0) {
+      notifications.show({
+        title: 'Keine Spalten ausgewählt',
+        message: 'Bitte wählen Sie mindestens eine Spalte für den Export aus.',
+        color: 'orange',
+      });
+      return;
+    }
+    
     try {
-      const latex = await fetchKruskalWallisByCategoryLatex(runId, traitCategory);
+      const categoryLabel = CATEGORY_LABELS[activeTab] || activeTab;
+      
+      const lines: string[] = [
+        '\\begin{table}[htbp]',
+        '\\centering',
+        `\\caption{Kruskal-Wallis Tests: ${categoryLabel} (Run ${runId})}`,
+        `\\label{tab:kruskal_${activeTab}_run_${runId}}`,
+      ];
+
+      // Column spec
+      const colSpec: string[] = selectedCols.map(col => LATEX_COLUMN_DEFS[col]);
+      lines.push(`\\begin{tabular}{${colSpec.join('')}}`);
+      lines.push('\\toprule');
+
+      // Header row
+      const headerCols: string[] = selectedCols.map(col => LATEX_COLUMN_HEADERS[col]);
+      lines.push(headerCols.join(' & ') + ' \\\\');
+      lines.push('\\midrule');
+
+      // Data rows
+      catData.attributes.forEach(attr => {
+        const cols: string[] = [];
+        if (selectedColumns.has('attribute')) cols.push(ATTR_LABELS[attr.attribute] || attr.attribute);
+        if (selectedColumns.has('h_stat')) cols.push(attr.h_stat?.toFixed(2) ?? '—');
+        if (selectedColumns.has('p_value')) cols.push(formatPValueForLatex(attr.p_value));
+        if (selectedColumns.has('sig')) cols.push(attr.significant ? getSignificanceStars(attr.p_value) : 'n.s.');
+        if (selectedColumns.has('eta_squared')) cols.push(attr.eta_squared?.toFixed(4) ?? '—');
+        if (selectedColumns.has('effect')) cols.push(attr.effect_interpretation);
+        if (selectedColumns.has('n_groups')) cols.push(String(attr.n_groups ?? '—'));
+        if (selectedColumns.has('n_total')) cols.push(String(attr.n_total ?? '—'));
+        lines.push(cols.join(' & ') + ' \\\\');
+      });
+
+      lines.push('\\bottomrule');
+      lines.push('\\end{tabular}');
+      lines.push('\\end{table}');
+
+      const latex = lines.join('\n');
       await navigator.clipboard.writeText(latex);
+      
       notifications.show({
         title: 'LaTeX kopiert',
-        message: 'Die LaTeX-Tabelle wurde in die Zwischenablage kopiert.',
+        message: `Die LaTeX-Tabelle für ${categoryLabel} wurde kopiert.`,
         color: 'green',
       });
     } catch (error) {
@@ -249,77 +454,35 @@ export function KruskalWallisByCategory({ runId }: KruskalWallisByCategoryProps)
               <IconChartBar size={20} />
             </ThemeIcon>
             <div>
-              <Title order={5}>Kruskal-Wallis pro Trait-Kategorie</Title>
+              <Title order={5}>Kruskal-Wallis Tests</Title>
               <Text size="sm" c="dimmed">
-                Gruppenunterschiede je Trait-Kategorie (Kompetenz, Wärme, etc.)
+                Gruppenunterschiede nach demografischen Merkmalen
               </Text>
             </div>
           </Group>
           <Group gap="xs">
-            <Menu shadow="md" width={220}>
-              <Menu.Target>
-                <Button
-                  variant="light"
-                  size="xs"
-                  leftSection={<IconDownload size={16} />}
-                  rightSection={<IconChevronDown size={14} />}
-                >
-                  CSV
-                </Button>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Label>CSV Export</Menu.Label>
-                <Menu.Item
-                  leftSection={<IconDownload size={14} />}
-                  onClick={() => handleDownloadCSV()}
-                >
-                  Alle Kategorien
-                </Menu.Item>
-                <Menu.Divider />
-                {categoryKeys.map((catKey) => (
-                  <Menu.Item
-                    key={catKey}
-                    leftSection={<IconDownload size={14} />}
-                    onClick={() => handleDownloadCSV(catKey)}
-                  >
-                    {CATEGORY_LABELS[catKey] || catKey}
-                  </Menu.Item>
-                ))}
-              </Menu.Dropdown>
-            </Menu>
-            <Menu shadow="md" width={220}>
-              <Menu.Target>
-                <Button
-                  variant="light"
-                  size="xs"
-                  leftSection={<IconCopy size={16} />}
-                  rightSection={<IconChevronDown size={14} />}
-                >
-                  LaTeX
-                </Button>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Label>LaTeX Export</Menu.Label>
-                <Menu.Item
-                  leftSection={<IconCopy size={14} />}
-                  onClick={() => handleCopyLatex()}
-                >
-                  Alle Kategorien
-                </Menu.Item>
-                <Menu.Divider />
-                {categoryKeys.map((catKey) => (
-                  <Menu.Item
-                    key={catKey}
-                    leftSection={<IconCopy size={14} />}
-                    onClick={() => handleCopyLatex(catKey)}
-                  >
-                    {CATEGORY_LABELS[catKey] || catKey}
-                  </Menu.Item>
-                ))}
-              </Menu.Dropdown>
-            </Menu>
+            <Tooltip label="CSV der aktiven Kategorie herunterladen" withArrow>
+              <Button
+                variant="light"
+                size="xs"
+                leftSection={<IconDownload size={16} />}
+                onClick={handleDownloadCSV}
+              >
+                CSV
+              </Button>
+            </Tooltip>
+            <Tooltip label="LaTeX-Tabelle der aktiven Kategorie kopieren" withArrow>
+              <Button
+                variant="light"
+                size="xs"
+                leftSection={<IconCopy size={16} />}
+                onClick={handleCopyLatex}
+              >
+                LaTeX
+              </Button>
+            </Tooltip>
             <Tooltip 
-              label="Zeigt Kruskal-Wallis Tests für jede Trait-Kategorie separat. So können Sie sehen, ob demografische Unterschiede nur bei bestimmten Trait-Typen auftreten."
+              label="Der Kruskal-Wallis H-Test prüft, ob sich die Antwortverteilungen zwischen den Gruppen eines Attributs signifikant unterscheiden. η² gibt die Effektstärke an."
               withArrow 
               multiline 
               w={300}
@@ -330,6 +493,13 @@ export function KruskalWallisByCategory({ runId }: KruskalWallisByCategoryProps)
             </Tooltip>
           </Group>
         </Group>
+
+        {/* Column Selection Hint */}
+        <Paper p="xs" bg={getColor('blue').bg} radius="sm">
+          <Text size="xs" c="dimmed">
+            💡 Tipp: Klicke auf die Checkboxen in den Spaltenüberschriften, um Spalten für den CSV/LaTeX-Export auszuwählen.
+          </Text>
+        </Paper>
 
         {/* Overall Summary Badge */}
         <Group>
@@ -346,10 +516,10 @@ export function KruskalWallisByCategory({ runId }: KruskalWallisByCategoryProps)
         </Group>
 
         {/* Tabs per Trait Category */}
-        <Tabs defaultValue={categoryKeys[0]}>
+        <Tabs value={activeTab || categoryKeys[0]} onChange={setActiveTab}>
           <Tabs.List>
             {categoryKeys.map((catKey) => {
-              const catData = categories[catKey];
+              const catData = allCategories[catKey];
               const label = CATEGORY_LABELS[catKey] || catKey;
               const hasSignificant = catData.summary.significant_count > 0;
               
@@ -372,7 +542,7 @@ export function KruskalWallisByCategory({ runId }: KruskalWallisByCategoryProps)
           </Tabs.List>
 
           {categoryKeys.map((catKey) => {
-            const catData = categories[catKey];
+            const catData = allCategories[catKey];
             return (
               <Tabs.Panel key={catKey} value={catKey} pt="md">
                 <Stack gap="md">
@@ -390,7 +560,11 @@ export function KruskalWallisByCategory({ runId }: KruskalWallisByCategoryProps)
                   </Group>
 
                   {/* Table */}
-                  <KruskalTable data={catData} />
+                  <KruskalTable 
+                    data={catData} 
+                    selectedColumns={selectedColumns}
+                    onToggleColumn={toggleColumn}
+                  />
                 </Stack>
               </Tabs.Panel>
             );
