@@ -68,11 +68,40 @@ function formatDuration(ms?: number | null) {
   return `${(ms / 1000).toFixed(1)} s`;
 }
 
+function extractModelShortName(modelName: string): string {
+  // Extract short name from model name pattern: "org/Name-Version-..." -> "Name"
+  const match = modelName.match(/\/([^-]+)/);
+  return match ? match[1] : modelName;
+}
+
+function getRunOption(run: { include_rationale: boolean; system_prompt?: string | null }): string {
+  if (run.include_rationale) return 'Rationale';
+  if (run.system_prompt) return 'Prompt';
+  return 'Baseline';
+}
+
 export function RunDetailPage() {
   const { runId } = useParams({ from: '/runs/$runId' });
   const idNum = Number(runId);
   const getColor = useThemedColor();
   const { data: run, isLoading: isLoadingRun } = useRun(idNum);
+
+  // Set dynamic document title
+  useEffect(() => {
+    if (run) {
+      const shortModel = extractModelShortName(run.model_name);
+      const option = getRunOption(run);
+      document.title = `${run.id} - ${shortModel} - ${option}`;
+    } else {
+      document.title = `${runId}`;
+    }
+    
+    // Reset to default on unmount
+    return () => {
+      document.title = 'Benchmark Dashboard';
+    };
+  }, [run, runId]);
+  
   const warmup = useRunWarmup(idNum);
   const warmStatus = warmup.status.data;
   const warmState = warmStatus?.status ?? (warmup.status.isError ? 'error' : warmup.status.isLoading ? 'running' : 'idle');
