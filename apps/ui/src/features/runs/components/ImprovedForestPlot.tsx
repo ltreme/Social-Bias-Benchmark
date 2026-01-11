@@ -2,7 +2,7 @@ import { Paper, Text, Title, Group, ThemeIcon, Badge, Tooltip, ActionIcon, Stack
 import { IconChartDots3, IconInfoCircle, IconDownload } from '@tabler/icons-react';
 import { useState, useMemo, useRef } from 'react';
 import { ChartPanel } from '../../../components/ChartPanel';
-import { translateCategory } from './GroupComparisonHeatmap';
+import { translateCategory } from '../utils/kruskalWallisHelpers';
 import html2canvas from 'html2canvas-pro';
 import { notifications } from '@mantine/notifications';
 

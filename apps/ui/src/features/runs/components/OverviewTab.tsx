@@ -6,7 +6,7 @@ import { AsyncContent } from '../../../components/AsyncContent';
 import { BiasRadarGrid } from './BiasRadarChart';
 import { KruskalWallisByCategory } from './KruskalWallisByCategory';
 import { useThemedColor } from '../../../lib/useThemeColors';
-import type { QuickAnalysis, RunMetrics, RunDeltas } from '../api';
+import type { QuickAnalysis, RunMetrics, RunDeltas, OrderMetrics } from '../api';
 
 type DeltasQueryResult = {
   data?: RunDeltas;
@@ -32,6 +32,8 @@ type OverviewTabProps = {
     radarCategoryDeltasMap?: Record<string, DeltasData>;
     /** Loading states per category */
     radarLoadingStates?: Record<string, boolean>;
+    /** Full order metrics (all pairs) */
+    orderMetrics?: OrderMetrics | null;
 };
 
 function formatRating(value: number | null | undefined): string {
@@ -55,6 +57,7 @@ export function OverviewTab({
     radarTraitCategories,
     radarCategoryDeltasMap,
     radarLoadingStates,
+    orderMetrics,
 }: OverviewTabProps) {
     const getColor = useThemedColor();
     const orderSample = quickAnalysis?.order_consistency_sample;
@@ -205,10 +208,10 @@ export function OverviewTab({
                                         </ThemeIcon>
                                         <div>
                                             <Text size="xs" c={getColor('violet').label} tt="uppercase" fw={600} lh={1}>
-                                                RMA{orderSample?.is_sample ? ' (Sample)' : ''}
+                                                RMA
                                             </Text>
                                             <Text size="md" fw={700} c={getColor('violet').text} lh={1.2}>
-                                                {formatRating(orderSample?.rma)}
+                                                {formatPercent(orderMetrics?.rma?.exact_rate ?? orderSample?.rma)}
                                             </Text>
                                         </div>
                                     </Group>
@@ -234,10 +237,10 @@ export function OverviewTab({
                                         </ThemeIcon>
                                         <div>
                                             <Text size="xs" c={getColor('violet').label} tt="uppercase" fw={600} lh={1}>
-                                                MAE{orderSample?.is_sample ? ' (Sample)' : ''}
+                                                MAE
                                             </Text>
                                             <Text size="md" fw={700} c={getColor('violet').text} lh={1.2}>
-                                                {formatRating(orderSample?.mae)}
+                                                {formatRating(orderMetrics?.rma?.mae ?? orderSample?.mae)}
                                             </Text>
                                         </div>
                                     </Group>

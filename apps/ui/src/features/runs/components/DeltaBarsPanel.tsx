@@ -2,7 +2,7 @@ import { Paper, Text, Title, Group, ThemeIcon, SimpleGrid, Tooltip, useMantineCo
 import { IconArrowUp, IconArrowDown, IconMinus, IconInfoCircle, IconDownload } from '@tabler/icons-react';
 import { useRef } from 'react';
 import { ChartPanel } from '../../../components/ChartPanel';
-import { translateCategory } from './GroupComparisonHeatmap';
+import { translateCategory } from '../utils/kruskalWallisHelpers';
 import { useThemedColor } from '../../../lib/useThemeColors';
 import html2canvas from 'html2canvas-pro';
 import { notifications } from '@mantine/notifications';

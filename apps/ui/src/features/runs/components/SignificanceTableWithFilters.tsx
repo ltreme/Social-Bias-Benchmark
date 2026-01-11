@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchRunDeltas, type RunDeltas } from '../api';
 import { SignificanceTable } from './SignificanceTable';
 import { AsyncContent } from '../../../components/AsyncContent';
-import { translateCategory } from './GroupComparisonHeatmap';
+import { translateCategory } from '../utils/kruskalWallisHelpers';
 
 type SignificanceTableWithFiltersProps = {
   runId: number;

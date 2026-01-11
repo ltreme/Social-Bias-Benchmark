@@ -12,6 +12,7 @@ import { notifications } from '@mantine/notifications';
 import { useState } from 'react';
 import { 
   ATTR_LABELS, 
+  CATEGORY_LABELS,
   formatPValue,
   formatPValueForLatex, 
   getSignificanceStars, 
@@ -20,15 +21,6 @@ import {
   LATEX_COLUMN_DEFS,
   LATEX_COLUMN_HEADERS
 } from '../utils/kruskalWallisHelpers';
-
-const CATEGORY_LABELS: Record<string, string> = {
-  alle: 'Alle',
-  kompetenz: 'Kompetenz',
-  waerme: 'Wärme',
-  moral: 'Moral',
-  gesellschaftlich: 'Gesellschaftlich',
-  Unbekannt: 'Unbekannt',
-}
 
 type KruskalWallisByCategoryProps = {
   runId: number;

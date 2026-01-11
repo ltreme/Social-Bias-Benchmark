@@ -3,7 +3,7 @@ import { IconChartBar, IconInfoCircle, IconChartDots3, IconChartBar as IconChart
 import { AsyncContent } from '../../../components/AsyncContent';
 import { DeltaBarsPanel } from './DeltaBarsPanel';
 import { ImprovedForestPlot } from './ImprovedForestPlot';
-import { translateCategory } from './GroupComparisonHeatmap';
+import { translateCategory } from '../utils/kruskalWallisHelpers';
 import { SignificanceTableWithFilters } from './SignificanceTableWithFilters';
 import { useThemedColor } from '../../../lib/useThemeColors';
 import type { RunDeltas } from '../api';

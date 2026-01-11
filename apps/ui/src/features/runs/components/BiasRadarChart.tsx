@@ -3,7 +3,7 @@ import { IconRadar2, IconInfoCircle, IconChevronDown, IconChevronUp, IconAlertCi
 import { useState } from 'react';
 import React from 'react';
 import { ChartPanel } from '../../../components/ChartPanel';
-import { translateCategory } from './GroupComparisonHeatmap';
+import { translateCategory } from '../utils/kruskalWallisHelpers';
 import { InlineMath, BlockMath } from 'react-katex';
 import { notifications } from '@mantine/notifications';
 

@@ -522,6 +522,7 @@ export function RunDetailPage() {
               radarTraitCategories={traitCategoryOptions}
               radarCategoryDeltasMap={radarCategoryDeltasMap}
               radarLoadingStates={radarLoadingStates}
+              orderMetrics={order.data}
             />
           </Tabs.Panel>
 

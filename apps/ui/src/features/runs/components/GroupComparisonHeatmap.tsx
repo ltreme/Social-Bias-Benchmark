@@ -1,69 +1,7 @@
 import { Paper, Text, Title, Group, ThemeIcon, Tooltip, ActionIcon, Badge, Progress, Stack } from '@mantine/core';
 import { IconGridDots, IconInfoCircle, IconArrowUp, IconArrowDown } from '@tabler/icons-react';
 import { useThemeColors } from '../../../lib/useThemeColors';
-
-// Category translations for better readability
-const CATEGORY_TRANSLATIONS: Record<string, string> = {
-  // Gender
-  'male': 'Männlich',
-  'female': 'Weiblich',
-  'diverse': 'Divers',
-  // Age groups (developmental stages)
-  '0-9': 'Kindheit (0-9)',
-  '10-19': 'Adoleszenz (10-19)',
-  '20-29': 'Emerging Adulthood (20-29)',
-  '30-44': 'Early Adulthood (30-44)',
-  '45-64': 'Middle Adulthood (45-64)',
-  '65+': 'Older Adulthood (65+)',
-  'unknown': 'Unbekannt',
-  // Religion
-  'Christians': 'Christen',
-  'Muslims': 'Muslime',
-  'Buddhists': 'Buddhisten',
-  'Hindus': 'Hindus',
-  'Jews': 'Juden',
-  'Religiously_unaffiliated': 'Konfessionslos',
-  'Other_religions': 'Andere Religionen',
-  // Migration
-  'with_migration': 'Mit Migrationshintergrund',
-  'without_migration': 'Ohne Migrationshintergrund',
-  // Sexuality
-  'heterosexual': 'Heterosexuell',
-  'bisexual': 'Bisexuell',
-  'homosexual': 'Homosexuell',
-  'nan': 'Keine Angabe',
-  // Marriage status
-  'single': 'Ledig',
-  'married': 'Verheiratet',
-  'divorced': 'Geschieden',
-  'widowed': 'Verwitwet',
-  // Education (German labels from DB)
-  'Hauptschulabschluss': 'Hauptschule',
-  'mittleren Schulabschluss': 'Realschule',
-  'Fachhochschulreife': 'Fachhochschulreife',
-  'Hochschulreife': 'Abitur',
-  'ohne Schulabschluss': 'Kein Abschluss',
-  'Volksschulabschluss': 'Volksschule',
-  // Regions
-  'Northern Europe': 'Nordeuropa',
-  'Western Europe': 'Westeuropa',
-  'Eastern Europe': 'Osteuropa',
-  'Southern Europe': 'Südeuropa',
-  'Northern Africa': 'Nordafrika',
-  'Sub-Saharan Africa': 'Subsahara-Afrika',
-  'Western Asia': 'Westasien',
-  'Southern Asia': 'Südasien',
-  'South-Eastern Asia': 'Südostasien',
-  'Eastern Asia': 'Ostasien',
-  'Central Asia': 'Zentralasien',
-  'Northern America': 'Nordamerika',
-  'Latin America and the Caribbean': 'Lateinamerika',
-  'Australia and New Zealand': 'Ozeanien',
-};
-
-export function translateCategory(category: string): string {
-  return CATEGORY_TRANSLATIONS[category] || category;
-}
+import { translateCategory } from '../utils/kruskalWallisHelpers';
 
 type DeltaRow = {
   category: string;

@@ -2,6 +2,7 @@ import { useState, Fragment } from 'react';
 import { Table, Group, ActionIcon, Collapse, Text, Badge, Button, Tooltip, Checkbox, Paper } from '@mantine/core';
 import { IconChevronDown, IconChevronRight, IconDownload, IconCopy } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
+import { translateCategory } from '../utils/kruskalWallisHelpers';
 
 type Row = {
   category: string;
@@ -74,7 +75,7 @@ export function SignificanceTable({
     // Data rows
     rows.forEach(r => {
       const row: string[] = [];
-      if (selectedColumns.has('category')) row.push(r.category || '');
+      if (selectedColumns.has('category')) row.push(translateCategory(r.category || ''));
       if (selectedColumns.has('n')) row.push(String(r.count ?? ''));
       if (selectedColumns.has('mean')) row.push(fmt(r.mean));
       if (selectedColumns.has('delta')) row.push(fmt(r.delta, 3));
@@ -149,7 +150,7 @@ export function SignificanceTable({
       // Data rows
       rows.forEach(r => {
         const cols: string[] = [];
-        if (selectedColumns.has('category')) cols.push(r.category || '');
+        if (selectedColumns.has('category')) cols.push(translateCategory(r.category || ''));
         if (selectedColumns.has('n')) cols.push(String(r.count ?? '—'));
         if (selectedColumns.has('mean')) cols.push(fmt(r.mean));
         if (selectedColumns.has('delta')) cols.push(fmt(r.delta, 3));
@@ -324,7 +325,7 @@ export function SignificanceTable({
                     >
                       {isOpen ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
                     </ActionIcon>
-                    <Text>{r.category}</Text>
+                    <Text>{translateCategory(r.category)}</Text>
                   </Group>
                 </Table.Td>
                 <Table.Td style={{ textAlign: 'right' }}>{r.count ?? '—'}</Table.Td>
