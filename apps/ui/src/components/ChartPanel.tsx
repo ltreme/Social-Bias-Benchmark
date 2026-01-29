@@ -7,6 +7,7 @@ type ChartPanelProps = {
     data: Partial<Plotly.Data>[];
     layout?: Partial<Plotly.Layout>;
     height?: number;
+    config?: Partial<Plotly.Config>;
 };
 
 // Dark mode color palette for Plotly
@@ -28,7 +29,7 @@ const lightModeColors = {
     zerolinecolor: 'rgba(0,0,0,0.2)',
 };
 
-export function ChartPanel({ title, data, layout, height }: ChartPanelProps) {
+export function ChartPanel({ title, data, layout, height, config }: ChartPanelProps) {
     const colorScheme = useComputedColorScheme('light');
     const isDark = colorScheme === 'dark';
     const colors = isDark ? darkModeColors : lightModeColors;
@@ -77,7 +78,7 @@ export function ChartPanel({ title, data, layout, height }: ChartPanelProps) {
                 layout={themedLayout}
                 style={{ width: '100%', height: height ? `${height}px` : '420px' }}
                 useResizeHandler
-                config={{ 
+                config={config || { 
                     displayModeBar: true,
                     displaylogo: false,
                 }}

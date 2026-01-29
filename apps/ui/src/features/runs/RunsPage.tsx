@@ -164,6 +164,7 @@ export function RunsPage() {
                     <ActionIcon 
                         variant="light" 
                         component={Link}
+                        // @ts-ignore - TanStack Router typing issue
                         to="/runs/$runId"
                         params={{ runId: String(row.original.id) }}
                         target="_blank"

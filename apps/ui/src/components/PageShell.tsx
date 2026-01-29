@@ -24,16 +24,18 @@ export function PageShell() {
         >
             <AppShell.Header>
                 <Group h="100%" px="md" justify="space-between">
-                    <Group gap="xs" align="center" wrap="nowrap" component={Link} to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
-                        <img
-                            src="/equibench-icon-48x48.png"
-                            alt="EquiBench logo"
+                    <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
+                        <Group gap="xs" align="center" wrap="nowrap">
+                            <img
+                                src="/equibench-icon-48x48.png"
+                                alt="EquiBench logo"
                             width={32}
                             height={32}
-                            style={{ display: 'block' }}
-                        />
-                        <strong>Equi-Bench</strong>
-                    </Group>
+                                style={{ display: 'block' }}
+                            />
+                            <strong>Equi-Bench</strong>
+                        </Group>
+                    </Link>
                     <Tabs 
                         value={getActiveTab()} 
                         onChange={(value) => {
