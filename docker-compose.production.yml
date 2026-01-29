@@ -42,6 +42,9 @@ services:
       PYTHONUNBUFFERED: "1"
       PYTHONDONTWRITEBYTECODE: "1"
       
+      # Production Mode (disables file logging)
+      PRODUCTION: "true"
+      
       # Database Configuration (Production)
       DB_URL: postgresql+pool://sbb:${POSTGRES_PASSWORD:-change_me_in_production}@postgres:5432/sbb?max_connections=64&stale_timeout=60
       
