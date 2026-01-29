@@ -64,10 +64,12 @@ def load_benchmark_dataframe(cfg: BenchQuery) -> pd.DataFrame:
     """Load benchmark results joined with persona demographics.
 
     Columns: dataset_id, persona_uuid, case_id, model_name, rating, age, gender,
-            origin_region, religion, sexuality, marriage_status, education, occupation
+            origin_region, religion, sexuality, marriage_status, education, occupation, occupation_category
     """
     _ensure_db(cfg.db_url)
     db = get_db()
+
+    from backend.infrastructure.storage.models import Occupation
 
     q = (
         BenchmarkResult.select(
@@ -82,6 +84,7 @@ def load_benchmark_dataframe(cfg: BenchQuery) -> pd.DataFrame:
             Persona.gender,
             Persona.education,
             Persona.occupation,
+            Occupation.category.alias("occupation_category"),
             Persona.marriage_status,
             Persona.migration_status,
             Persona.religion,
@@ -96,6 +99,9 @@ def load_benchmark_dataframe(cfg: BenchQuery) -> pd.DataFrame:
         .switch(BenchmarkResult)
         .join(Persona, on=(BenchmarkResult.persona_uuid_id == Persona.uuid))
         .join(Country, pw.JOIN.LEFT_OUTER, on=(Persona.origin_id == Country.id))
+        .join(
+            Occupation, pw.JOIN.LEFT_OUTER, on=(Persona.occupation == Occupation.job_de)
+        )
         .join(
             BenchmarkRun,
             pw.JOIN.LEFT_OUTER,
@@ -990,6 +996,7 @@ def kruskal_wallis_by_trait_category(
             "sexuality",
             "marriage_status",
             "education",
+            "occupation_category",
             "origin_subregion",
             "migration_status",
         ]

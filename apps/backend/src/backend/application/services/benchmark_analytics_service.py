@@ -94,6 +94,8 @@ class BenchmarkAnalyticsService:
                 "sexuality",
                 "marriage_status",
                 "education",
+                "occupation",
+                "occupation_category",
                 "migration_status",
             ]
         }
@@ -274,6 +276,7 @@ class BenchmarkAnalyticsService:
             "sexuality",
             "marriage_status",
             "education",
+            "occupation_category",
         ]
         results = {}
         for attr in attributes:
@@ -297,6 +300,7 @@ class BenchmarkAnalyticsService:
             "sexuality",
             "marriage_status",
             "education",
+            "occupation_category",
         ]
         results = {}
         for attr in attributes:

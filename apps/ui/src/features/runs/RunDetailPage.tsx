@@ -30,6 +30,8 @@ const ATTRS = [
   { value: 'sexuality', label: 'Sexualität' },
   { value: 'marriage_status', label: 'Familienstand' },
   { value: 'education', label: 'Bildung' },
+  { value: 'occupation', label: 'Beruf' },
+  { value: 'occupation_category', label: 'Berufskategorie' },
   { value: 'origin_subregion', label: 'Herkunft-Subregion' },
 ];
 
@@ -198,6 +200,8 @@ export function RunDetailPage() {
     sexuality: metrics?.attributes?.sexuality?.categories || [],
     marriage_status: metrics?.attributes?.marriage_status?.categories || [],
     education: metrics?.attributes?.education?.categories || [],
+    occupation: metrics?.attributes?.occupation?.categories || [],
+    occupation_category: metrics?.attributes?.occupation_category?.categories || [],
   };
   const traitCategorySummary = metrics?.trait_categories?.summary || [];
   const traitCategoryOptions = traitCategorySummary.map((c) => c.category);
@@ -254,6 +258,8 @@ export function RunDetailPage() {
     { a: 'sexuality', q: { data: allDeltas?.data?.sexuality, isLoading: loadingAllDeltas, isError: errorAllDeltas, error: allDeltasError } },
     { a: 'marriage_status', q: { data: allDeltas?.data?.marriage_status, isLoading: loadingAllDeltas, isError: errorAllDeltas, error: allDeltasError } },
     { a: 'education', q: { data: allDeltas?.data?.education, isLoading: loadingAllDeltas, isError: errorAllDeltas, error: allDeltasError } },
+    { a: 'occupation', q: { data: allDeltas?.data?.occupation, isLoading: loadingAllDeltas, isError: errorAllDeltas, error: allDeltasError } },
+    { a: 'occupation_category', q: { data: allDeltas?.data?.occupation_category, isLoading: loadingAllDeltas, isError: errorAllDeltas, error: allDeltasError } },
   ];
 
   // Helper to build deltasData array from raw API response
@@ -266,6 +272,8 @@ export function RunDetailPage() {
     { a: 'sexuality', q: { data: data?.data?.sexuality, isLoading, isError: false, error: null } },
     { a: 'marriage_status', q: { data: data?.data?.marriage_status, isLoading, isError: false, error: null } },
     { a: 'education', q: { data: data?.data?.education, isLoading, isError: false, error: null } },
+    { a: 'occupation', q: { data: data?.data?.occupation, isLoading, isError: false, error: null } },
+    { a: 'occupation_category', q: { data: data?.data?.occupation_category, isLoading, isError: false, error: null } },
   ];
 
   // Radar chart category map for grid display

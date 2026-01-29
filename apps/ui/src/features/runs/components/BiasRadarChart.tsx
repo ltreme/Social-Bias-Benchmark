@@ -90,6 +90,8 @@ const ATTR_LABELS: Record<string, string> = {
   sexuality: 'Sexualität',
   marriage_status: 'Familienstand',
   education: 'Bildung',
+  occupation: 'Beruf',
+  occupation_category: 'Berufskategorie',
   origin_subregion: 'Herkunft',
   migration_status: 'Migration',
 };

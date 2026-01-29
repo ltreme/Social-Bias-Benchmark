@@ -15,6 +15,8 @@ const ATTRS = [
     { value: 'sexuality', label: 'Sexualität', icon: '🌈', description: 'Vergleich nach sexueller Orientierung' },
     { value: 'marriage_status', label: 'Familienstand', icon: '💍', description: 'Vergleich nach Familienstand' },
     { value: 'education', label: 'Bildung', icon: '🎓', description: 'Vergleich nach Bildungsniveau' },
+    { value: 'occupation', label: 'Beruf', icon: '💼', description: 'Vergleich nach spezifischen Berufen' },
+    { value: 'occupation_category', label: 'Berufskategorie', icon: '🏢', description: 'Vergleich nach Berufsgruppen (z.B. Gesundheit, IT, Handwerk)' },
     { value: 'origin_subregion', label: 'Herkunft', icon: '🌍', description: 'Vergleich nach Herkunftsregion' },
     { value: 'migration_status', label: 'Migration', icon: '✈️', description: 'Vergleich nach Migrationshintergrund' },
 ];
