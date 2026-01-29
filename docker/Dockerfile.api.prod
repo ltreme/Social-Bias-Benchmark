@@ -24,18 +24,20 @@ COPY apps/backend/src /app/apps/backend/src
 # Copy language files (required for translations)
 COPY lang /app/lang
 
+# Non-root user for security - create user first
+RUN useradd -m -u 1000 appuser
+
 # Create required directories for production
 # In production we use PostgreSQL, so data/ doesn't need to be copied from build context
 RUN mkdir -p /app/logs /app/data && \
+    chown -R appuser:appuser /app && \
     chmod 755 /app/data && \
-    chmod 777 /app/logs
+    chmod 755 /app/logs
 
 # Set Python path
 ENV PYTHONPATH=/app/apps/backend/src
 
-# Non-root user for security
-RUN useradd -m -u 1000 appuser && \
-    chown -R appuser:appuser /app
+# Switch to non-root user
 USER appuser
 
 # Health check
