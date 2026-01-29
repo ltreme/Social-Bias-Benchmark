@@ -1,5 +1,5 @@
-import { Alert, Badge, Button, Group, Paper, Popover, SimpleGrid, Spoiler, Stack, Text, ThemeIcon, Title, Progress, Tabs, Menu, ActionIcon, Tooltip } from '@mantine/core';
-import { IconDownload, IconChartBar, IconAlertTriangle, IconPlayerPlay, IconCheck, IconX, IconFileTypePdf, IconRefresh, IconRobot, IconFileCode } from '@tabler/icons-react';
+import { Alert, Badge, Button, Group, Paper, Stack, Text, ThemeIcon, Title, Progress, Tabs, ActionIcon, Tooltip } from '@mantine/core';
+import { IconDownload, IconAlertTriangle, IconPlayerPlay, IconCheck, IconX, IconFileTypePdf, IconRefresh, IconFileCode } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';

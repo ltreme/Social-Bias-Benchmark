@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ActionIcon, Badge, Button, Card, Group, NumberInput, Table, Text, TextInput, Title, Tooltip, useComputedColorScheme } from '@mantine/core';
 import { useCreateModel, useDeleteModel, useModelsAdmin, useUpdateModel } from './hooks';
-import { IconCpu, IconPlus, IconServer, IconTrash, IconDeviceSdCard, IconTerminal2, IconCalendar } from '@tabler/icons-react';
+import { IconCpu, IconPlus, IconTrash, IconDeviceSdCard, IconTerminal2, IconCalendar } from '@tabler/icons-react';
 import { useReadOnly } from '../../contexts/ReadOnlyContext';
 
 // Helper to format date nicely

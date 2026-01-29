@@ -7,7 +7,7 @@ import { DataTable } from '../../components/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { Dataset } from './api';
 import { DatasetBuilderModal } from './DatasetBuilderModal';
-import { IconCornerDownRight, IconDatabase, IconDotsVertical, IconExternalLink, IconPlus, IconPlayerPlay, IconSearch, IconSitemap, IconUsers, IconTable } from '@tabler/icons-react';
+import { IconCornerDownRight, IconDatabase, IconDotsVertical, IconExternalLink, IconPlus, IconPlayerPlay, IconSearch, IconSitemap, IconUsers } from '@tabler/icons-react';
 
 // Extended type with depth for hierarchical display
 type DatasetWithDepth = Dataset & { _depth: number };

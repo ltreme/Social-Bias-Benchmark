@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import apiClient from '../lib/apiClient';
+import { api } from '../lib/apiClient';
 
 interface ReadOnlyContextType {
   isReadOnly: boolean;
@@ -26,7 +26,7 @@ export const ReadOnlyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const response = await apiClient.get<{ read_only_mode: boolean }>('/config');
+        const response = await api.get<{ read_only_mode: boolean }>('/config');
         setIsReadOnly(response.data.read_only_mode);
       } catch (error) {
         console.error('Failed to fetch application config:', error);

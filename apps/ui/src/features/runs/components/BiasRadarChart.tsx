@@ -1,7 +1,6 @@
 import { Paper, Text, Title, Group, ThemeIcon, Tooltip, ActionIcon, Badge, Stack, Table, Collapse, Button, Alert, Box, SimpleGrid, Skeleton, useComputedColorScheme, SegmentedControl, Modal, Checkbox } from '@mantine/core';
 import { IconRadar2, IconInfoCircle, IconChevronDown, IconChevronUp, IconAlertCircle, IconFilter, IconTable, IconDownload, IconCopy } from '@tabler/icons-react';
 import { useState } from 'react';
-import React from 'react';
 import { ChartPanel } from '../../../components/ChartPanel';
 import { translateCategory } from '../utils/kruskalWallisHelpers';
 import { InlineMath, BlockMath } from 'react-katex';
