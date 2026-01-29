@@ -27,6 +27,10 @@ async def read_only_middleware(request: Request, call_next):
         if "/export" in request.url.path:
             return await call_next(request)
 
+        # Allow warm-cache endpoint (read operation that pre-computes analytics)
+        if "/warm-cache" in request.url.path:
+            return await call_next(request)
+
         # Block all other write operations
         if request.method in ["POST", "PUT", "DELETE", "PATCH"]:
             return JSONResponse(
