@@ -17,7 +17,9 @@ apps/ui/dist/
 
 # Outputs and data (mounted at runtime)
 out/
+# data/ directory is excluded - Production uses PostgreSQL
 data/
+# lang/ is needed for translations, so NOT excluded
 
 # OS/editor
 .DS_Store

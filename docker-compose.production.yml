@@ -1,4 +1,5 @@
-version: '3.8'
+# Production Docker Compose Configuration
+# Social Bias Benchmark - Read-Only Mode enabled for public deployment
 
 services:
   postgres:

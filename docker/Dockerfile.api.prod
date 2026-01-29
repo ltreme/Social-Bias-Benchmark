@@ -20,11 +20,15 @@ RUN pip install --no-cache-dir -r /app/apps/backend/requirements.txt
 
 # Copy application code
 COPY apps/backend/src /app/apps/backend/src
-COPY data /app/data
+
+# Copy language files (required for translations)
 COPY lang /app/lang
 
-# Create logs directory
-RUN mkdir -p /app/logs && chmod 777 /app/logs
+# Create required directories for production
+# In production we use PostgreSQL, so data/ doesn't need to be copied from build context
+RUN mkdir -p /app/logs /app/data && \
+    chmod 755 /app/data && \
+    chmod 777 /app/logs
 
 # Set Python path
 ENV PYTHONPATH=/app/apps/backend/src
