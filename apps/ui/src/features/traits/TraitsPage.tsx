@@ -7,8 +7,10 @@ import { useTraits, useCreateTrait, useDeleteTrait, useUpdateTrait, useTraitCate
 import { TraitModal } from './TraitModal';
 import type { TraitItem } from './api';
 import { IconList, IconPlus, IconDownload, IconUpload, IconFilter, IconCategory, IconMoodSmile, IconToggleLeft, IconDotsVertical, IconEdit, IconTrash, IconLink } from '@tabler/icons-react';
+import { useReadOnly } from '../../contexts/ReadOnlyContext';
 
 export function TraitsPage() {
+  const { isReadOnly } = useReadOnly();
   const { data = [], isLoading } = useTraits();
   const { data: categories = [], isLoading: catsLoading } = useTraitCategories();
   const createM = useCreateTrait();
@@ -125,9 +127,10 @@ export function TraitsPage() {
               }
             );
           }}
-          disabled={pendingToggleId === row.original.id}
+          disabled={pendingToggleId === row.original.id || isReadOnly}
           aria-label="Aktivstatus umschalten"
           color="teal"
+          title={isReadOnly ? 'Nicht verfügbar im Read-Only-Modus' : undefined}
         />
       ),
     },
@@ -164,6 +167,7 @@ export function TraitsPage() {
             <Menu.Item 
               leftSection={<IconEdit size={14} />}
               onClick={() => setModal({ mode: 'edit', row: row.original })}
+              disabled={isReadOnly}
             >
               Bearbeiten
             </Menu.Item>
@@ -171,7 +175,7 @@ export function TraitsPage() {
             <Menu.Item 
               color="red" 
               leftSection={<IconTrash size={14} />}
-              disabled={row.original.linked_results_n > 0} 
+              disabled={row.original.linked_results_n > 0 || isReadOnly} 
               onClick={async () => {
                 if (!confirm(`Trait ${row.original.id} wirklich löschen?`)) return;
                 try { await deleteM.mutateAsync(row.original.id); } catch { /* handled globally */ }
@@ -208,6 +212,8 @@ export function TraitsPage() {
             leftSection={<IconDownload size={16} />}
             onClick={() => fileInputRef.current?.click()} 
             loading={importCsvM.isPending}
+            disabled={isReadOnly}
+            title={isReadOnly ? 'Nicht verfügbar im Read-Only-Modus' : undefined}
           >
             CSV importieren
           </Button>
@@ -215,6 +221,8 @@ export function TraitsPage() {
             color="violet"
             leftSection={<IconPlus size={16} />}
             onClick={() => setModal({ mode: 'create' })}
+            disabled={isReadOnly}
+            title={isReadOnly ? 'Nicht verfügbar im Read-Only-Modus' : undefined}
           >
             Trait hinzufügen
           </Button>

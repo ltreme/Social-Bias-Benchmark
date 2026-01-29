@@ -5,6 +5,7 @@ import { useAttrgenRuns, useStartAttrgen } from '../hooks';
 import { useAddTask } from '../../queue/hooks';
 import { NumericTextInput } from './NumericTextInput';
 import { useThemedColor } from '../../../lib/useThemeColors';
+import { useReadOnly } from '../../../contexts/ReadOnlyContext';
 
 type Props = {
   opened: boolean;
@@ -15,6 +16,7 @@ type Props = {
 };
 
 export function AttrGenModal({ opened, onClose, datasetId, availableModels, onStarted }: Props) {
+  const { isReadOnly } = useReadOnly();
   const runsList = useAttrgenRuns(datasetId);
   const startAttr = useStartAttrgen();
   const addTask = useAddTask();
@@ -187,7 +189,8 @@ export function AttrGenModal({ opened, onClose, datasetId, availableModels, onSt
             leftSection={executionMode === 'immediate' ? <IconPlayerPlay size={16} /> : <IconClockPlay size={16} />}
             color={executionMode === 'immediate' ? 'green' : 'blue'}
             loading={startAttr.isPending || addTask.isPending}
-            disabled={!modelName && !resumeRunId}
+            disabled={(!modelName && !resumeRunId) || isReadOnly}
+            title={isReadOnly ? 'Nicht verfügbar im Read-Only-Modus' : undefined}
             onClick={async () => {
             try {
               // ensure committed

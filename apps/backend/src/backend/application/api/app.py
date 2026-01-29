@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,6 +12,7 @@ from backend.infrastructure.queue.executor import QueueExecutor
 
 # Ensure repo src paths are on sys.path before importing routers
 from . import utils as _api_utils  # noqa: F401  (triggers sys.path setup)
+from .middleware.read_only import read_only_middleware
 from .routers.attrgen import router as attrgen_router
 from .routers.datasets import router as datasets_router
 from .routers.models_admin import router as models_admin_router
@@ -51,9 +53,18 @@ def create_app() -> FastAPI:
         expose_headers=["Content-Disposition"],
     )
 
+    # Add read-only middleware
+    app.middleware("http")(read_only_middleware)
+
     @app.get("/health")
     def health() -> dict:
         return {"ok": True}
+
+    @app.get("/config")
+    def get_config() -> dict:
+        """Get application configuration."""
+        read_only = os.getenv("READ_ONLY_MODE", "false").lower() in ("true", "1", "yes")
+        return {"read_only_mode": read_only, "version": "0.2.0"}
 
     app.include_router(datasets_router)
     app.include_router(runs_router)

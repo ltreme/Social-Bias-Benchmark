@@ -5,6 +5,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { IconPlayerPlay, IconUsers, IconTrash, IconCheck, IconX, IconLoader, IconClock } from '@tabler/icons-react';
 import type { AttrgenRun } from '../api';
 import { useDeleteAttrgenRun } from '../hooks';
+import { useReadOnly } from '../../../contexts/ReadOnlyContext';
 
 type Props = {
   datasetId: number;
@@ -13,6 +14,7 @@ type Props = {
 };
 
 export function AttrgenRunsTable({ datasetId, runs, onRequestBenchmark }: Props) {
+  const { isReadOnly } = useReadOnly();
   const delAttrRun = useDeleteAttrgenRun(datasetId);
 
   const columns: ColumnDef<AttrgenRun>[] = [
@@ -55,14 +57,19 @@ export function AttrgenRunsTable({ datasetId, runs, onRequestBenchmark }: Props)
         const isDone = r.status === 'done' || ((r.done ?? 0) > 0 && (r.total ?? 0) > 0 && r.done === r.total);
         return (
           <Group gap="xs">
-            <ActionIcon title="Benchmark starten" variant="light" onClick={() => onRequestBenchmark(r.model_name, r.id)} disabled={!isDone}>
+            <ActionIcon 
+              title={isReadOnly ? "Nicht verfügbar im Read-Only-Modus" : "Benchmark starten"} 
+              variant="light" 
+              onClick={() => onRequestBenchmark(r.model_name, r.id)} 
+              disabled={!isDone || isReadOnly}
+            >
               <IconPlayerPlay size={16} />
             </ActionIcon>
             <ActionIcon title="Personas anzeigen" variant="light" component={Link as any} to={'/datasets/$datasetId/personas'} params={{ datasetId: String(datasetId) }} search={{ attrgenRunId: r.id }}>
               <IconUsers size={16} />
             </ActionIcon>
             <ActionIcon
-              title="Attr-Run löschen"
+              title={isReadOnly ? "Nicht verfügbar im Read-Only-Modus" : "Attr-Run löschen"}
               color="red"
               variant="subtle"
               onClick={async () => {
@@ -73,6 +80,7 @@ export function AttrgenRunsTable({ datasetId, runs, onRequestBenchmark }: Props)
                   /* notification via interceptor */
                 }
               }}
+              disabled={isReadOnly}
             >
               <IconTrash size={16} />
             </ActionIcon>

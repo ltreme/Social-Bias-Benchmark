@@ -3,6 +3,7 @@ import { IconPlayerPause, IconPlayerPlay, IconPlayerStop, IconTrash, IconX, Icon
 import { Link } from '@tanstack/react-router';
 import { useCancelTask, usePauseQueue, useQueueStats, useQueueTasks, useRemoveTask, useResumeQueue, useRetryTask, useStartQueue, useStopQueue } from './hooks';
 import type { QueueTask, TaskStatus } from './api';
+import { useReadOnly } from '../../contexts/ReadOnlyContext';
 
 function getStatusColor(status: TaskStatus): string {
   switch (status) {
@@ -106,6 +107,7 @@ function getTaskColor(type: string) {
 }
 
 function TaskCard({ task }: { task: QueueTask }) {
+  const { isReadOnly } = useReadOnly();
   const removeTask = useRemoveTask();
   const cancelTask = useCancelTask();
   const retryTask = useRetryTask();
@@ -215,11 +217,12 @@ function TaskCard({ task }: { task: QueueTask }) {
           {canRetry && (
             <Menu withinPortal position="bottom-end">
               <Menu.Target>
-                <Tooltip label="Task wiederholen">
+                <Tooltip label={isReadOnly ? "Nicht verfügbar im Read-Only-Modus" : "Task wiederholen"}>
                   <ActionIcon
                     color="blue"
                     variant="light"
                     loading={retryTask.isPending}
+                    disabled={isReadOnly}
                   >
                     <IconRefresh size={18} />
                   </ActionIcon>
@@ -230,6 +233,7 @@ function TaskCard({ task }: { task: QueueTask }) {
                 <Menu.Item
                   leftSection={<IconRefresh size={16} />}
                   onClick={() => retryTask.mutate({ taskId: task.id, deleteResults: false })}
+                  disabled={isReadOnly}
                 >
                   Fortsetzen (vorhandene Ergebnisse behalten)
                 </Menu.Item>
@@ -237,6 +241,7 @@ function TaskCard({ task }: { task: QueueTask }) {
                   leftSection={<IconRefreshAlert size={16} />}
                   color="orange"
                   onClick={() => retryTask.mutate({ taskId: task.id, deleteResults: true })}
+                  disabled={isReadOnly}
                 >
                   Neu starten (Ergebnisse löschen)
                 </Menu.Item>
@@ -244,24 +249,26 @@ function TaskCard({ task }: { task: QueueTask }) {
             </Menu>
           )}
           {canCancel && (
-            <Tooltip label="Task abbrechen">
+            <Tooltip label={isReadOnly ? "Nicht verfügbar im Read-Only-Modus" : "Task abbrechen"}>
               <ActionIcon
                 color="orange"
                 variant="light"
                 onClick={() => cancelTask.mutate(task.id)}
                 loading={cancelTask.isPending}
+                disabled={isReadOnly}
               >
                 <IconX size={18} />
               </ActionIcon>
             </Tooltip>
           )}
           {canRemove && (
-            <Tooltip label="Task entfernen">
+            <Tooltip label={isReadOnly ? "Nicht verfügbar im Read-Only-Modus" : "Task entfernen"}>
               <ActionIcon
                 color="red"
                 variant="light"
                 onClick={() => removeTask.mutate(task.id)}
                 loading={removeTask.isPending}
+                disabled={isReadOnly}
               >
                 <IconTrash size={18} />
               </ActionIcon>
@@ -299,6 +306,7 @@ function TaskCard({ task }: { task: QueueTask }) {
 }
 
 export function QueuePage() {
+  const { isReadOnly } = useReadOnly();
   const { data: tasks = [], isLoading } = useQueueTasks(true, 50);
   const { data: stats } = useQueueStats();
   const colorScheme = useComputedColorScheme('light');
@@ -336,6 +344,8 @@ export function QueuePage() {
                     loading={resumeQueue.isPending}
                     color="green"
                     variant="filled"
+                    disabled={isReadOnly}
+                    title={isReadOnly ? 'Nicht verfügbar im Read-Only-Modus' : undefined}
                   >
                     Fortsetzen
                   </Button>
@@ -346,6 +356,8 @@ export function QueuePage() {
                     loading={pauseQueue.isPending}
                     color="orange"
                     variant="filled"
+                    disabled={isReadOnly}
+                    title={isReadOnly ? 'Nicht verfügbar im Read-Only-Modus' : undefined}
                   >
                     Pausieren
                   </Button>
@@ -356,6 +368,8 @@ export function QueuePage() {
                   loading={stopQueue.isPending}
                   color="red"
                   variant="light"
+                  disabled={isReadOnly}
+                  title={isReadOnly ? 'Nicht verfügbar im Read-Only-Modus' : undefined}
                 >
                   Stoppen
                 </Button>
@@ -367,6 +381,8 @@ export function QueuePage() {
                 loading={startQueue.isPending}
                 color="green"
                 size="md"
+                disabled={isReadOnly}
+                title={isReadOnly ? 'Nicht verfügbar im Read-Only-Modus' : undefined}
               >
                 Queue starten
               </Button>

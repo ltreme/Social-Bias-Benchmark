@@ -5,6 +5,7 @@ import { useAddTask, useQueueTasks } from '../../queue/hooks';
 import { NumericTextInput } from './NumericTextInput';
 import { IconPlayerPlay, IconClockPlay, IconCpu, IconSettings, IconTerminal, IconRefresh } from '@tabler/icons-react';
 import { useThemedColor } from '../../../lib/useThemeColors';
+import { useReadOnly } from '../../../contexts/ReadOnlyContext';
 
 type Props = {
   opened: boolean;
@@ -16,6 +17,7 @@ type Props = {
 };
 
 export function BenchmarkModal({ opened, onClose, datasetId, initialModelName, attrgenRunId, onStarted }: Props) {
+  const { isReadOnly } = useReadOnly();
   const runsList = useAttrgenRuns(datasetId);
   const startBench = useStartBenchmark();
   const addTask = useAddTask();

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useBuildBalanced, useBuildCounterfactuals, useCreatePool, useSampleReality, usePoolStatus } from './hooks';
 import { IconDatabase, IconScale, IconArrowsExchange, IconUsers } from '@tabler/icons-react';
 import { useThemedColor } from '../../lib/useThemeColors';
+import { useReadOnly } from '../../contexts/ReadOnlyContext';
 
 type Props = {
   opened: boolean;
@@ -40,6 +41,7 @@ const modeDescriptions: Record<string, { icon: React.ReactNode; title: string; d
 };
 
 export function DatasetBuilderModal({ opened, onClose, defaultMode = 'pool', datasetId, onCreated }: Props) {
+  const { isReadOnly } = useReadOnly();
   const getColor = useThemedColor();
   const [mode, setMode] = useState<Props['defaultMode']>(defaultMode);
 
@@ -292,9 +294,10 @@ export function DatasetBuilderModal({ opened, onClose, defaultMode = 'pool', dat
         {!poolJobId && (
           <Button 
             onClick={handleCreate} 
-            disabled={!canSubmit} 
+            disabled={!canSubmit || isReadOnly} 
             loading={creating}
             leftSection={mode && modeDescriptions[mode]?.icon}
+            title={isReadOnly ? 'Nicht verfügbar im Read-Only-Modus' : undefined}
           >
             Dataset erstellen
           </Button>

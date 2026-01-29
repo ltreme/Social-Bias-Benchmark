@@ -1,0 +1,192 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sbb
+      POSTGRES_USER: sbb
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_in_production}
+      TZ: Europe/Berlin
+      # Performance tuning for production
+      POSTGRES_SHARED_BUFFERS: 256MB
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 1GB
+      POSTGRES_MAX_CONNECTIONS: 100
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sbb -d sbb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    # Nicht exponieren, nur intern für API erreichbar
+    networks:
+      - internal
+
+  api:
+    image: ${DOCKER_REGISTRY:-local}/sbb-api:${VERSION:-latest}
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api.prod
+      args:
+        PYTHON_VERSION: "3.11"
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      TZ: Europe/Berlin
+      PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      
+      # Database Configuration (Production)
+      DB_URL: postgresql+pool://sbb:${POSTGRES_PASSWORD:-change_me_in_production}@postgres:5432/sbb?max_connections=64&stale_timeout=60
+      
+      # Read-Only Mode (PRODUCTION - ENABLED)
+      READ_ONLY_MODE: "true"
+      
+      # Logging Configuration
+      LOG_LEVEL: INFO
+      BENCH_PROGRESS_LOG: "false"
+      PROMPT_LOG_ENABLED: "false"
+      
+      # vLLM Configuration (not needed in read-only mode, but kept for reference)
+      VLLM_BASE_URL: ${VLLM_BASE_URL:-http://vllm:8000}
+      
+      # Optional: Telegram Notifications (disabled in read-only)
+      # TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      # TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+    
+    volumes:
+      # Only mount logs directory, not the entire source code
+      - ./logs:/app/logs:rw
+      # Optionally mount data directory if using SQLite fallback
+      # - ./data:/app/data:ro
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8765/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    networks:
+      - internal
+      - web
+    
+    # Resource limits (adjust based on your server)
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+
+  ui:
+    image: ${DOCKER_REGISTRY:-local}/sbb-ui:${VERSION:-latest}
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ui.prod
+      args:
+        NODE_VERSION: "20"
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      # Nginx configuration
+      NGINX_HOST: ${NGINX_HOST:-localhost}
+      NGINX_PORT: 80
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    networks:
+      - web
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    depends_on:
+      - api
+      - ui
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
+      # Für SSL/TLS Zertifikate:
+      # - ./docker/nginx/ssl:/etc/nginx/ssl:ro
+      # - /etc/letsencrypt:/etc/letsencrypt:ro
+    networks:
+      - web
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+networks:
+  # Internal network: postgres <-> api (nicht von außen erreichbar)
+  internal:
+    driver: bridge
+    internal: true
+  
+  # Web network: nginx <-> api, ui (über Reverse Proxy erreichbar)
+  web:
+    driver: bridge
+
+volumes:
+  pg_data:
+    driver: local
+
+# Hinweise zur Verwendung:
+# 
+# 1. Erstelle eine .env.production Datei:
+#    POSTGRES_PASSWORD=secure_random_password_here
+#    VERSION=v1.0.0
+#    HTTP_PORT=80
+#    HTTPS_PORT=443
+#    NGINX_HOST=your-domain.com
+#    VITE_API_BASE_URL=https://your-domain.com/api
+#
+# 2. Baue die Images:
+#    docker compose -f docker-compose.production.yml build
+#
+# 3. Starte die Services:
+#    docker compose -f docker-compose.production.yml up -d
+#
+# 4. Überwache die Logs:
+#    docker compose -f docker-compose.production.yml logs -f
+#
+# 5. Stoppe die Services:
+#    docker compose -f docker-compose.production.yml down
+#
+# 6. Für Datenbank-Backups:
+#    docker compose -f docker-compose.production.yml exec postgres \
+#      pg_dump -U sbb sbb > backup_$(date +%Y%m%d).sql

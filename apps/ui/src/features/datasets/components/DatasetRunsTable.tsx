@@ -6,6 +6,7 @@ import type { Run } from '../api';
 import { useDeleteRun } from '../../runs/hooks';
 import { useQueryClient } from '@tanstack/react-query';
 import { IconExternalLink, IconMessage, IconMessageCog, IconTrash, IconCheck, IconX, IconPlayerStop, IconLoader, IconClock } from '@tabler/icons-react';
+import { useReadOnly } from '../../../contexts/ReadOnlyContext';
 
 type Props = {
   datasetId: number;
@@ -13,6 +14,7 @@ type Props = {
 };
 
 export function DatasetRunsTable({ datasetId, runs }: Props) {
+  const { isReadOnly } = useReadOnly();
   const delRun = useDeleteRun();
   const qc = useQueryClient();
 
@@ -106,7 +108,7 @@ export function DatasetRunsTable({ datasetId, runs }: Props) {
           <ActionIcon
             variant="subtle"
             color="red"
-            title="Run löschen"
+            title={isReadOnly ? "Nicht verfügbar im Read-Only-Modus" : "Run löschen"}
             onClick={async (e) => {
               e.preventDefault();
               if (!confirm(`Run #${row.original.id} wirklich löschen?`)) return;
@@ -117,6 +119,7 @@ export function DatasetRunsTable({ datasetId, runs }: Props) {
                 /* no-op */
               }
             }}
+            disabled={isReadOnly}
           >
             <IconTrash size={16} />
           </ActionIcon>

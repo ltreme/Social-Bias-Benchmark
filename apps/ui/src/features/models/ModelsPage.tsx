@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ActionIcon, Badge, Button, Card, Group, NumberInput, Table, Text, TextInput, Title, Tooltip, useComputedColorScheme } from '@mantine/core';
 import { useCreateModel, useDeleteModel, useModelsAdmin, useUpdateModel } from './hooks';
 import { IconCpu, IconPlus, IconServer, IconTrash, IconDeviceSdCard, IconTerminal2, IconCalendar } from '@tabler/icons-react';
+import { useReadOnly } from '../../contexts/ReadOnlyContext';
 
 // Helper to format date nicely
 function formatDate(dateStr?: string | null): string {
@@ -11,6 +12,7 @@ function formatDate(dateStr?: string | null): string {
 }
 
 export function ModelsPage() {
+  const { isReadOnly } = useReadOnly();
   const { data = [], isLoading } = useModelsAdmin();
   const create = useCreateModel();
   const update = useUpdateModel();
@@ -79,9 +81,10 @@ export function ModelsPage() {
           <Button 
             onClick={handleCreate} 
             loading={create.isPending} 
-            disabled={!name.trim()}
+            disabled={!name.trim() || isReadOnly}
             leftSection={<IconPlus size={16} />}
             color="blue"
+            title={isReadOnly ? 'Nicht verfügbar im Read-Only-Modus' : undefined}
           >
             Anlegen
           </Button>
@@ -138,7 +141,8 @@ export function ModelsPage() {
                     onChange={async (e) => {
                       const v = e.currentTarget.value;
                       await update.mutateAsync({ id: m.id, body: { name: v } });
-                    }} 
+                    }}
+                    disabled={isReadOnly}
                   />
                 </Table.Td>
                 <Table.Td>
@@ -152,6 +156,7 @@ export function ModelsPage() {
                     }} 
                     min={0}
                     suffix=" GB"
+                    disabled={isReadOnly}
                   />
                 </Table.Td>
                 <Table.Td>
@@ -162,7 +167,8 @@ export function ModelsPage() {
                     placeholder="–"
                     onChange={async (e) => { 
                       await update.mutateAsync({ id: m.id, body: { vllm_serve_cmd: e.currentTarget.value } }); 
-                    }} 
+                    }}
+                    disabled={isReadOnly}
                   />
                 </Table.Td>
                 <Table.Td>
@@ -171,7 +177,7 @@ export function ModelsPage() {
                   </Text>
                 </Table.Td>
                 <Table.Td>
-                  <Tooltip label="Modell löschen" withArrow>
+                  <Tooltip label={isReadOnly ? 'Nicht verfügbar im Read-Only-Modus' : 'Modell löschen'} withArrow>
                     <ActionIcon 
                       color="red" 
                       variant="light" 
@@ -180,6 +186,7 @@ export function ModelsPage() {
                         if (!confirm(`Modell #${m.id} (${m.name}) wirklich löschen?`)) return;
                         await del.mutateAsync(m.id);
                       }}
+                      disabled={isReadOnly}
                     >
                       <IconTrash size={16} />
                     </ActionIcon>

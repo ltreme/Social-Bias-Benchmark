@@ -1,0 +1,51 @@
+# Production Dockerfile for API
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    gcc \
+    g++ \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy only requirements first for better caching
+COPY apps/backend/requirements.txt /app/apps/backend/
+COPY apps/backend/pyproject.toml /app/apps/backend/
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r /app/apps/backend/requirements.txt
+
+# Copy application code
+COPY apps/backend/src /app/apps/backend/src
+COPY data /app/data
+COPY lang /app/lang
+
+# Create logs directory
+RUN mkdir -p /app/logs && chmod 777 /app/logs
+
+# Set Python path
+ENV PYTHONPATH=/app/apps/backend/src
+
+# Non-root user for security
+RUN useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app
+USER appuser
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8765/health || exit 1
+
+# Expose port
+EXPOSE 8765
+
+# Start uvicorn
+CMD ["uvicorn", "backend.application.api.main:app", \
+     "--host", "0.0.0.0", \
+     "--port", "8765", \
+     "--app-dir", "/app/apps/backend/src", \
+     "--workers", "4", \
+     "--timeout-keep-alive", "75", \
+     "--access-log"]

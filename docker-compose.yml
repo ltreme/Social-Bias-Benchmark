@@ -45,6 +45,10 @@ services:
       # Prompt/Response logging: Set to "0" to disable
       PROMPT_LOG_ENABLED: "true"
       PROMPT_LOG_DIR: /app/logs
+      # Read-only mode: Set to "true" to disable all write operations (for public deployment)
+      # When enabled, all POST/PUT/DELETE/PATCH requests will be blocked with HTTP 403
+      # Export endpoints remain accessible. Default: "false"
+      READ_ONLY_MODE: "false"
     volumes:
       # Use cached mode for better read performance on macOS
       - .:/app:cached
