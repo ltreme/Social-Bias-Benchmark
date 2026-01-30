@@ -139,9 +139,8 @@ services:
     volumes:
       - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
-      # Für SSL/TLS Zertifikate:
-      # - ./docker/nginx/ssl:/etc/nginx/ssl:ro
-      # - /etc/letsencrypt:/etc/letsencrypt:ro
+      - ./letsencrypt/www:/var/www/certbot:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
     networks:
       - web
     healthcheck:
@@ -154,6 +153,12 @@ services:
         limits:
           cpus: '0.5'
           memory: 256M
+  certbot:
+    image: certbot/certbot:latest
+    volumes:
+      - ./letsencrypt/www:/var/www/certbot
+      - /etc/letsencrypt:/etc/letsencrypt
+
 
 networks:
   # Internal network: postgres <-> api (nicht von außen erreichbar)
