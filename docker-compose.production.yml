@@ -97,15 +97,14 @@ services:
 
   nginx:
     image: nginx:alpine
+    container_name: sbb-nginx-prod
     restart: unless-stopped
     depends_on:
       - api
       - ui
-    # Ports entfernt - Traefik macht das Routing
     volumes:
       - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
-      # Alte SSL-Mounts entfernt - Traefik verwaltet Certs
     networks:
       - web
       - proxy # Verbindung zu Traefik
@@ -122,12 +121,25 @@ services:
     
     # --- Traefik Konfiguration ---
     labels:
+      # Container für Traefik aktivieren
       - "traefik.enable=true"
-      # Host Regel: equibench...
-      - "traefik.http.routers.sbb.rule=Host(`equibench.markusertl.de`)"
-      - "traefik.http.routers.sbb.entrypoints=websecure"
-      - "traefik.http.routers.sbb.tls.certresolver=myresolver"
-      # Traefik schickt Anfragen an Port 80 dieses Containers
+      
+      # Docker-Netzwerk explizit angeben (wichtig bei mehreren Netzwerken!)
+      - "traefik.docker.network=proxy"
+      
+      # HTTPS Router
+      - "traefik.http.routers.sbb-secure.rule=Host(`equibench.markusertl.de`)"
+      - "traefik.http.routers.sbb-secure.entrypoints=websecure"
+      - "traefik.http.routers.sbb-secure.tls=true"
+      - "traefik.http.routers.sbb-secure.tls.certresolver=myresolver"
+      - "traefik.http.routers.sbb-secure.service=sbb"
+      
+      # HTTP Router (für Let's Encrypt Challenge)
+      - "traefik.http.routers.sbb-insecure.rule=Host(`equibench.markusertl.de`)"
+      - "traefik.http.routers.sbb-insecure.entrypoints=web"
+      - "traefik.http.routers.sbb-insecure.service=sbb"
+      
+      # Service Definition
       - "traefik.http.services.sbb.loadbalancer.server.port=80"
 
   # Certbot entfernt - nicht mehr nötig
