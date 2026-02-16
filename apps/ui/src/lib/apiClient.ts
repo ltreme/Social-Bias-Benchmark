@@ -5,8 +5,12 @@ import { notifications } from '@mantine/notifications';
 const DEFAULT_TIMEOUT_MS = 600_000;
 const timeoutMs = Number(import.meta.env.VITE_API_TIMEOUT_MS ?? DEFAULT_TIMEOUT_MS);
 
+// In production (when VITE_API_BASE_URL is not set), use relative /api path
+// In development, default to localhost backend
+const defaultBaseURL = import.meta.env.DEV ? 'http://localhost:8765' : '/api';
+
 export const api = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8765',
+    baseURL: import.meta.env.VITE_API_BASE_URL ?? defaultBaseURL,
     timeout: Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : DEFAULT_TIMEOUT_MS,
 });
 

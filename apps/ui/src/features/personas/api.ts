@@ -31,7 +31,9 @@ export async function fetchDatasetPersonas(datasetId: number, params: PersonaQue
 }
 
 export function personasCsvUrl(datasetId: number, attrgenRunId?: number) {
-  const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8765';
+  // Use relative URL in production (proxied by nginx), absolute in dev
+  const base = import.meta.env.VITE_API_BASE_URL ?? 
+    (import.meta.env.DEV ? 'http://localhost:8765' : window.location.origin);
   const p = new URL(`/datasets/${datasetId}/personas/export`, base);
   if (attrgenRunId) p.searchParams.set('attrgen_run_id', String(attrgenRunId));
   return p.toString();

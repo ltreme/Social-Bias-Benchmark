@@ -389,7 +389,7 @@ export function RunDetailPage() {
               color="violet"
               size="lg"
               component="a"
-              href={`${import.meta.env.VITE_API_BASE_URL || ''}/runs/${runId}/export/json`}
+              href={`${import.meta.env.VITE_API_BASE_URL || '/api'}/runs/${runId}/export/json`}
               download={`run_${runId}_data.json`}
               data-print-hide
             >
@@ -403,7 +403,7 @@ export function RunDetailPage() {
               color="gray"
               size="lg"
               component="a"
-              href={`${import.meta.env.VITE_API_BASE_URL || ''}/runs/${runId}/logs`}
+              href={`${import.meta.env.VITE_API_BASE_URL || '/api'}/runs/${runId}/logs`}
               download={`run_${runId}_logs.json`}
               data-print-hide
             >
