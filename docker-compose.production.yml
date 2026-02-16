@@ -110,7 +110,7 @@ services:
       - web
       - proxy # Verbindung zu Traefik
     healthcheck:
-      test: ["CMD", "sh", "-c", "wget -qO- http://localhost/health || exit 1"]
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
       interval: 10s
       timeout: 5s
       retries: 3
