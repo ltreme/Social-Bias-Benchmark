@@ -98,6 +98,7 @@ services:
   nginx:
     image: nginx:alpine
     container_name: sbb-nginx-prod
+    hostname: sbb-nginx-prod
     restart: unless-stopped
     depends_on:
       - api
